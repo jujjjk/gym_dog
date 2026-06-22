@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDEs and editors
+.vscode/
+.idea/
+
+# Logs and databases
+*.log
+logs/
+*.sqlite3
+
+# C extensions and binaries
+*.so
+*.dylib
+*.dll
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Pycache and caches
+.pytest_cache/
+.cache/
+
+# Large project directories (ignore heavy binaries/assets)
+isaacgym/
+unitree-rl/
+
+# OS files
+.DS_Store
+Thumbs.db
