@@ -1,0 +1,10 @@
+[submodule "unitree_rl_gym"]
+	path = unitree_rl_gym
+	url = https://github.com/jujjjk/gym_dog.git
+	branch = unitree_rl_gym-main
+[submodule "rsl_rl"]
+	path = rsl_rl
+	url = https://github.com/leggedrobotics/rsl_rl.git
+[submodule "fanfan_urdf"]
+	path = fanfan_urdf
+	url = https://github.com/jujjjk/fanfan_urdf.git
