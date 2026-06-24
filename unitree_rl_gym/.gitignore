@@ -1,0 +1,30 @@
+__pycache__/
+*.pyc
+*.pyo
+*.log
+
+# Python / env
+.venv/
+venv/
+env/
+unitree-rl/
+*.egg-info/
+
+# training logs / checkpoints
+logs/
+runs/
+wandb/
+checkpoints/
+*.pt
+*.pth
+*.onnx
+
+# Isaac Gym SDK / cache
+isaacgym/
+IsaacGym_Preview_4_Package.tar.gz
+*.tar.gz
+
+# system
+.DS_Store
+.vscode/
+.idea/
