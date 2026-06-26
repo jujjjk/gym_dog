@@ -42,6 +42,8 @@ class FanfanRoughCfg(LeggedRobotCfg):
             "calf": 4.0,
         }
         action_scale = 0.18
+        rear_action_scale = 0.22
+        hip_action_scale = 0.08
         decimation = 4
 
     class asset(LeggedRobotCfg.asset):
@@ -97,9 +99,9 @@ class FanfanRoughCfg(LeggedRobotCfg):
         stand_height_sigma = 0.0008
         stand_posture_sigma = 0.12
         rear_leg_posture_height = 0.25
-        gait_period = 0.5
-        gait_stance_ratio = 0.55
-        gait_thigh_amplitude = 0.15
+        gait_period = 0.54
+        gait_stance_ratio = 0.62
+        gait_thigh_amplitude = 0.0
         gait_calf_amplitude = -0.30
         swing_height_target = 0.045
         swing_height_sigma = 0.0004
@@ -112,14 +114,19 @@ class FanfanRoughCfg(LeggedRobotCfg):
             stand_height = 2.0
             stand_posture = 0.2
             tracking_lin_vel = 5.0
-            tracking_ang_vel = 0.0
+            tracking_ang_vel = 2.0
             backward_velocity = -5.0
             diagonal_gait = 4.0
             swing_height = 0.2
             flight = -2.0
 
-            lin_vel_z = -0.5
-            ang_vel_xy = -0.2
+            lin_vel_z = -0.75
+            ang_vel_xy = -0.7
+            yaw_rate = -2.0
+            hip_velocity = -0.003
+            hip_symmetry = -1.0
+            diagonal_joint_sync = -0.5
+            action_magnitude = -0.01
             orientation = -3.0
             base_height = -10.0
             low_base_height = -10.0
@@ -132,7 +139,7 @@ class FanfanRoughCfg(LeggedRobotCfg):
             torques = -0.00001
             dof_vel = -0.0
             dof_acc = -5.0e-8
-            action_rate = -0.01
+            action_rate = -0.015
 
             # 明确压掉膝盖/小腿接地的投机解。
             collision = -2.0

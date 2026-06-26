@@ -5,6 +5,12 @@ import torch
 
 
 class FanfanRobot(LeggedRobot):
+    def step(self, actions):
+        # A smooth bound preserves control resolution when the Gaussian policy
+        # produces values outside [-1, 1]. Hard clipping made the legs bang
+        # between their limits and destroyed the diagonal timing.
+        return super().step(torch.tanh(actions))
+
     def _get_noise_scale_vec(self, cfg):
         noise_vec = super()._get_noise_scale_vec(cfg)
         noise_vec[-2:] = 0.0
@@ -31,29 +37,66 @@ class FanfanRobot(LeggedRobot):
         self.leg_dof_indices = {}
         for leg in ("FL", "FR", "RL", "RR"):
             self.leg_dof_indices[leg] = {
+                "hip": self.dof_names.index(f"{leg}_hip_joint"),
                 "thigh": self.dof_names.index(f"{leg}_thigh_joint"),
                 "calf": self.dof_names.index(f"{leg}_calf_joint"),
             }
+        self.hip_dof_indices = torch.tensor(
+            [self.leg_dof_indices[leg]["hip"] for leg in ("FL", "FR", "RL", "RR")],
+            dtype=torch.long,
+            device=self.device,
+        )
+        self.rear_sagittal_dof_indices = torch.tensor(
+            [
+                self.leg_dof_indices[leg][joint]
+                for leg in ("RL", "RR")
+                for joint in ("thigh", "calf")
+            ],
+            dtype=torch.long,
+            device=self.device,
+        )
+        self.sagittal_dof_indices = torch.tensor(
+            [
+                self.leg_dof_indices[leg][joint]
+                for leg in ("FL", "FR", "RL", "RR")
+                for joint in ("thigh", "calf")
+            ],
+            dtype=torch.long,
+            device=self.device,
+        )
 
     def _compute_torques(self, actions):
         actions_scaled = actions * self.cfg.control.action_scale
+        actions_scaled[:, self.rear_sagittal_dof_indices] = (
+            actions[:, self.rear_sagittal_dof_indices]
+            * self.cfg.control.rear_action_scale
+        )
+        actions_scaled[:, self.hip_dof_indices] = (
+            actions[:, self.hip_dof_indices] * self.cfg.control.hip_action_scale
+        )
         phase = (
             self.gait_phase.unsqueeze(1) + self.gait_phase_offsets.unsqueeze(0)
         ) % 1.0
         stance_ratio = self.cfg.rewards.gait_stance_ratio
         swing_progress = ((phase - stance_ratio) / (1.0 - stance_ratio)).clip(0.0, 1.0)
-        swing_profile = torch.sin(torch.pi * swing_progress) * (phase >= stance_ratio)
+        smooth_swing = swing_progress * swing_progress * (3.0 - 2.0 * swing_progress)
+        swing_profile = torch.sin(torch.pi * smooth_swing) * (phase >= stance_ratio)
+        stance_progress = (phase / stance_ratio).clip(0.0, 1.0)
+        thigh_profile = torch.where(
+            phase < stance_ratio,
+            -1.0 + 2.0 * stance_progress,
+            1.0 - 2.0 * smooth_swing,
+        )
 
         gait_offset = torch.zeros_like(actions_scaled)
         foot_names = ("FL", "FR", "RL", "RR")
         for foot_slot, leg in enumerate(foot_names):
             gait_offset[:, self.leg_dof_indices[leg]["thigh"]] = (
-                self.cfg.rewards.gait_thigh_amplitude * swing_profile[:, foot_slot]
+                self.cfg.rewards.gait_thigh_amplitude * thigh_profile[:, foot_slot]
             )
             gait_offset[:, self.leg_dof_indices[leg]["calf"]] = (
                 self.cfg.rewards.gait_calf_amplitude * swing_profile[:, foot_slot]
             )
-
         torques = self.p_gains * (
             actions_scaled + gait_offset + self.default_dof_pos - self.dof_pos
         ) - self.d_gains * self.dof_vel
@@ -214,6 +257,32 @@ class FanfanRobot(LeggedRobot):
     def _reward_backward_velocity(self):
         return (-self.base_lin_vel[:, 0]).clip(min=0.0)
 
+    def _reward_yaw_rate(self):
+        return torch.square(self.base_ang_vel[:, 2])
+
+    def _reward_hip_velocity(self):
+        return torch.sum(torch.square(self.dof_vel[:, self.hip_dof_indices]), dim=1)
+
+    def _reward_hip_symmetry(self):
+        hip_pos = self.dof_pos[:, self.hip_dof_indices]
+        front_mirror_error = torch.square(hip_pos[:, 0] + hip_pos[:, 1])
+        rear_mirror_error = torch.square(hip_pos[:, 2] + hip_pos[:, 3])
+        return front_mirror_error + rear_mirror_error
+
+    def _reward_diagonal_joint_sync(self):
+        error = torch.zeros(self.num_envs, device=self.device)
+        for joint in ("thigh", "calf"):
+            fl = self.leg_dof_indices["FL"][joint]
+            fr = self.leg_dof_indices["FR"][joint]
+            rl = self.leg_dof_indices["RL"][joint]
+            rr = self.leg_dof_indices["RR"][joint]
+            error += torch.square(self.dof_pos[:, fl] - self.dof_pos[:, rr])
+            error += torch.square(self.dof_pos[:, fr] - self.dof_pos[:, rl])
+        return error
+
+    def _reward_action_magnitude(self):
+        return torch.sum(torch.square(self.actions), dim=1)
+
     def _get_desired_foot_contacts(self):
         stance_ratio = self.cfg.rewards.gait_stance_ratio
         desired = torch.zeros(
@@ -228,7 +297,7 @@ class FanfanRobot(LeggedRobot):
         contact = self.contact_forces[:, self.feet_indices, 2] > 1.0
         desired_contact = self._get_desired_foot_contacts()
         mismatch_count = torch.sum(contact != desired_contact, dim=1)
-        return torch.exp(-2.0 * mismatch_count.float())
+        return torch.exp(-1.5 * mismatch_count.float())
 
     def _reward_swing_height(self):
         desired_swing = ~self._get_desired_foot_contacts()
