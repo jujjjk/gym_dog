@@ -76,9 +76,18 @@ class FanfanRoughCfg(LeggedRobotCfg):
             ang_vel_yaw = [0.0, 0.0]
 
     class domain_rand(LeggedRobotCfg.domain_rand):
-        randomize_friction = False
-        randomize_base_mass = False
-        push_robots = False
+        # URDF total mass/inertia and contact modelling differ slightly between
+        # PhysX and MuJoCo. Keep the ranges narrow enough to preserve the gait,
+        # while exposing the policy to the asymmetries seen in Sim2Sim.
+        randomize_friction = True
+        friction_range = [0.75, 1.20]
+        randomize_base_mass = True
+        added_mass_range = [-0.20, 0.20]
+        randomize_motor_strength = True
+        motor_strength_range = [0.90, 1.10]
+        push_robots = True
+        push_interval_s = 8
+        max_push_vel_xy = 0.15
 
     class terrain(LeggedRobotCfg.terrain):
         mesh_type = "plane"

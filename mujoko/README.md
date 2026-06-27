@@ -1,0 +1,22 @@
+# Fanfan MuJoCo Sim2Sim
+
+独立环境，不修改 Isaac Gym。使用最新 `model_800.pt`，50 Hz policy、200 Hz MuJoCo控制、RS01 ±17 Nm。
+
+部署端不加入航向补偿或额外控制器，仅用于检验 policy 本身的跨引擎迁移。
+复制的 URDF 显式增加了 `world -> Trunk` floating joint，MuJoCo 因而直接保留
+原始四腿关节原点和惯量，不再把第一条腿当作转换参考根。
+
+```bash
+cd /home/nszb/gym/mujoko
+source .venv/bin/activate
+python sim2sim.py --duration 20
+python sim2sim.py --duration 60 --viewer
+```
+
+训练 episode 长度是20秒，因此 viewer 每20秒自动复位。单段20秒验证的横向
+位移由修复前约 `-2.16 m` 降至约 `-0.28 m`，最低机身高度约 `0.266 m`。
+
+当前默认 `fanfan_best.onnx` 是 domain-randomization 续训实验中实测迁移最好的
+1000轮checkpoint。MuJoCo端没有航向补偿；20秒结果约为前进5.25 m、横漂
+-1.79 m。漂移仍存在，说明下一步需要在Isaac中进一步做接触/执行器域随机化，
+而不是继续修改MuJoCo控制器。

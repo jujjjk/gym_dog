@@ -43,3 +43,7 @@ unitree-rl/
 # OS files
 .DS_Store
 Thumbs.db
+isaacgym/
+.venv/
+isaacgym/
+.venv/

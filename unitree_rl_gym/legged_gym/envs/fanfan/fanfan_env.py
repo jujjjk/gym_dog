@@ -65,6 +65,7 @@ class FanfanRobot(LeggedRobot):
             device=self.device,
         )
         self.raw_torques = torch.zeros_like(self.torques)
+        self.motor_strength = torch.ones_like(self.torques)
         self.target_dof_pos_rl = self.default_dof_pos.repeat(self.num_envs, 1)
         self.torque_clip_error = torch.zeros_like(self.torques)
         self.torque_ema = torch.zeros_like(self.torques)
@@ -125,9 +126,9 @@ class FanfanRobot(LeggedRobot):
                 self.cfg.rewards.gait_calf_amplitude * swing_profile[:, foot_slot]
             )
         target_dof_pos = actions_scaled + gait_offset + self.default_dof_pos
-        raw_torques = self.p_gains * (
+        raw_torques = self.motor_strength * (self.p_gains * (
             target_dof_pos - self.dof_pos
-        ) - self.d_gains * self.dof_vel
+        ) - self.d_gains * self.dof_vel)
         clipped_torques = torch.clip(
             raw_torques, -self.torque_limits, self.torque_limits
         )
@@ -166,6 +167,11 @@ class FanfanRobot(LeggedRobot):
             return
 
         super().reset_idx(env_ids)
+        if getattr(self.cfg.domain_rand, "randomize_motor_strength", False):
+            low, high = self.cfg.domain_rand.motor_strength_range
+            self.motor_strength[env_ids] = torch_rand_float(
+                low, high, (len(env_ids), self.num_actions), device=self.device
+            )
         metric_count = self.torque_metric_count[env_ids].clip(min=1.0)
         self.extras["episode"]["max_abs_raw_torque"] = torch.mean(
             self.max_abs_raw_torque[env_ids]
