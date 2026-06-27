@@ -13,7 +13,7 @@ class FanfanRobot(LeggedRobot):
 
     def _get_noise_scale_vec(self, cfg):
         noise_vec = super()._get_noise_scale_vec(cfg)
-        noise_vec[-2:] = 0.0
+        noise_vec[-4:] = 0.0
         return noise_vec
 
     def _init_buffers(self):
@@ -206,6 +206,13 @@ class FanfanRobot(LeggedRobot):
     def compute_observations(self):
         phase_angle = 2.0 * torch.pi * self.gait_phase
         phase_obs = torch.stack((torch.sin(phase_angle), torch.cos(phase_angle)), dim=1)
+        heading_error = torch.atan2(
+            torch.sin(self.commands[:, 3] - self.rpy[:, 2]),
+            torch.cos(self.commands[:, 3] - self.rpy[:, 2]),
+        )
+        heading_obs = torch.stack(
+            (torch.sin(heading_error), torch.cos(heading_error)), dim=1
+        )
         self.obs_buf = torch.cat((
             self.base_lin_vel * self.obs_scales.lin_vel,
             self.base_ang_vel * self.obs_scales.ang_vel,
@@ -215,6 +222,7 @@ class FanfanRobot(LeggedRobot):
             self.dof_vel * self.obs_scales.dof_vel,
             self.actions,
             phase_obs,
+            heading_obs,
         ), dim=-1)
         if self.add_noise:
             self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
@@ -351,6 +359,16 @@ class FanfanRobot(LeggedRobot):
 
     def _reward_yaw_rate(self):
         return torch.square(self.base_ang_vel[:, 2])
+
+    def _reward_heading_tracking(self):
+        heading_error = torch.atan2(
+            torch.sin(self.commands[:, 3] - self.rpy[:, 2]),
+            torch.cos(self.commands[:, 3] - self.rpy[:, 2]),
+        )
+        return torch.exp(-torch.square(heading_error) / 0.25)
+
+    def _reward_lateral_velocity(self):
+        return torch.square(self.base_lin_vel[:, 1])
 
     def _reward_hip_velocity(self):
         return torch.sum(torch.square(self.dof_vel[:, self.hip_dof_indices]), dim=1)

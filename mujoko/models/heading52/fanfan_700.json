@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "task": "fanfan",
+  "checkpoint": "/home/nszb/gym/unitree_rl_gym/logs/rough_fanfan/Jun27_18-41-11_/model_700.pt",
+  "dimensions": {
+    "observations": 52,
+    "actions": 12
+  },
+  "joint_names": [
+    "FL_hip_joint",
+    "FL_thigh_joint",
+    "FL_calf_joint",
+    "FR_hip_joint",
+    "FR_thigh_joint",
+    "FR_calf_joint",
+    "RL_hip_joint",
+    "RL_thigh_joint",
+    "RL_calf_joint",
+    "RR_hip_joint",
+    "RR_thigh_joint",
+    "RR_calf_joint"
+  ],
+  "default_joint_angles": [
+    0.0,
+    0.563,
+    -0.95,
+    0.0,
+    0.563,
+    -0.95,
+    0.0,
+    0.563,
+    -0.95,
+    0.0,
+    0.563,
+    -0.95
+  ],
+  "initial_state": {
+    "base_position": [
+      0.0,
+      0.0,
+      0.295
+    ],
+    "base_quaternion_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "control": {
+    "sim_dt": 0.005,
+    "decimation": 4,
+    "stiffness": [
+      60.0,
+      70.0,
+      70.0,
+      60.0,
+      70.0,
+      70.0,
+      60.0,
+      70.0,
+      70.0,
+      60.0,
+      70.0,
+      70.0
+    ],
+    "damping": [
+      0.6,
+      0.8,
+      0.8,
+      0.6,
+      0.8,
+      0.8,
+      0.6,
+      0.8,
+      0.8,
+      0.6,
+      0.8,
+      0.8
+    ],
+    "action_scale": [
+      0.08,
+      0.18,
+      0.18,
+      0.08,
+      0.18,
+      0.18,
+      0.08,
+      0.2,
+      0.2,
+      0.08,
+      0.2,
+      0.2
+    ],
+    "torque_limits": [
+      17.0,
+      17.0,
+      17.0,
+      17.0,
+      17.0,
+      17.0,
+      17.0,
+      17.0,
+      17.0,
+      17.0,
+      17.0,
+      17.0
+    ],
+    "output_transform": "tanh"
+  },
+  "observations": {
+    "clip": 100.0,
+    "lin_vel_scale": 2.0,
+    "ang_vel_scale": 0.25,
+    "dof_pos_scale": 1.0,
+    "dof_vel_scale": 0.05,
+    "command_scale": [
+      2.0,
+      2.0,
+      0.25
+    ],
+    "layout": [
+      "base_lin_vel",
+      "base_ang_vel",
+      "projected_gravity",
+      "commands",
+      "dof_pos_error",
+      "dof_vel",
+      "previous_actions",
+      "gait_phase_sin_cos",
+      "heading_error_sin_cos"
+    ]
+  },
+  "commands": {
+    "default": [
+      0.22499999999999998,
+      0.0,
+      0.0
+    ],
+    "heading_command": true,
+    "default_heading": 0.0,
+    "heading_gain": 0.5
+  },
+  "gait": {
+    "period": 0.54,
+    "stance_ratio": 0.62,
+    "thigh_amplitude": 0.0,
+    "calf_amplitude": -0.3,
+    "phase_offsets": {
+      "FL": 0.0,
+      "FR": 0.5,
+      "RL": 0.5,
+      "RR": 0.0
+    }
+  },
+  "episode_length_s": 20
+}

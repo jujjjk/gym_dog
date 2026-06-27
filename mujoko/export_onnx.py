@@ -7,8 +7,8 @@ import isaacgym
 import torch
 
 class Actor(torch.nn.Sequential):
-    def __init__(self):
-        super().__init__(torch.nn.Linear(50,512),torch.nn.ELU(),torch.nn.Linear(512,256),
+    def __init__(self, observations):
+        super().__init__(torch.nn.Linear(observations,512),torch.nn.ELU(),torch.nn.Linear(512,256),
                          torch.nn.ELU(),torch.nn.Linear(256,128),torch.nn.ELU(),
                          torch.nn.Linear(128,12))
 
@@ -44,8 +44,9 @@ def deployment_config(cfg, checkpoint, gym_root):
                         "dof_pos_scale":cfg.normalization.obs_scales.dof_pos,
                         "dof_vel_scale":cfg.normalization.obs_scales.dof_vel,
                         "command_scale":[cfg.normalization.obs_scales.lin_vel,cfg.normalization.obs_scales.lin_vel,cfg.normalization.obs_scales.ang_vel],
-                        "layout":["base_lin_vel","base_ang_vel","projected_gravity","commands","dof_pos_error","dof_vel","previous_actions","gait_phase_sin_cos"]},
-        "commands":{"default":[sum(cfg.commands.ranges.lin_vel_x)/2,0.0,0.0],"heading_command":cfg.commands.heading_command},
+                        "layout":["base_lin_vel","base_ang_vel","projected_gravity","commands","dof_pos_error","dof_vel","previous_actions","gait_phase_sin_cos","heading_error_sin_cos"]},
+        "commands":{"default":[sum(cfg.commands.ranges.lin_vel_x)/2,0.0,0.0],"heading_command":cfg.commands.heading_command,
+                    "default_heading":sum(cfg.commands.ranges.heading)/2 if cfg.commands.heading_command else 0.0,"heading_gain":0.5},
         "gait":{"period":cfg.rewards.gait_period,"stance_ratio":cfg.rewards.gait_stance_ratio,
                 "thigh_amplitude":cfg.rewards.gait_thigh_amplitude,"calf_amplitude":cfg.rewards.gait_calf_amplitude,
                 "phase_offsets":{"FL":0.0,"FR":0.5,"RL":0.5,"RR":0.0}},
@@ -57,7 +58,7 @@ if __name__ == "__main__":
     p.add_argument("--gym-root",type=Path,default=Path(__file__).resolve().parents[1]/"unitree_rl_gym");a=p.parse_args()
     sys.path.insert(0,str(a.gym_root));cfg=importlib.import_module("legged_gym.envs.fanfan.fanfan_config").FanfanRoughCfg
     state=torch.load(a.checkpoint,map_location="cpu")["model_state_dict"]
-    actor=Actor().eval();actor.load_state_dict({k[6:]:v for k,v in state.items() if k.startswith("actor.")})
+    actor=Actor(cfg.env.num_observations).eval();actor.load_state_dict({k[6:]:v for k,v in state.items() if k.startswith("actor.")})
     a.output.parent.mkdir(parents=True,exist_ok=True)
     torch.onnx.export(actor,torch.zeros(1,cfg.env.num_observations),a.output,input_names=["observations"],output_names=["raw_actions"],dynamic_axes={"observations":{0:"batch"},"raw_actions":{0:"batch"}},opset_version=17)
     manifest=deployment_config(cfg,a.checkpoint,a.gym_root)

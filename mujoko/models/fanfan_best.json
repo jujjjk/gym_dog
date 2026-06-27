@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "task": "fanfan",
-  "checkpoint": "/home/nszb/gym/mujoko/models/model_best_1000.pt",
+  "checkpoint": "/home/nszb/gym/unitree_rl_gym/logs/rough_fanfan/Jun27_18-41-11_/model_850.pt",
   "dimensions": {
-    "observations": 50,
+    "observations": 52,
     "actions": 12
   },
   "joint_names": [
@@ -127,7 +127,8 @@
       "dof_pos_error",
       "dof_vel",
       "previous_actions",
-      "gait_phase_sin_cos"
+      "gait_phase_sin_cos",
+      "heading_error_sin_cos"
     ]
   },
   "commands": {
@@ -136,7 +137,9 @@
       0.0,
       0.0
     ],
-    "heading_command": false
+    "heading_command": true,
+    "default_heading": 0.0,
+    "heading_gain": 0.5
   },
   "gait": {
     "period": 0.54,

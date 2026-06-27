@@ -3,7 +3,7 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 
 class FanfanRoughCfg(LeggedRobotCfg):
     class env(LeggedRobotCfg.env):
-        num_observations = 50
+        num_observations = 52
         num_actions = 12
 
     class normalization(LeggedRobotCfg.normalization):
@@ -74,13 +74,14 @@ class FanfanRoughCfg(LeggedRobotCfg):
         armature = 0.01
 
     class commands(LeggedRobotCfg.commands):
-        heading_command = False
+        heading_command = True
         resampling_time = 10.0
 
         class ranges(LeggedRobotCfg.commands.ranges):
             lin_vel_x = [0.15, 0.30]
             lin_vel_y = [0.0, 0.0]
-            ang_vel_yaw = [0.0, 0.0]
+            ang_vel_yaw = [-1.0, 1.0]
+            heading = [-0.50, 0.50]
 
     class domain_rand(LeggedRobotCfg.domain_rand):
         # URDF total mass/inertia and contact modelling differ slightly between
@@ -159,6 +160,8 @@ class FanfanRoughCfg(LeggedRobotCfg):
             stand_posture = 0.2
             tracking_lin_vel = 6.0
             tracking_ang_vel = 2.0
+            heading_tracking = 2.0
+            lateral_velocity = -2.0
             backward_velocity = -10.0
             diagonal_gait = 6.0
             swing_height = 0.2

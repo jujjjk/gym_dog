@@ -12,6 +12,9 @@ def load_contract(session):
 def gravity(q):
     r=np.empty(9);mujoco.mju_quat2Mat(r,q);return r.reshape(3,3).T@np.array([0,0,-1.])
 
+def body_linear_velocity(q,world_velocity):
+    r=np.empty(9);mujoco.mju_quat2Mat(r,q);return r.reshape(3,3).T@world_velocity
+
 class Sim:
     def __init__(self,model,policy,command=None):
         self.m=mujoco.MjModel.from_xml_path(str(model));self.d=mujoco.MjData(self.m);self.net=ort.InferenceSession(str(policy));self.cfg=load_contract(self.net)
@@ -30,8 +33,11 @@ class Sim:
             elif "calf" in name:out[i]=self.gait["calf_amplitude"]*np.sin(np.pi*smooth)*(p>=r)
         return out
     def policy(self):
-        vel=np.empty(6);mujoco.mj_objectVelocity(self.m,self.d,mujoco.mjtObj.mjOBJ_BODY,self.bid,vel,1);phase=(self.n*self.m.opt.timestep*self.decimation%self.gait["period"])/self.gait["period"];o=self.obs_cfg
-        obs=np.concatenate((vel[3:]*o["lin_vel_scale"],vel[:3]*o["ang_vel_scale"],gravity(self.d.qpos[3:7]),self.command*np.asarray(o["command_scale"]),(self.d.qpos[self.q]-self.default)*o["dof_pos_scale"],self.d.qvel[self.v]*o["dof_vel_scale"],self.action,[np.sin(2*np.pi*phase),np.cos(2*np.pi*phase)])).astype(np.float32)
+        quat=self.d.qpos[3:7];linear=body_linear_velocity(quat,self.d.qvel[:3]);angular=self.d.qvel[3:6];phase=(self.n*self.m.opt.timestep*self.decimation%self.gait["period"])/self.gait["period"];o=self.obs_cfg
+        command=self.command.copy();heading_obs=[]
+        if self.cfg["commands"]["heading_command"]:
+            r=np.empty(9);mujoco.mju_quat2Mat(r,quat);r=r.reshape(3,3);yaw=np.arctan2(r[1,0],r[0,0]);error=np.arctan2(np.sin(self.cfg["commands"]["default_heading"]-yaw),np.cos(self.cfg["commands"]["default_heading"]-yaw));command[2]=np.clip(self.cfg["commands"]["heading_gain"]*error,-1,1);heading_obs=[np.sin(error),np.cos(error)]
+        obs=np.concatenate((linear*o["lin_vel_scale"],angular*o["ang_vel_scale"],gravity(quat),command*np.asarray(o["command_scale"]),(self.d.qpos[self.q]-self.default)*o["dof_pos_scale"],self.d.qvel[self.v]*o["dof_vel_scale"],self.action,[np.sin(2*np.pi*phase),np.cos(2*np.pi*phase)],heading_obs)).astype(np.float32)
         if obs.size!=self.cfg["dimensions"]["observations"]:raise RuntimeError(f"Observation size {obs.size} != export {self.cfg['dimensions']['observations']}")
         raw=self.net.run(["raw_actions"],{"observations":np.clip(obs,-o["clip"],o["clip"])[None]})[0][0];self.action=np.tanh(raw) if self.cfg["control"]["output_transform"]=="tanh" else raw;self.target=self.default+self.scale*self.action+self.gait_offset(phase);self.n+=1
     def step(self):
