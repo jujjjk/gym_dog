@@ -1,7 +1,7 @@
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
 
-class FanfanRoughCfg(LeggedRobotCfg):
+class FanfanRouheRoughCfg(LeggedRobotCfg):
     class env(LeggedRobotCfg.env):
         num_observations = 50
         num_actions = 12
@@ -32,23 +32,23 @@ class FanfanRoughCfg(LeggedRobotCfg):
     class control(LeggedRobotCfg.control):
         control_type = "P"
         stiffness = {
-            "hip": 60.0,
-            "thigh": 70.0,
-            "calf": 70.0,
+            "hip": 100.0,
+            "thigh": 100.0,
+            "calf": 100.0,
         }
         damping = {
-            "hip": 0.6,
-            "thigh": 0.8,
-            "calf": 0.8,
+            "hip": 6.0,
+            "thigh": 6.0,
+            "calf": 6.0,
         }
-        action_scale = 0.18
-        rear_action_scale = 0.20
-        hip_action_scale = 0.08
+        action_scale = 0.12
+        rear_action_scale = 0.14
+        hip_action_scale = 0.05
         decimation = 4
 
     class asset(LeggedRobotCfg.asset):
         file = "{LEGGED_GYM_ROOT_DIR}/resources/robots/fanfan/urdf/fanfan.urdf"
-        name = "fanfan"
+        name = "fanfan_rouhe"
         foot_name = "foot"
         # 截图里的失效模式是用小腿/膝部接地前蹭；只匹配 calf，
         # 避免 thigh 同时选中 thigh_shoulder 的内部接触力。
@@ -71,7 +71,7 @@ class FanfanRoughCfg(LeggedRobotCfg):
         resampling_time = 10.0
 
         class ranges(LeggedRobotCfg.commands.ranges):
-            lin_vel_x = [0.15, 0.30]
+            lin_vel_x = [0.10, 0.20]
             lin_vel_y = [0.0, 0.0]
             ang_vel_yaw = [0.0, 0.0]
 
@@ -102,49 +102,21 @@ class FanfanRoughCfg(LeggedRobotCfg):
         gait_period = 0.54
         gait_stance_ratio = 0.62
         gait_thigh_amplitude = 0.0
-        gait_calf_amplitude = -0.30
-        swing_height_target = 0.045
+        gait_calf_amplitude = -0.22
+        swing_height_target = 0.04
         swing_height_sigma = 0.0004
         max_contact_force = 60.0
         only_positive_rewards = True
         tracking_sigma = 0.02
-        torque_near_limit_ratio = 0.90
-        peak_torque_soft_ratio = 0.95
-        sustained_torque_ratio = 0.75
-        pd_pos_err_soft_limit = 0.22
-        torque_curriculum = True
-        torque_curriculum_steps_per_iteration = 24
-        torque_curriculum_stage2_iteration = 300
-        torque_curriculum_stage3_iteration = 1000
-        torque_curriculum_stage4_iteration = 2000
-        torque_curriculum_blend_iterations = 100
-        torque_curriculum_stage2 = {
-            "torque_clip": -0.4,
-            "torque_near_limit": -0.04,
-            "peak_torque": -0.04,
-            "sustained_torque": -0.08,
-        }
-        torque_curriculum_stage3 = {
-            "torque_clip": -0.6,
-            "torque_near_limit": -0.06,
-            "peak_torque": -0.06,
-            "sustained_torque": -0.10,
-        }
-        torque_curriculum_stage4 = {
-            "torque_clip": -0.8,
-            "torque_near_limit": -0.08,
-            "peak_torque": -0.08,
-            "sustained_torque": -0.12,
-        }
 
         class scales(LeggedRobotCfg.rewards.scales):
             termination = -5.0
             stand_height = 2.0
             stand_posture = 0.2
-            tracking_lin_vel = 6.0
+            tracking_lin_vel = 5.0
             tracking_ang_vel = 2.0
-            backward_velocity = -10.0
-            diagonal_gait = 6.0
+            backward_velocity = -5.0
+            diagonal_gait = 4.0
             swing_height = 0.2
             flight = -2.0
 
@@ -154,7 +126,7 @@ class FanfanRoughCfg(LeggedRobotCfg):
             hip_velocity = -0.003
             hip_symmetry = -1.0
             diagonal_joint_sync = -0.5
-            action_magnitude = -0.012
+            action_magnitude = -0.025
             orientation = -3.0
             base_height = -10.0
             low_base_height = -10.0
@@ -164,16 +136,10 @@ class FanfanRoughCfg(LeggedRobotCfg):
             rear_load_bias = -1.5
             rear_leg_posture = -1.0
 
-            torques = -2.0e-6
-            torque_clip = -0.2
-            torque_near_limit = -0.02
-            peak_torque = -0.02
-            sustained_torque = -0.05
-            mechanical_power = -1.0e-6
-            pd_position_error_over_limit = -0.3
+            torques = -0.00001
             dof_vel = -0.0
-            dof_acc = -8.0e-8
-            action_rate = -0.025
+            dof_acc = -5.0e-8
+            action_rate = -0.03
 
             # 明确压掉膝盖/小腿接地的投机解。
             collision = -2.0
@@ -192,10 +158,10 @@ class FanfanRoughCfg(LeggedRobotCfg):
             num_velocity_iterations = 4
 
 
-class FanfanRoughCfgPPO(LeggedRobotCfgPPO):
+class FanfanRouheRoughCfgPPO(LeggedRobotCfgPPO):
     class algorithm(LeggedRobotCfgPPO.algorithm):
-        entropy_coef = 0.002
+        entropy_coef = 0.001
 
     class runner(LeggedRobotCfgPPO.runner):
         run_name = ""
-        experiment_name = "rough_fanfan"
+        experiment_name = "rough_fanfan_rouhe"

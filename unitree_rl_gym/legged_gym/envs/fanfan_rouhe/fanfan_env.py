@@ -4,7 +4,7 @@ from isaacgym.torch_utils import torch_rand_float
 import torch
 
 
-class FanfanRobot(LeggedRobot):
+class FanfanRouheRobot(LeggedRobot):
     def step(self, actions):
         # A smooth bound preserves control resolution when the Gaussian policy
         # produces values outside [-1, 1]. Hard clipping made the legs bang
@@ -64,33 +64,6 @@ class FanfanRobot(LeggedRobot):
             dtype=torch.long,
             device=self.device,
         )
-        self.raw_torques = torch.zeros_like(self.torques)
-        self.target_dof_pos_rl = self.default_dof_pos.repeat(self.num_envs, 1)
-        self.torque_clip_error = torch.zeros_like(self.torques)
-        self.torque_ema = torch.zeros_like(self.torques)
-        self.torque_metric_count = torch.zeros(
-            self.num_envs, dtype=torch.float, device=self.device
-        )
-        self.torque_metric_sums = {
-            "mean_abs_raw_torque": torch.zeros(
-                self.num_envs, dtype=torch.float, device=self.device
-            ),
-            "torque_saturation_ratio": torch.zeros(
-                self.num_envs, dtype=torch.float, device=self.device
-            ),
-            "torque_over_13_ratio": torch.zeros(
-                self.num_envs, dtype=torch.float, device=self.device
-            ),
-            "torque_over_15_ratio": torch.zeros(
-                self.num_envs, dtype=torch.float, device=self.device
-            ),
-            "torque_over_17_ratio": torch.zeros(
-                self.num_envs, dtype=torch.float, device=self.device
-            ),
-        }
-        self.max_abs_raw_torque = torch.zeros(
-            self.num_envs, dtype=torch.float, device=self.device
-        )
 
     def _compute_torques(self, actions):
         actions_scaled = actions * self.cfg.control.action_scale
@@ -124,69 +97,10 @@ class FanfanRobot(LeggedRobot):
             gait_offset[:, self.leg_dof_indices[leg]["calf"]] = (
                 self.cfg.rewards.gait_calf_amplitude * swing_profile[:, foot_slot]
             )
-        target_dof_pos = actions_scaled + gait_offset + self.default_dof_pos
-        raw_torques = self.p_gains * (
-            target_dof_pos - self.dof_pos
+        torques = self.p_gains * (
+            actions_scaled + gait_offset + self.default_dof_pos - self.dof_pos
         ) - self.d_gains * self.dof_vel
-        clipped_torques = torch.clip(
-            raw_torques, -self.torque_limits, self.torque_limits
-        )
-
-        self.raw_torques = raw_torques
-        self.target_dof_pos_rl = target_dof_pos
-        self.torque_clip_error = raw_torques - clipped_torques
-        self.torque_ema = 0.98 * self.torque_ema + 0.02 * torch.abs(raw_torques)
-        self._update_torque_metrics(raw_torques)
-        return clipped_torques
-
-    def _update_torque_metrics(self, raw_torques):
-        abs_raw = torch.abs(raw_torques)
-        torque_limits = self.torque_limits.unsqueeze(0)
-
-        self.torque_metric_count += 1.0
-        self.max_abs_raw_torque = torch.maximum(
-            self.max_abs_raw_torque, torch.max(abs_raw, dim=1).values
-        )
-        self.torque_metric_sums["mean_abs_raw_torque"] += torch.mean(abs_raw, dim=1)
-        self.torque_metric_sums["torque_saturation_ratio"] += torch.mean(
-            (abs_raw >= torque_limits).float(), dim=1
-        )
-        self.torque_metric_sums["torque_over_13_ratio"] += torch.mean(
-            (abs_raw > 13.0).float(), dim=1
-        )
-        self.torque_metric_sums["torque_over_15_ratio"] += torch.mean(
-            (abs_raw > 15.0).float(), dim=1
-        )
-        self.torque_metric_sums["torque_over_17_ratio"] += torch.mean(
-            (abs_raw > 17.0).float(), dim=1
-        )
-
-    def reset_idx(self, env_ids):
-        if len(env_ids) == 0:
-            return
-
-        super().reset_idx(env_ids)
-        metric_count = self.torque_metric_count[env_ids].clip(min=1.0)
-        self.extras["episode"]["max_abs_raw_torque"] = torch.mean(
-            self.max_abs_raw_torque[env_ids]
-        )
-        for name, values in self.torque_metric_sums.items():
-            self.extras["episode"][name] = torch.mean(values[env_ids] / metric_count)
-        self.extras["episode"]["torque_curriculum_iteration"] = (
-            self._get_torque_curriculum_iteration()
-        )
-        self.extras["episode"]["torque_curriculum_stage"] = (
-            self._get_torque_curriculum_stage()
-        )
-
-        self.torque_ema[env_ids] = 0.0
-        self.torque_clip_error[env_ids] = 0.0
-        self.raw_torques[env_ids] = 0.0
-        self.target_dof_pos_rl[env_ids] = self.default_dof_pos
-        self.max_abs_raw_torque[env_ids] = 0.0
-        self.torque_metric_count[env_ids] = 0.0
-        for values in self.torque_metric_sums.values():
-            values[env_ids] = 0.0
+        return torch.clip(torques, -self.torque_limits, self.torque_limits)
 
     def _post_physics_step_callback(self):
         super()._post_physics_step_callback()
@@ -368,111 +282,6 @@ class FanfanRobot(LeggedRobot):
 
     def _reward_action_magnitude(self):
         return torch.sum(torch.square(self.actions), dim=1)
-
-    def _reward_torques(self):
-        return torch.sum(torch.square(self.raw_torques), dim=1)
-
-    def _reward_torque_clip(self):
-        ratio = torch.abs(self.torque_clip_error) / self.torque_limits.unsqueeze(0)
-        ratio = ratio.clip(max=2.0)
-        return torch.mean(torch.square(ratio), dim=1) * self._torque_curriculum_multiplier(
-            "torque_clip"
-        )
-
-    def _reward_torque_near_limit(self):
-        ratio = torch.abs(self.raw_torques) / self.torque_limits.unsqueeze(0)
-        excess = (
-            ratio - self.cfg.rewards.torque_near_limit_ratio
-        ).clip(min=0.0)
-        return torch.mean(torch.square(excess), dim=1) * self._torque_curriculum_multiplier(
-            "torque_near_limit"
-        )
-
-    def _reward_peak_torque(self):
-        ratio = torch.abs(self.raw_torques) / self.torque_limits.unsqueeze(0)
-        peak_ratio = torch.max(ratio, dim=1).values
-        excess = (
-            peak_ratio - self.cfg.rewards.peak_torque_soft_ratio
-        ).clip(min=0.0)
-        return torch.square(excess) * self._torque_curriculum_multiplier("peak_torque")
-
-    def _reward_sustained_torque(self):
-        ema_ratio = self.torque_ema / self.torque_limits.unsqueeze(0)
-        excess = (
-            ema_ratio - self.cfg.rewards.sustained_torque_ratio
-        ).clip(min=0.0)
-        return torch.mean(torch.square(excess), dim=1) * self._torque_curriculum_multiplier(
-            "sustained_torque"
-        )
-
-    def _reward_mechanical_power(self):
-        return torch.mean(torch.abs(self.raw_torques * self.dof_vel), dim=1)
-
-    def _reward_pd_position_error_over_limit(self):
-        soft_limit = self.cfg.rewards.pd_pos_err_soft_limit
-        position_error = torch.abs(self.target_dof_pos_rl - self.dof_pos)
-        excess = (position_error - soft_limit).clip(min=0.0)
-        return torch.mean(torch.square(excess / soft_limit), dim=1)
-
-    def _get_torque_curriculum_iteration(self):
-        steps_per_iteration = getattr(
-            self.cfg.rewards, "torque_curriculum_steps_per_iteration", 24
-        )
-        return float(self.common_step_counter) / float(steps_per_iteration)
-
-    def _get_torque_curriculum_stage(self):
-        iteration = self._get_torque_curriculum_iteration()
-        if iteration >= self.cfg.rewards.torque_curriculum_stage4_iteration:
-            return 4.0
-        if iteration >= self.cfg.rewards.torque_curriculum_stage3_iteration:
-            return 3.0
-        if iteration >= self.cfg.rewards.torque_curriculum_stage2_iteration:
-            return 2.0
-        return 1.0
-
-    def _torque_curriculum_multiplier(self, reward_name):
-        if not getattr(self.cfg.rewards, "torque_curriculum", False):
-            return 1.0
-
-        base_scale = abs(getattr(self.cfg.rewards.scales, reward_name))
-        target_scale = self._torque_curriculum_target_scale(reward_name)
-        if base_scale <= 0.0:
-            return 1.0
-        return target_scale / base_scale
-
-    def _torque_curriculum_target_scale(self, reward_name):
-        iteration = self._get_torque_curriculum_iteration()
-        base_scale = abs(getattr(self.cfg.rewards.scales, reward_name))
-        stage2 = abs(self.cfg.rewards.torque_curriculum_stage2[reward_name])
-        stage3 = abs(self.cfg.rewards.torque_curriculum_stage3[reward_name])
-        stage4 = abs(self.cfg.rewards.torque_curriculum_stage4[reward_name])
-
-        scale = base_scale
-        scale = self._blend_torque_scale(
-            scale,
-            stage2,
-            iteration,
-            self.cfg.rewards.torque_curriculum_stage2_iteration,
-        )
-        scale = self._blend_torque_scale(
-            scale,
-            stage3,
-            iteration,
-            self.cfg.rewards.torque_curriculum_stage3_iteration,
-        )
-        scale = self._blend_torque_scale(
-            scale,
-            stage4,
-            iteration,
-            self.cfg.rewards.torque_curriculum_stage4_iteration,
-        )
-        return scale
-
-    def _blend_torque_scale(self, current, target, iteration, start_iteration):
-        blend_iterations = self.cfg.rewards.torque_curriculum_blend_iterations
-        progress = (iteration - start_iteration) / blend_iterations
-        progress = min(max(progress, 0.0), 1.0)
-        return current + (target - current) * progress
 
     def _get_desired_foot_contacts(self):
         stance_ratio = self.cfg.rewards.gait_stance_ratio
