@@ -4,7 +4,7 @@
   <worldbody>
     <geom name="ground" type="plane" size="20 20 0.1" rgba="0.78 0.80 0.82 1" friction="1 0.005 0.0001" condim="3" />
     <light name="sun" pos="0 0 3" dir="0 0 -1" directional="true" />
-    <body name="Trunk" pos="0 0 0.295">
+    <body name="Trunk" pos="0.0 0.0 0.295">
       <inertial pos="0 0 0.0120763" quat="0 0.707107 0 0.707107" mass="2.76236" diaginertia="0.0173739 0.0146671 0.00651908" />
       <joint name="floating_base" type="free" limited="false" actuatorfrclimited="false" />
       <geom size="0.17 0.0475 0.05" pos="0 0 0.017" type="box" rgba="0.792157 0.819608 0.933333 1" contype="1" conaffinity="0" />
@@ -81,17 +81,17 @@
   </worldbody>
   <option timestep="0.005" gravity="0 0 -9.81" integrator="implicitfast" />
   <actuator>
-    <motor name="FL_hip_joint_motor" joint="FL_hip_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
-    <motor name="FL_thigh_joint_motor" joint="FL_thigh_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
-    <motor name="FL_calf_joint_motor" joint="FL_calf_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
     <motor name="FR_hip_joint_motor" joint="FR_hip_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
     <motor name="FR_thigh_joint_motor" joint="FR_thigh_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
     <motor name="FR_calf_joint_motor" joint="FR_calf_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
-    <motor name="RL_hip_joint_motor" joint="RL_hip_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
-    <motor name="RL_thigh_joint_motor" joint="RL_thigh_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
-    <motor name="RL_calf_joint_motor" joint="RL_calf_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
+    <motor name="FL_hip_joint_motor" joint="FL_hip_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
+    <motor name="FL_thigh_joint_motor" joint="FL_thigh_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
+    <motor name="FL_calf_joint_motor" joint="FL_calf_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
     <motor name="RR_hip_joint_motor" joint="RR_hip_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
     <motor name="RR_thigh_joint_motor" joint="RR_thigh_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
     <motor name="RR_calf_joint_motor" joint="RR_calf_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
+    <motor name="RL_hip_joint_motor" joint="RL_hip_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
+    <motor name="RL_thigh_joint_motor" joint="RL_thigh_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
+    <motor name="RL_calf_joint_motor" joint="RL_calf_joint" gear="1" ctrllimited="true" ctrlrange="-17 17" />
   </actuator>
 </mujoco>

@@ -13,6 +13,16 @@ python sim2sim.py --duration 20
 python sim2sim.py --duration 60 --viewer
 ```
 
+部署参数不在 `sim2sim.py` 中维护。`export_onnx.py` 从 `FanfanRoughCfg` 和
+原始URDF提取关节顺序、初始状态、默认角、观测缩放、command、PD、动作缩放、
+力矩限制及参考步态，写入ONNX metadata并生成同名JSON。`prepare_model.py` 也从
+该metadata读取仿真步长和初始位置：
+
+```bash
+python prepare_model.py assets/fanfan.urdf models/fanfan_scene.xml \
+  --policy models/fanfan_best.onnx
+```
+
 训练 episode 长度是20秒，因此 viewer 每20秒自动复位。单段20秒验证的横向
 位移由修复前约 `-2.16 m` 降至约 `-0.28 m`，最低机身高度约 `0.266 m`。
 
