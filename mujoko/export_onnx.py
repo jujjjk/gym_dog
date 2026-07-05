@@ -28,7 +28,7 @@ def deployment_config(cfg, checkpoint, gym_root):
         elif name.startswith(("RL_","RR_")): scales.append(cfg.control.rear_action_scale)
         else: scales.append(cfg.control.action_scale)
     return {
-        "schema_version":1,"task":"fanfan","checkpoint":str(checkpoint.resolve()),
+        "schema_version":1,"task":cfg.__name__,"checkpoint":str(checkpoint.resolve()),
         "dimensions":{"observations":cfg.env.num_observations,"actions":cfg.env.num_actions},
         "joint_names":names,
         "default_joint_angles":[cfg.init_state.default_joint_angles[n] for n in names],
@@ -45,7 +45,11 @@ def deployment_config(cfg, checkpoint, gym_root):
                         "dof_vel_scale":cfg.normalization.obs_scales.dof_vel,
                         "command_scale":[cfg.normalization.obs_scales.lin_vel,cfg.normalization.obs_scales.lin_vel,cfg.normalization.obs_scales.ang_vel],
                         "layout":["base_lin_vel","base_ang_vel","projected_gravity","commands","dof_pos_error","dof_vel","previous_actions","gait_phase_sin_cos","heading_error_sin_cos"]},
-        "commands":{"default":[sum(cfg.commands.ranges.lin_vel_x)/2,0.0,0.0],"heading_command":cfg.commands.heading_command,
+        "commands":{"default":[0.0,0.0,0.0],"heading_command":cfg.commands.heading_command,
+                    "observe_heading_error":getattr(cfg.commands,"observe_heading_error",False),
+                    "ranges":{"lin_vel_x":list(cfg.commands.ranges.lin_vel_x),
+                              "lin_vel_y":list(cfg.commands.ranges.lin_vel_y),
+                              "ang_vel_yaw":list(cfg.commands.ranges.ang_vel_yaw)},
                     "default_heading":sum(cfg.commands.ranges.heading)/2 if cfg.commands.heading_command else 0.0,"heading_gain":0.5},
         "gait":{"period":cfg.rewards.gait_period,"stance_ratio":cfg.rewards.gait_stance_ratio,
                 "thigh_amplitude":cfg.rewards.gait_thigh_amplitude,"calf_amplitude":cfg.rewards.gait_calf_amplitude,
@@ -55,8 +59,9 @@ def deployment_config(cfg, checkpoint, gym_root):
 
 if __name__ == "__main__":
     p=argparse.ArgumentParser();p.add_argument("checkpoint",type=Path);p.add_argument("output",type=Path)
+    p.add_argument("--config-class",default="legged_gym.envs.fanfan.fanfan_config:FanfanRoughCfg")
     p.add_argument("--gym-root",type=Path,default=Path(__file__).resolve().parents[1]/"unitree_rl_gym");a=p.parse_args()
-    sys.path.insert(0,str(a.gym_root));cfg=importlib.import_module("legged_gym.envs.fanfan.fanfan_config").FanfanRoughCfg
+    sys.path.insert(0,str(a.gym_root));module_name,class_name=a.config_class.split(":",1);cfg=getattr(importlib.import_module(module_name),class_name)
     state=torch.load(a.checkpoint,map_location="cpu")["model_state_dict"]
     actor=Actor(cfg.env.num_observations).eval();actor.load_state_dict({k[6:]:v for k,v in state.items() if k.startswith("actor.")})
     a.output.parent.mkdir(parents=True,exist_ok=True)

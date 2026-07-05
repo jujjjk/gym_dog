@@ -75,6 +75,7 @@ class FanfanRoughCfg(LeggedRobotCfg):
 
     class commands(LeggedRobotCfg.commands):
         heading_command = True
+        observe_heading_error = True
         resampling_time = 10.0
 
         class ranges(LeggedRobotCfg.commands.ranges):
@@ -125,6 +126,9 @@ class FanfanRoughCfg(LeggedRobotCfg):
         max_contact_force = 60.0
         only_positive_rewards = True
         tracking_sigma = 0.02
+        lateral_tracking_sigma = 0.001
+        longitudinal_tracking_sigma = 0.002
+        hip_symmetry_lateral_sigma = 0.0004
         torque_near_limit_ratio = 0.90
         peak_torque_soft_ratio = 0.95
         sustained_torque_ratio = 0.75

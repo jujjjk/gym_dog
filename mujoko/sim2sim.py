@@ -24,7 +24,7 @@ class Sim:
         if abs(self.m.opt.timestep-ctl["sim_dt"])>1e-9: raise RuntimeError(f"MJCF timestep {self.m.opt.timestep} != exported cfg {ctl['sim_dt']}")
         self.decimation=int(ctl["decimation"]);self.q=np.array([self.m.jnt_qposadr[mujoco.mj_name2id(self.m,mujoco.mjtObj.mjOBJ_JOINT,x)] for x in self.names]);self.v=np.array([self.m.jnt_dofadr[mujoco.mj_name2id(self.m,mujoco.mjtObj.mjOBJ_JOINT,x)] for x in self.names]);self.aid=np.array([mujoco.mj_name2id(self.m,mujoco.mjtObj.mjOBJ_ACTUATOR,x+"_motor") for x in self.names]);self.bid=mujoco.mj_name2id(self.m,mujoco.mjtObj.mjOBJ_BODY,"Trunk");self.reset()
     def reset(self):
-        mujoco.mj_resetData(self.m,self.d);pos=self.cfg["initial_state"]["base_position"];xyzw=self.cfg["initial_state"]["base_quaternion_xyzw"];self.d.qpos[:7]=[*pos,xyzw[3],xyzw[0],xyzw[1],xyzw[2]];self.d.qpos[self.q]=self.default;self.action=np.zeros(len(self.names),np.float32);self.target=self.default.copy();self.n=0;mujoco.mj_forward(self.m,self.d)
+        mujoco.mj_resetData(self.m,self.d);pos=self.cfg["initial_state"]["base_position"];xyzw=self.cfg["initial_state"]["base_quaternion_xyzw"];self.d.qpos[:7]=[*pos,xyzw[3],xyzw[0],xyzw[1],xyzw[2]];self.d.qpos[self.q]=self.default;self.action=np.zeros(len(self.names),np.float32);self.target=self.default.copy();self.n=0;self.heading_target=0.0;mujoco.mj_forward(self.m,self.d)
     def gait_offset(self,phase):
         out=np.zeros(len(self.names),np.float32);r=self.gait["stance_ratio"]
         for i,name in enumerate(self.names):
@@ -34,23 +34,32 @@ class Sim:
         return out
     def policy(self):
         quat=self.d.qpos[3:7];linear=body_linear_velocity(quat,self.d.qvel[:3]);angular=self.d.qvel[3:6];phase=(self.n*self.m.opt.timestep*self.decimation%self.gait["period"])/self.gait["period"];o=self.obs_cfg
-        command=self.command.copy();heading_obs=[]
+        command=self.command.copy();r=np.empty(9);mujoco.mju_quat2Mat(r,quat);r=r.reshape(3,3);yaw=np.arctan2(r[1,0],r[0,0]);heading_obs=[]
         if self.cfg["commands"]["heading_command"]:
-            r=np.empty(9);mujoco.mju_quat2Mat(r,quat);r=r.reshape(3,3);yaw=np.arctan2(r[1,0],r[0,0]);error=np.arctan2(np.sin(self.cfg["commands"]["default_heading"]-yaw),np.cos(self.cfg["commands"]["default_heading"]-yaw));command[2]=np.clip(self.cfg["commands"]["heading_gain"]*error,-1,1);heading_obs=[np.sin(error),np.cos(error)]
+            error=np.arctan2(np.sin(self.cfg["commands"]["default_heading"]-yaw),np.cos(self.cfg["commands"]["default_heading"]-yaw));command[2]=np.clip(self.cfg["commands"]["heading_gain"]*error,-1,1);heading_obs=[np.sin(error),np.cos(error)]
+        elif self.cfg["commands"].get("observe_heading_error",False):
+            error=np.arctan2(np.sin(self.heading_target-yaw),np.cos(self.heading_target-yaw));heading_obs=[np.sin(error),np.cos(error)]
+        else:heading_obs=[0.0,1.0]
         obs=np.concatenate((linear*o["lin_vel_scale"],angular*o["ang_vel_scale"],gravity(quat),command*np.asarray(o["command_scale"]),(self.d.qpos[self.q]-self.default)*o["dof_pos_scale"],self.d.qvel[self.v]*o["dof_vel_scale"],self.action,[np.sin(2*np.pi*phase),np.cos(2*np.pi*phase)],heading_obs)).astype(np.float32)
         if obs.size!=self.cfg["dimensions"]["observations"]:raise RuntimeError(f"Observation size {obs.size} != export {self.cfg['dimensions']['observations']}")
-        raw=self.net.run(["raw_actions"],{"observations":np.clip(obs,-o["clip"],o["clip"])[None]})[0][0];self.action=np.tanh(raw) if self.cfg["control"]["output_transform"]=="tanh" else raw;self.target=self.default+self.scale*self.action+self.gait_offset(phase);self.n+=1
+        raw=self.net.run(["raw_actions"],{"observations":np.clip(obs,-o["clip"],o["clip"])[None]})[0][0];self.action=np.tanh(raw) if self.cfg["control"]["output_transform"]=="tanh" else raw;self.target=self.default+self.scale*self.action+self.gait_offset(phase)
+        if not self.cfg["commands"]["heading_command"] and self.cfg["commands"].get("observe_heading_error",False):self.heading_target=np.arctan2(np.sin(self.heading_target+self.command[2]*self.m.opt.timestep*self.decimation),np.cos(self.heading_target+self.command[2]*self.m.opt.timestep*self.decimation))
+        self.n+=1
     def step(self):
         raw=self.kp*(self.target-self.d.qpos[self.q])-self.kd*self.d.qvel[self.v];self.d.ctrl[self.aid]=np.clip(raw,-self.limits,self.limits);mujoco.mj_step(self.m,self.d);return raw
 
 def main():
-    root=Path(__file__).parent;p=argparse.ArgumentParser();p.add_argument("--model",type=Path,default=root/"models/fanfan_scene.xml");p.add_argument("--policy",type=Path,default=root/"models/fanfan_best.onnx");p.add_argument("--duration",type=float,default=20);p.add_argument("--command",nargs=3,type=float);p.add_argument("--viewer",action="store_true");a=p.parse_args();s=Sim(a.model,a.policy,a.command)
+    root=Path(__file__).parent;p=argparse.ArgumentParser();p.add_argument("--model",type=Path,default=root/"models/fanfan_scene.xml");p.add_argument("--policy",type=Path,default=root/"models/fanfan_best.onnx");p.add_argument("--duration",type=float,default=20);p.add_argument("--command",nargs=3,type=float);p.add_argument("--viewer",action="store_true");p.add_argument("--demo-matrix",action="store_true");p.add_argument("--segment-duration",type=float,default=8.0);a=p.parse_args();s=Sim(a.model,a.policy,a.command)
     if a.viewer:
         import mujoco.viewer
         with mujoco.viewer.launch_passive(s.m,s.d) as v:
             v.cam.distance=1.4;v.cam.azimuth=135;v.cam.elevation=-18;t=time.time();ep=t;i=0
             while v.is_running() and time.time()-t<a.duration:
                 st=time.time()
+                if a.demo_matrix:
+                    fast=s.cfg["commands"].get("ranges",{}).get("lin_vel_x",[0,.3])[1]>.30
+                    commands=((.35,0,0),(-.10,0,0),(0,.07,0),(0,-.07,0),(0,0,.7),(0,0,-.7),(.25,0,.5),(-.10,0,.35),(.20,.07,0)) if fast else ((.20,0,0),(-.08,0,0),(0,.05,0),(0,-.05,0),(0,0,.5),(0,0,-.5),(.15,0,.35),(-.06,0,.25),(.12,.05,0))
+                    s.command=np.asarray(commands[int((st-t)/a.segment_duration)%len(commands)],np.float32)
                 if st-ep>=s.cfg["episode_length_s"]:s.reset();ep=st;i=0
                 if i%s.decimation==0:s.policy()
                 s.step();v.cam.lookat[:]=s.d.qpos[:3];v.sync();i+=1;time.sleep(max(0,s.m.opt.timestep-(time.time()-st)))
