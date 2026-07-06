@@ -39,7 +39,9 @@ def play(args):
         env=env, args=args, train_cfg=train_cfg
     )
     policy = runner.get_inference_policy(device=env.device)
-    matrix = FAST_COMMANDS if args.task == "fanfan_omni_fast" else COMMANDS
+    matrix = FAST_COMMANDS if any(
+        tag in args.task for tag in ("fast", "smooth", "filtered")
+    ) else COMMANDS
     commands = torch.tensor(matrix, device=env.device).repeat_interleave(2, 0)
     commands = commands[:env.num_envs]
     if len(commands) < env.num_envs:

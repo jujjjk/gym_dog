@@ -36,7 +36,17 @@ def deployment_config(cfg, checkpoint, gym_root):
         "control":{"sim_dt":cfg.sim.dt,"decimation":cfg.control.decimation,
                    "stiffness":[matched(cfg.control.stiffness,n) for n in names],
                    "damping":[matched(cfg.control.damping,n) for n in names],
-                   "action_scale":scales,"torque_limits":[effort[n] for n in names],
+                   "filter_policy_actions":getattr(cfg.control,"filter_policy_actions",False),
+                   "policy_action_filter_alpha":getattr(cfg.control,"policy_action_filter_alpha",1.0),
+                   "policy_action_rate_limits":[
+                       matched(cfg.control.policy_action_rate_limits,n) for n in names
+                   ] if hasattr(cfg.control,"policy_action_rate_limits") else None,
+                   "policy_action_accel_limits":[
+                       matched(cfg.control.policy_action_accel_limits,n) for n in names
+                   ] if hasattr(cfg.control,"policy_action_accel_limits") else None,
+                   "action_scale":scales,"torque_limits":[
+                       float(cfg.control.torque_limit_override) for _ in names
+                   ] if hasattr(cfg.control,"torque_limit_override") else [effort[n] for n in names],
                    "output_transform":"tanh"},
         "observations":{"clip":cfg.normalization.clip_observations,
                         "lin_vel_scale":cfg.normalization.obs_scales.lin_vel,
@@ -53,6 +63,8 @@ def deployment_config(cfg, checkpoint, gym_root):
                     "default_heading":sum(cfg.commands.ranges.heading)/2 if cfg.commands.heading_command else 0.0,"heading_gain":0.5},
         "gait":{"period":cfg.rewards.gait_period,"stance_ratio":cfg.rewards.gait_stance_ratio,
                 "thigh_amplitude":cfg.rewards.gait_thigh_amplitude,"calf_amplitude":cfg.rewards.gait_calf_amplitude,
+                "gate_with_command":getattr(cfg.control,"gate_gait_with_command",False),
+                "command_gate_sigma":getattr(cfg.control,"gait_command_gate_sigma",0.0004),
                 "phase_offsets":{"FL":0.0,"FR":0.5,"RL":0.5,"RR":0.0}},
         "episode_length_s":cfg.env.episode_length_s,
     }

@@ -6,6 +6,8 @@ from legged_gym.envs.fanfan.fanfan_env import FanfanRobot
 from legged_gym.envs.fanfan.fanfan_omni_safe_config import (
     FanfanOmniSafeCfg, FanfanOmniSafeCfgPPO,
     FanfanOmniFastCfg, FanfanOmniFastCfgPPO,
+    FanfanOmniSmoothRealCfg, FanfanOmniSmoothRealCfgPPO,
+    FanfanOmniFilteredCfg, FanfanOmniFilteredCfgPPO,
 )
 from legged_gym.envs.fanfan_rouhe.fanfan_config import FanfanRouheRoughCfg, FanfanRouheRoughCfgPPO
 from legged_gym.envs.fanfan_rouhe.fanfan_env import FanfanRouheRobot
@@ -28,6 +30,14 @@ task_registry.register(
 task_registry.register(
     "fanfan_omni_fast", FanfanRobot,
     FanfanOmniFastCfg(), FanfanOmniFastCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_smooth_real", FanfanRobot,
+    FanfanOmniSmoothRealCfg(), FanfanOmniSmoothRealCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_filtered", FanfanRobot,
+    FanfanOmniFilteredCfg(), FanfanOmniFilteredCfgPPO(),
 )
 task_registry.register( "fanfan_rouhe", FanfanRouheRobot, FanfanRouheRoughCfg(), FanfanRouheRoughCfgPPO())
 task_registry.register( "h1", H1Robot, H1RoughCfg(), H1RoughCfgPPO())

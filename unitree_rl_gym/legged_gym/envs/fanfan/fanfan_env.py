@@ -9,7 +9,40 @@ class FanfanRobot(LeggedRobot):
         # A smooth bound preserves control resolution when the Gaussian policy
         # produces values outside [-1, 1]. Hard clipping made the legs bang
         # between their limits and destroyed the diagonal timing.
-        return super().step(torch.tanh(actions))
+        bounded_actions = torch.tanh(actions)
+        if getattr(self.cfg.control, "filter_policy_actions", False):
+            self.last_policy_actions[:] = self.policy_actions
+            self.policy_actions[:] = bounded_actions
+            alpha = self.cfg.control.policy_action_filter_alpha
+            desired = self.filtered_actions + alpha * (
+                bounded_actions - self.filtered_actions
+            )
+            desired_velocity = (desired - self.filtered_actions) / self.dt
+            desired_velocity = torch.clamp(
+                desired_velocity,
+                -self.policy_action_rate_limits,
+                self.policy_action_rate_limits,
+            )
+            velocity_delta = desired_velocity - self.filtered_action_velocity
+            velocity_delta = torch.clamp(
+                velocity_delta,
+                -self.policy_action_accel_limits * self.dt,
+                self.policy_action_accel_limits * self.dt,
+            )
+            self.filtered_action_velocity += velocity_delta
+            next_actions = self.filtered_actions + self.filtered_action_velocity * self.dt
+            crossed = (desired - self.filtered_actions) * (desired - next_actions) < 0.0
+            next_actions = torch.where(crossed, desired, next_actions)
+            self.filtered_action_velocity = (
+                next_actions - self.filtered_actions
+            ) / self.dt
+            self.filtered_actions[:] = next_actions
+            self.policy_filter_gap[:] = bounded_actions - next_actions
+            return super().step(next_actions)
+        self.last_policy_actions[:] = self.policy_actions
+        self.policy_actions[:] = bounded_actions
+        self.policy_filter_gap.zero_()
+        return super().step(bounded_actions)
 
     def _get_noise_scale_vec(self, cfg):
         noise_vec = super()._get_noise_scale_vec(cfg)
@@ -92,6 +125,24 @@ class FanfanRobot(LeggedRobot):
         self.max_abs_raw_torque = torch.zeros(
             self.num_envs, dtype=torch.float, device=self.device
         )
+        self.policy_actions = torch.zeros_like(self.actions)
+        self.last_policy_actions = torch.zeros_like(self.actions)
+        self.filtered_actions = torch.zeros_like(self.actions)
+        self.filtered_action_velocity = torch.zeros_like(self.actions)
+        self.policy_filter_gap = torch.zeros_like(self.actions)
+        rate_cfg = getattr(self.cfg.control, "policy_action_rate_limits", {})
+        accel_cfg = getattr(self.cfg.control, "policy_action_accel_limits", {})
+        self.policy_action_rate_limits = torch.tensor(
+            [next((value for key, value in rate_cfg.items() if key in name), 1.0e6)
+             for name in self.dof_names], dtype=torch.float, device=self.device
+        )
+        self.policy_action_accel_limits = torch.tensor(
+            [next((value for key, value in accel_cfg.items() if key in name), 1.0e6)
+             for name in self.dof_names], dtype=torch.float, device=self.device
+        )
+        torque_limit = getattr(self.cfg.control, "torque_limit_override", None)
+        if torque_limit is not None:
+            self.torque_limits[:] = float(torque_limit)
 
     def _compute_torques(self, actions):
         actions_scaled = actions * self.cfg.control.action_scale
@@ -125,6 +176,14 @@ class FanfanRobot(LeggedRobot):
             gait_offset[:, self.leg_dof_indices[leg]["calf"]] = (
                 self.cfg.rewards.gait_calf_amplitude * swing_profile[:, foot_slot]
             )
+        if getattr(self.cfg.control, "gate_gait_with_command", False):
+            command_energy = (
+                torch.sum(torch.square(self.commands[:, :2]), dim=1)
+                + 0.04 * torch.square(self.commands[:, 2])
+            )
+            sigma = self.cfg.control.gait_command_gate_sigma
+            gait_gate = 1.0 - torch.exp(-command_energy / sigma)
+            gait_offset *= gait_gate.unsqueeze(1)
         target_dof_pos = actions_scaled + gait_offset + self.default_dof_pos
         raw_torques = self.motor_strength * (self.p_gains * (
             target_dof_pos - self.dof_pos
@@ -189,6 +248,11 @@ class FanfanRobot(LeggedRobot):
         self.torque_clip_error[env_ids] = 0.0
         self.raw_torques[env_ids] = 0.0
         self.target_dof_pos_rl[env_ids] = self.default_dof_pos
+        self.policy_actions[env_ids] = 0.0
+        self.last_policy_actions[env_ids] = 0.0
+        self.filtered_actions[env_ids] = 0.0
+        self.filtered_action_velocity[env_ids] = 0.0
+        self.policy_filter_gap[env_ids] = 0.0
         self.max_abs_raw_torque[env_ids] = 0.0
         self.torque_metric_count[env_ids] = 0.0
         for values in self.torque_metric_sums.values():
@@ -228,7 +292,7 @@ class FanfanRobot(LeggedRobot):
             self.commands[:, :3] * self.commands_scale,
             (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,
             self.dof_vel * self.obs_scales.dof_vel,
-            self.actions,
+            self.filtered_actions if getattr(self.cfg.control, "filter_policy_actions", False) else self.actions,
             phase_obs,
             heading_obs,
         ), dim=-1)
@@ -458,6 +522,39 @@ class FanfanRobot(LeggedRobot):
 
     def _reward_action_magnitude(self):
         return torch.sum(torch.square(self.actions), dim=1)
+
+    def _reward_action_saturation(self):
+        threshold = getattr(self.cfg.rewards, "action_saturation_threshold", 0.8)
+        return torch.sum((torch.abs(self.actions) - threshold).clip(min=0.0) ** 2, dim=1)
+
+    def _reward_policy_action_magnitude(self):
+        return torch.sum(torch.square(self.policy_actions), dim=1)
+
+    def _reward_policy_action_rate(self):
+        return torch.sum(torch.square(self.policy_actions - self.last_policy_actions), dim=1)
+
+    def _reward_policy_action_saturation(self):
+        threshold = getattr(self.cfg.rewards, "action_saturation_threshold", 0.75)
+        excess = (torch.abs(self.policy_actions) - threshold).clip(min=0.0)
+        return torch.sum(torch.square(excess), dim=1)
+
+    def _reward_policy_filter_gap(self):
+        return torch.sum(torch.square(self.policy_filter_gap), dim=1)
+
+    def _stand_command_gate(self):
+        command_sq = torch.sum(torch.square(self.commands[:, :2]), dim=1)
+        command_sq += 0.04 * torch.square(self.commands[:, 2])
+        sigma = getattr(self.cfg.rewards, "stand_command_sigma", 0.0004)
+        return torch.exp(-command_sq / sigma)
+
+    def _reward_stand_action(self):
+        actions = self.policy_actions if getattr(
+            self.cfg.control, "filter_policy_actions", False
+        ) else self.actions
+        return torch.sum(torch.square(actions), dim=1) * self._stand_command_gate()
+
+    def _reward_stand_dof_velocity(self):
+        return torch.sum(torch.square(self.dof_vel), dim=1) * self._stand_command_gate()
 
     def _reward_torques(self):
         return torch.sum(torch.square(self.raw_torques), dim=1)
