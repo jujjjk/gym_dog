@@ -1,0 +1,11 @@
+duration_s=60.000
+forward_displacement_m=8.477391
+lateral_displacement_m=-1.699473
+final_yaw_rad=0.025423
+final_base_height_m=0.281458
+min_base_height_m=0.270897
+mean_abs_raw_torque_nm=1.375676
+max_abs_raw_torque_nm=7.945770
+torque_over_13_ratio=0.00000000
+torque_over_15_ratio=0.00000000
+torque_over_limit_ratio=0.00000000
