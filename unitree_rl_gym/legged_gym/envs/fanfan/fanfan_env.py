@@ -516,6 +516,28 @@ class FanfanRobot(LeggedRobot):
         lateral_gate = torch.exp(-torch.square(self.commands[:, 1]) / 0.0016)
         yaw_gate = torch.exp(-torch.square(self.commands[:, 2]) / 0.01)
         return torch.square(self.base_ang_vel[:, 2]) * sagittal_activity * lateral_gate * yaw_gate
+    def _reward_straight_lateral_drift(self):
+        """Penalize lateral velocity drift during straight forward/backward commands."""
+        sagittal_activity = 1.0 - torch.exp(-torch.square(self.commands[:, 0]) / 0.01)
+        lateral_gate = torch.exp(-torch.square(self.commands[:, 1]) / 0.0016)
+        yaw_gate = torch.exp(-torch.square(self.commands[:, 2]) / 0.01)
+
+        return torch.square(self.base_lin_vel[:, 1]) * sagittal_activity * lateral_gate * yaw_gate
+
+    def _reward_left_lateral_yaw_error(self):
+        """Extra yaw drift penalty for left lateral commands.
+
+        Your play CSV shows left lateral has much larger yaw drift than right lateral,
+        so this targets cmd_vy > 0 without changing right lateral too much.
+        """
+        left_lateral_activity = torch.clamp(self.commands[:, 1], min=0.0)
+        left_lateral_activity = 1.0 - torch.exp(-torch.square(left_lateral_activity) / 0.0016)
+
+        sagittal_gate = torch.exp(-torch.square(self.commands[:, 0]) / 0.01)
+        yaw_gate = torch.exp(-torch.square(self.commands[:, 2]) / 0.01)
+
+        return torch.square(self.base_ang_vel[:, 2]) * left_lateral_activity * sagittal_gate * yaw_gate
+    
 
     def _reward_lateral_velocity(self):
         return torch.square(self.base_lin_vel[:, 1])

@@ -768,3 +768,103 @@ class FanfanOmniDesatTorqueCfgPPO(FanfanOmniLateralSpeedCleanCfgPPO):
     class runner(FanfanOmniLateralSpeedCleanCfgPPO.runner):
         experiment_name = "rough_fanfan_omni_desat_torque"
         run_name = "omni_desat_torque"
+
+
+
+
+class FanfanOmniYawDriftCleanCfg(FanfanOmniDesatTorqueCfg):
+    """Polish from desat_torque 5750: fix straight lateral drift and left lateral yaw.
+
+    Main target from play CSV:
+    - straight cmd vx=0.35 has unwanted vy drift around -0.031
+    - left lateral cmd vy=0.07 has yaw_rate around 0.042
+    Keep desaturation and torque safety from 5750.
+    """
+
+    class control(FanfanOmniDesatTorqueCfg.control):
+        # Keep the desat action envelope. Do not enlarge again.
+        action_scale = 0.215
+        rear_action_scale = 0.235
+        hip_action_scale = 0.092
+        policy_action_filter_alpha = 0.26
+
+    class commands(FanfanOmniDesatTorqueCfg.commands):
+        # Slightly more straight and lateral replay.
+        # Do not over-sample yaw, because current issue is not turn capability.
+        stand_probability = 0.14
+        pure_yaw_probability = 0.08
+        pure_lateral_probability = 0.38
+        pure_sagittal_probability = 0.24
+        resampling_time = 6.0
+
+        omni_curriculum_stages = [
+            {
+                "until_iteration": 1.0e12,
+                "lin_vel_x": [-0.12, 0.46],
+                "lin_vel_y": [-0.12, 0.12],
+                "ang_vel_yaw": [-0.85, 0.85],
+            },
+        ]
+
+        class ranges(FanfanOmniDesatTorqueCfg.commands.ranges):
+            lin_vel_x = [-0.12, 0.46]
+            lin_vel_y = [-0.12, 0.12]
+            ang_vel_yaw = [-0.85, 0.85]
+
+    class rewards(FanfanOmniDesatTorqueCfg.rewards):
+        # Keep desat threshold.
+        action_saturation_threshold = 0.70
+
+        # Keep torque protection from desat.
+        torque_near_limit_ratio = 0.82
+        peak_torque_soft_ratio = 0.88
+        sustained_torque_ratio = 0.68
+
+        class scales(FanfanOmniDesatTorqueCfg.rewards.scales):
+            # Keep velocity tracking. Do not keep pushing speed harder.
+            tracking_lin_vel = 13.5
+            tracking_longitudinal_vel = 10.5
+            tracking_lateral_vel = 16.0
+            tracking_ang_vel = 7.0
+
+            # Existing yaw/drift terms: small targeted increase only.
+            straight_yaw_error = -15.0        # desat was -13.0
+            translation_yaw_error = -14.5     # desat was -14.0
+            lateral_yaw_error = -16.5         # desat was -16.0
+            diagonal_yaw_error = -12.0
+            lateral_forward_drift = -15.0
+
+            # New targeted fixes.
+            straight_lateral_drift = -18.0    # fix forward vy drift
+            left_lateral_yaw_error = -10.0    # fix left lateral yaw
+
+            # Do not over-penalize general yaw, or turning gets worse.
+            yaw_rate = -0.22
+
+            # Keep desaturation, but do not make it more conservative.
+            action_magnitude = -0.035
+            policy_action_magnitude = -0.120
+            action_saturation = -0.55
+            policy_action_saturation = -1.35
+            policy_filter_gap = -0.42
+            action_rate = -0.21
+            policy_action_rate = -0.36
+
+            # Keep torque guard.
+            torque_near_limit = -0.16
+            peak_torque = -0.16
+            sustained_torque = -0.22
+            torque_clip = -0.35
+            torques = -7.0e-6
+            dof_acc = -3.8e-7
+
+
+class FanfanOmniYawDriftCleanCfgPPO(FanfanOmniDesatTorqueCfgPPO):
+    class algorithm(FanfanOmniDesatTorqueCfgPPO.algorithm):
+        # Keep exploration very low; this is local polishing from 5750.
+        entropy_coef = 0.00025
+
+    class runner(FanfanOmniDesatTorqueCfgPPO.runner):
+        # Keep same experiment folder so resume from desat_torque run is easy.
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "yaw_drift_clean_from_5750"
