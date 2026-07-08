@@ -495,6 +495,28 @@ class FanfanRobot(LeggedRobot):
         activity = 1.0 - torch.exp(-planar_command_sq / 0.0025)
         return torch.square(self.base_ang_vel[:, 2] - self.commands[:, 2]) * activity
 
+    def _reward_lateral_forward_drift(self):
+        """Penalize unintended forward/backward velocity during pure lateral commands."""
+        lateral_sq = torch.square(self.commands[:, 1])
+        yaw_gate = torch.exp(-torch.square(self.commands[:, 2]) / 0.01)
+        sagittal_gate = torch.exp(-torch.square(self.commands[:, 0]) / 0.01)
+        lateral_activity = 1.0 - torch.exp(-lateral_sq / 0.0016)
+        return torch.square(self.base_lin_vel[:, 0]) * lateral_activity * yaw_gate * sagittal_gate
+
+    def _reward_diagonal_yaw_error(self):
+        """Penalize heading drift while translating diagonally without a yaw command."""
+        x_activity = 1.0 - torch.exp(-torch.square(self.commands[:, 0]) / 0.01)
+        y_activity = 1.0 - torch.exp(-torch.square(self.commands[:, 1]) / 0.0016)
+        yaw_gate = torch.exp(-torch.square(self.commands[:, 2]) / 0.01)
+        return torch.square(self.base_ang_vel[:, 2]) * x_activity * y_activity * yaw_gate
+
+    def _reward_straight_yaw_error(self):
+        """Penalize yaw drift during straight forward/backward commands only."""
+        sagittal_activity = 1.0 - torch.exp(-torch.square(self.commands[:, 0]) / 0.01)
+        lateral_gate = torch.exp(-torch.square(self.commands[:, 1]) / 0.0016)
+        yaw_gate = torch.exp(-torch.square(self.commands[:, 2]) / 0.01)
+        return torch.square(self.base_ang_vel[:, 2]) * sagittal_activity * lateral_gate * yaw_gate
+
     def _reward_lateral_velocity(self):
         return torch.square(self.base_lin_vel[:, 1])
 
