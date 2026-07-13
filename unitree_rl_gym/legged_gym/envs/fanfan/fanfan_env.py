@@ -10,6 +10,10 @@ class FanfanRobot(LeggedRobot):
         # produces values outside [-1, 1]. Hard clipping made the legs bang
         # between their limits and destroyed the diagonal timing.
         bounded_actions = torch.tanh(actions)
+        bounded_actions = self._apply_straight_action_bias(bounded_actions)
+        bounded_actions = self._project_straight_diagonal_actions(
+            bounded_actions
+        )
         if getattr(self.cfg.control, "filter_policy_actions", False):
             self.last_policy_actions[:] = self.policy_actions
             self.policy_actions[:] = bounded_actions
@@ -33,6 +37,9 @@ class FanfanRobot(LeggedRobot):
             next_actions = self.filtered_actions + self.filtered_action_velocity * self.dt
             crossed = (desired - self.filtered_actions) * (desired - next_actions) < 0.0
             next_actions = torch.where(crossed, desired, next_actions)
+            next_actions = self._project_straight_diagonal_actions(
+                next_actions
+            )
             self.filtered_action_velocity = (
                 next_actions - self.filtered_actions
             ) / self.dt
@@ -43,6 +50,73 @@ class FanfanRobot(LeggedRobot):
         self.policy_actions[:] = bounded_actions
         self.policy_filter_gap.zero_()
         return super().step(bounded_actions)
+
+    def _apply_straight_action_bias(self, actions):
+        """Apply a calibrated, command-gated normalized action correction."""
+        bias_cfg = getattr(
+            self.cfg.control, "straight_action_bias_by_joint", None
+        )
+        if bias_cfg is None:
+            return actions
+        bias = torch.tensor(
+            [float(bias_cfg.get(name, 0.0)) for name in self.dof_names],
+            dtype=actions.dtype,
+            device=self.device,
+        ).unsqueeze(0)
+        straight = (
+            (torch.abs(self.commands[:, 0]) > 0.03)
+            & (torch.abs(self.commands[:, 1]) < 0.02)
+            & (torch.abs(self.commands[:, 2]) < 0.05)
+        ).unsqueeze(1)
+        corrected = (actions + bias).clip(-1.0, 1.0)
+        return torch.where(straight, corrected, actions)
+
+    def _project_straight_diagonal_actions(self, actions):
+        """Project straight-motion actions onto physical diagonal symmetry."""
+        if not getattr(
+            self.cfg.control, "project_straight_diagonal_actions", False
+        ):
+            return actions
+
+        projected = actions.clone()
+        physical = actions.clone()
+        physical[:, self.hip_dof_indices] *= self.cfg.control.hip_action_scale
+        physical[:, self.front_sagittal_dof_indices] *= (
+            self.cfg.control.action_scale
+        )
+        physical[:, self.rear_sagittal_dof_indices] *= (
+            self.cfg.control.rear_action_scale
+        )
+
+        symmetric = physical.clone()
+        for first, second in (("FL", "RR"), ("FR", "RL")):
+            for joint in ("hip", "thigh", "calf"):
+                a = self.leg_dof_indices[first][joint]
+                b = self.leg_dof_indices[second][joint]
+                if joint == "hip":
+                    mean = 0.5 * (physical[:, a] - physical[:, b])
+                    symmetric[:, a] = mean
+                    symmetric[:, b] = -mean
+                else:
+                    mean = 0.5 * (physical[:, a] + physical[:, b])
+                    symmetric[:, a] = mean
+                    symmetric[:, b] = mean
+
+        symmetric[:, self.hip_dof_indices] /= self.cfg.control.hip_action_scale
+        symmetric[:, self.front_sagittal_dof_indices] /= (
+            self.cfg.control.action_scale
+        )
+        symmetric[:, self.rear_sagittal_dof_indices] /= (
+            self.cfg.control.rear_action_scale
+        )
+        symmetric = symmetric.clip(-1.0, 1.0)
+
+        straight = (
+            (torch.abs(self.commands[:, 0]) > 0.03)
+            & (torch.abs(self.commands[:, 1]) < 0.02)
+            & (torch.abs(self.commands[:, 2]) < 0.05)
+        ).unsqueeze(1)
+        return torch.where(straight, symmetric, projected)
 
     def _get_noise_scale_vec(self, cfg):
         noise_vec = super()._get_noise_scale_vec(cfg)
@@ -58,8 +132,10 @@ class FanfanRobot(LeggedRobot):
         self.feet_pos = self.feet_state[:, :, :3]
         body_names = self.gym.get_actor_rigid_body_names(self.envs[0], self.actor_handles[0])
         phase_offsets = []
-        for body_index in self.feet_indices.cpu().tolist():
+        self.foot_slot_by_leg = {}
+        for foot_slot, body_index in enumerate(self.feet_indices.cpu().tolist()):
             name = body_names[body_index]
+            self.foot_slot_by_leg[name.split("_", 1)[0]] = foot_slot
             phase_offsets.append(
                 0.0 if name.startswith("FL_") or name.startswith("RR_") else 0.5
             )
@@ -88,11 +164,38 @@ class FanfanRobot(LeggedRobot):
             dtype=torch.long,
             device=self.device,
         )
+        self.front_sagittal_dof_indices = torch.tensor(
+            [
+                self.leg_dof_indices[leg][joint]
+                for leg in ("FL", "FR")
+                for joint in ("thigh", "calf")
+            ],
+            dtype=torch.long,
+            device=self.device,
+        )
         self.sagittal_dof_indices = torch.tensor(
             [
                 self.leg_dof_indices[leg][joint]
                 for leg in ("FL", "FR", "RL", "RR")
                 for joint in ("thigh", "calf")
+            ],
+            dtype=torch.long,
+            device=self.device,
+        )
+        self.left_dof_indices = torch.tensor(
+            [
+                self.leg_dof_indices[leg][joint]
+                for leg in ("FL", "RL")
+                for joint in ("hip", "thigh", "calf")
+            ],
+            dtype=torch.long,
+            device=self.device,
+        )
+        self.right_dof_indices = torch.tensor(
+            [
+                self.leg_dof_indices[leg][joint]
+                for leg in ("FR", "RR")
+                for joint in ("hip", "thigh", "calf")
             ],
             dtype=torch.long,
             device=self.device,
@@ -140,9 +243,26 @@ class FanfanRobot(LeggedRobot):
             [next((value for key, value in accel_cfg.items() if key in name), 1.0e6)
              for name in self.dof_names], dtype=torch.float, device=self.device
         )
-        torque_limit = getattr(self.cfg.control, "torque_limit_override", None)
-        if torque_limit is not None:
-            self.torque_limits[:] = float(torque_limit)
+        torque_limits_by_joint = getattr(
+            self.cfg.control, "torque_limits_by_joint", None
+        )
+        if torque_limits_by_joint is not None:
+            for dof_index, dof_name in enumerate(self.dof_names):
+                matches = [
+                    float(limit)
+                    for joint_type, limit in torque_limits_by_joint.items()
+                    if joint_type in dof_name
+                ]
+                if len(matches) != 1:
+                    raise ValueError(
+                        "Expected exactly one torque limit match for "
+                        f"{dof_name}, got {matches} from {torque_limits_by_joint}"
+                    )
+                self.torque_limits[dof_index] = matches[0]
+        else:
+            torque_limit = getattr(self.cfg.control, "torque_limit_override", None)
+            if torque_limit is not None:
+                self.torque_limits[:] = float(torque_limit)
 
     def _compute_torques(self, actions):
         actions_scaled = actions * self.cfg.control.action_scale
@@ -228,9 +348,20 @@ class FanfanRobot(LeggedRobot):
         super().reset_idx(env_ids)
         if getattr(self.cfg.domain_rand, "randomize_motor_strength", False):
             low, high = self.cfg.domain_rand.motor_strength_range
-            self.motor_strength[env_ids] = torch_rand_float(
+            strength = torch_rand_float(
                 low, high, (len(env_ids), self.num_actions), device=self.device
             )
+            if getattr(
+                self.cfg.domain_rand, "pair_diagonal_motor_strength", False
+            ):
+                for first, second in (("FL", "RR"), ("FR", "RL")):
+                    for joint in ("hip", "thigh", "calf"):
+                        a = self.leg_dof_indices[first][joint]
+                        b = self.leg_dof_indices[second][joint]
+                        mean = 0.5 * (strength[:, a] + strength[:, b])
+                        strength[:, a] = mean
+                        strength[:, b] = mean
+            self.motor_strength[env_ids] = strength
         metric_count = self.torque_metric_count[env_ids].clip(min=1.0)
         self.extras["episode"]["max_abs_raw_torque"] = torch.mean(
             self.max_abs_raw_torque[env_ids]
@@ -424,6 +555,22 @@ class FanfanRobot(LeggedRobot):
 
     def check_termination(self):
         super().check_termination()
+        max_straight_heading_error = getattr(
+            self.cfg.rewards, "terminate_straight_heading_error", None
+        )
+        if max_straight_heading_error is not None:
+            heading_error = torch.atan2(
+                torch.sin(self.commands[:, 3] - self.rpy[:, 2]),
+                torch.cos(self.commands[:, 3] - self.rpy[:, 2]),
+            )
+            straight = (
+                (torch.abs(self.commands[:, 0]) > 0.03)
+                & (torch.abs(self.commands[:, 1]) < 0.02)
+                & (torch.abs(self.commands[:, 2]) < 0.05)
+            )
+            self.reset_buf |= straight & (
+                torch.abs(heading_error) > max_straight_heading_error
+            )
         min_base_height = getattr(self.cfg.rewards, "min_base_height", None)
         if min_base_height is not None:
             self.reset_buf |= self.root_states[:, 2] < min_base_height
@@ -563,6 +710,210 @@ class FanfanRobot(LeggedRobot):
             error += torch.square(self.dof_pos[:, fl] - self.dof_pos[:, rr])
             error += torch.square(self.dof_pos[:, fr] - self.dof_pos[:, rl])
         return error
+
+    def _straight_motion_gate(self):
+        """Only activate symmetry penalties for straight translation."""
+        vx_activity = 1.0 - torch.exp(
+            -torch.square(self.commands[:, 0]) / 0.01
+        )
+        vy_gate = torch.exp(
+            -torch.square(self.commands[:, 1]) / 0.0016
+        )
+        yaw_gate = torch.exp(
+            -torch.square(self.commands[:, 2]) / 0.01
+        )
+        return vx_activity * vy_gate * yaw_gate
+
+    def _reward_straight_policy_side_balance(self):
+        """Balance left/right policy action energy during straight motion."""
+        actions = self.policy_actions
+        left_energy = torch.mean(
+            torch.square(actions[:, self.left_dof_indices]), dim=1
+        )
+        right_energy = torch.mean(
+            torch.square(actions[:, self.right_dof_indices]), dim=1
+        )
+        normalized_error = (
+            (left_energy - right_energy)
+            / (left_energy + right_energy + 1.0e-4)
+        )
+        return torch.square(normalized_error) * self._straight_motion_gate()
+
+    def _reward_straight_torque_side_balance(self):
+        """Balance normalized left/right PD torque demand."""
+        torque_ratio = (
+            torch.abs(self.raw_torques) / self.torque_limits.unsqueeze(0)
+        )
+        left_energy = torch.mean(
+            torch.square(torque_ratio[:, self.left_dof_indices]), dim=1
+        )
+        right_energy = torch.mean(
+            torch.square(torque_ratio[:, self.right_dof_indices]), dim=1
+        )
+        normalized_error = (
+            (left_energy - right_energy)
+            / (left_energy + right_energy + 1.0e-4)
+        )
+        return torch.square(normalized_error) * self._straight_motion_gate()
+
+    def _reward_straight_diagonal_target_sync(self):
+        """Synchronize physical targets for same-phase diagonal legs."""
+        target_delta = self.target_dof_pos_rl - self.default_dof_pos
+        error = torch.zeros(
+            self.num_envs, dtype=torch.float, device=self.device
+        )
+        for joint in ("thigh", "calf"):
+            fl = self.leg_dof_indices["FL"][joint]
+            fr = self.leg_dof_indices["FR"][joint]
+            rl = self.leg_dof_indices["RL"][joint]
+            rr = self.leg_dof_indices["RR"][joint]
+            error += torch.square(target_delta[:, fl] - target_delta[:, rr])
+            error += torch.square(target_delta[:, fr] - target_delta[:, rl])
+        return error * self._straight_motion_gate()
+
+    def _reward_straight_path_lateral_velocity(self):
+        """Penalize lateral velocity relative to the commanded path heading.
+
+        Body-frame ``vy`` alone does not measure visible path drift: a small
+        heading error rotates forward velocity into the world's lateral axis.
+        For straight commands, ``commands[:, 3]`` is the fixed path heading.
+        Transform the measured body velocity into that heading frame so the
+        reward directly targets lateral displacement seen in play/MuJoCo.
+        """
+        heading_error = torch.atan2(
+            torch.sin(self.commands[:, 3] - self.rpy[:, 2]),
+            torch.cos(self.commands[:, 3] - self.rpy[:, 2]),
+        )
+        path_lateral_velocity = (
+            -torch.sin(heading_error) * self.base_lin_vel[:, 0]
+            + torch.cos(heading_error) * self.base_lin_vel[:, 1]
+        )
+        return (
+            torch.square(path_lateral_velocity)
+            * self._straight_motion_gate()
+        )
+
+    def _diagonal_mirror_error(self, values):
+        """Return physical FL-RR / FR-RL mirror error for 12-DOF values."""
+        error = torch.zeros(
+            self.num_envs, dtype=torch.float, device=self.device
+        )
+        for joint in ("hip", "thigh", "calf"):
+            fl = self.leg_dof_indices["FL"][joint]
+            fr = self.leg_dof_indices["FR"][joint]
+            rl = self.leg_dof_indices["RL"][joint]
+            rr = self.leg_dof_indices["RR"][joint]
+            if joint == "hip":
+                # All hip axes point along +x. Mirrored left/right physical
+                # motion therefore has the opposite joint-coordinate sign.
+                error += torch.square(values[:, fl] + values[:, rr])
+                error += torch.square(values[:, fr] + values[:, rl])
+            else:
+                error += torch.square(values[:, fl] - values[:, rr])
+                error += torch.square(values[:, fr] - values[:, rl])
+        return error
+
+    def _reward_straight_diagonal_target_mirror(self):
+        """Mirror same-phase diagonal physical joint targets."""
+        target_delta = self.target_dof_pos_rl - self.default_dof_pos
+        return (
+            self._diagonal_mirror_error(target_delta)
+            * self._straight_motion_gate()
+        )
+
+    def _reward_straight_diagonal_joint_mirror(self):
+        """Mirror achieved same-phase diagonal joint motion."""
+        joint_delta = self.dof_pos - self.default_dof_pos
+        return (
+            self._diagonal_mirror_error(joint_delta)
+            * self._straight_motion_gate()
+        )
+
+    def _reward_straight_diagonal_torque_mirror(self):
+        """Mirror normalized same-phase diagonal raw PD torque demand."""
+        normalized_torque = self.raw_torques / self.torque_limits.unsqueeze(0)
+        return (
+            self._diagonal_mirror_error(normalized_torque)
+            * self._straight_motion_gate()
+        )
+
+    def _straight_contact_load(self):
+        """Return foot contact data and a gate that excludes flight phases."""
+        forces = self.contact_forces[:, self.feet_indices, :]
+        vertical = forces[:, :, 2].clip(min=0.0)
+        total_vertical = torch.sum(vertical, dim=1)
+        load_gate = (total_vertical > 10.0).float()
+        return forces, vertical, total_vertical, load_gate
+
+    def _reward_straight_contact_lateral_force(self):
+        """Suppress net side force instead of compensating it with body yaw."""
+        forces, _, total_vertical, load_gate = self._straight_contact_load()
+        normalized = torch.sum(forces[:, :, 1], dim=1) / (
+            total_vertical + 1.0
+        )
+        return (
+            torch.square(normalized)
+            * load_gate
+            * self._straight_motion_gate()
+        )
+
+    def _reward_straight_contact_yaw_moment(self):
+        """Suppress the ground-reaction yaw moment during straight motion."""
+        forces, _, total_vertical, load_gate = self._straight_contact_load()
+        relative = self.feet_pos - self.root_states[:, None, :3]
+        yaw_moment = torch.sum(
+            relative[:, :, 0] * forces[:, :, 1]
+            - relative[:, :, 1] * forces[:, :, 0],
+            dim=1,
+        )
+        normalized = yaw_moment / (0.30 * total_vertical + 1.0)
+        return (
+            torch.square(normalized)
+            * load_gate
+            * self._straight_motion_gate()
+        )
+
+    def _reward_straight_contact_side_load_balance(self):
+        """Balance total left/right support while allowing front/rear differences."""
+        _, vertical, total_vertical, load_gate = self._straight_contact_load()
+        left = vertical[:, [
+            self.foot_slot_by_leg["FL"], self.foot_slot_by_leg["RL"]
+        ]].sum(dim=1)
+        right = vertical[:, [
+            self.foot_slot_by_leg["FR"], self.foot_slot_by_leg["RR"]
+        ]].sum(dim=1)
+        normalized = (left - right) / (total_vertical + 1.0)
+        return (
+            torch.square(normalized)
+            * load_gate
+            * self._straight_motion_gate()
+        )
+
+    def _reward_straight_diagonal_contact_sync(self):
+        """Keep same-phase diagonal feet in contact at the same time."""
+        contact = self.contact_forces[:, self.feet_indices, 2] > 1.0
+        mismatch = torch.zeros(self.num_envs, device=self.device)
+        for first, second in (("FL", "RR"), ("FR", "RL")):
+            mismatch += (
+                contact[:, self.foot_slot_by_leg[first]]
+                != contact[:, self.foot_slot_by_leg[second]]
+            ).float()
+        return mismatch * self._straight_motion_gate()
+
+    def _reward_straight_lateral_speed(self):
+        """Constant-gradient penalty for residual straight-line side slip."""
+        return (
+            torch.abs(self.base_lin_vel[:, 1])
+            * self._straight_motion_gate()
+        )
+
+    def _reward_straight_heading_error(self):
+        """Prevent yaw angle from compensating for lateral body velocity."""
+        heading_error = torch.atan2(
+            torch.sin(self.commands[:, 3] - self.rpy[:, 2]),
+            torch.cos(self.commands[:, 3] - self.rpy[:, 2]),
+        )
+        return torch.abs(heading_error) * self._straight_motion_gate()
 
     def _reward_action_magnitude(self):
         return torch.sum(torch.square(self.actions), dim=1)

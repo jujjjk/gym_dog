@@ -57,6 +57,11 @@ def play(args):
     env_cfg.noise.add_noise = False
     env_cfg.domain_rand.randomize_friction = False
     env_cfg.domain_rand.push_robots = False
+    env_cfg.domain_rand.randomize_motor_strength = False
+    if hasattr(env_cfg.rewards, "terminate_straight_heading_error"):
+        # Training-only guard: evaluation must reveal accumulated heading
+        # error instead of hiding it behind an automatic environment reset.
+        env_cfg.rewards.terminate_straight_heading_error = None
     env_cfg.env.test = True
 
     env, _ = task_registry.make_env(args.task, args=args, env_cfg=env_cfg)
@@ -96,6 +101,7 @@ def play(args):
     log_file = open(log_path, "w", newline="")
     log_writer = csv.writer(log_file)
 
+    joint_names = list(env.dof_names)
     log_writer.writerow([
         "step", "time_s", "env_id",
         "cmd_vx", "cmd_vy", "cmd_yaw",
@@ -104,7 +110,9 @@ def play(args):
         "roll_rate", "pitch_rate", "yaw_rate",
         "action_abs_mean", "action_abs_max", "action_sat75_ratio",
         "torque_abs_mean", "torque_abs_max",
-    ])
+    ] + [f"policy_{name}" for name in joint_names]
+      + [f"target_delta_{name}" for name in joint_names]
+      + [f"raw_torque_{name}" for name in joint_names])
 
     print(f"[play_omni] logging to: {log_path}")
     print("[play_omni] press Ctrl+C to stop and save CSV.")
@@ -147,6 +155,13 @@ def play(args):
                     torque_abs_mean = torch.zeros(env.num_envs, device=env.device)
                     torque_abs_max = torch.zeros(env.num_envs, device=env.device)
 
+                policy_actions = getattr(env, "policy_actions", env.actions)
+                target_delta = (
+                    getattr(env, "target_dof_pos_rl", env.dof_pos)
+                    - env.default_dof_pos
+                )
+                raw_torques = getattr(env, "raw_torques", env.torques)
+
                 for eid in range(env.num_envs):
                     log_writer.writerow([
                         int(step),
@@ -176,7 +191,9 @@ def play(args):
 
                         float(torque_abs_mean[eid].item()),
                         float(torque_abs_max[eid].item()),
-                    ])
+                    ] + policy_actions[eid].detach().cpu().tolist()
+                      + target_delta[eid].detach().cpu().tolist()
+                      + raw_torques[eid].detach().cpu().tolist())
 
                 if step % 100 == 0:
                     log_file.flush()

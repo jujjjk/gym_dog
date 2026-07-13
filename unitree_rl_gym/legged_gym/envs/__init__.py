@@ -13,6 +13,17 @@ from legged_gym.envs.fanfan.fanfan_omni_safe_config import (
     FanfanOmniLateralSpeedCleanCfg, FanfanOmniLateralSpeedCleanCfgPPO,
     FanfanOmniDesatTorqueCfg, FanfanOmniDesatTorqueCfgPPO,
     FanfanOmniYawDriftCleanCfg, FanfanOmniYawDriftCleanCfgPPO,
+    FanfanOmniYawSymmetryCfg, FanfanOmniYawSymmetryCfgPPO,
+    FanfanOmniYawPathFixCfg, FanfanOmniYawPathFixCfgPPO,
+    FanfanOmniDiagonalCoordCfg, FanfanOmniDiagonalCoordCfgPPO,
+    FanfanOmniCoordinatedStraightCfg, FanfanOmniCoordinatedStraightCfgPPO,
+    FanfanOmniProjectedCoordCfg, FanfanOmniProjectedCoordCfgPPO,
+    FanfanOmniStrongSymmetryCfg, FanfanOmniStrongSymmetryCfgPPO,
+    FanfanOmniNoCompSymmetryCfg, FanfanOmniNoCompSymmetryCfgPPO,
+    FanfanOmniHeadingBoundSymmetryCfg, FanfanOmniHeadingBoundSymmetryCfgPPO,
+    FanfanOmniForceCoordCfg, FanfanOmniForceCoordCfgPPO,
+    FanfanOmniForceDesatCfg, FanfanOmniForceDesatCfgPPO,
+    FanfanOmniCalibratedSymmetryCfg, FanfanOmniCalibratedSymmetryCfgPPO,
 )
 from legged_gym.envs.fanfan_rouhe.fanfan_config import FanfanRouheRoughCfg, FanfanRouheRoughCfgPPO
 from legged_gym.envs.fanfan_rouhe.fanfan_env import FanfanRouheRobot
@@ -69,4 +80,70 @@ task_registry.register(
     FanfanRobot,
     FanfanOmniYawDriftCleanCfg(),
     FanfanOmniYawDriftCleanCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_yaw_symmetry",
+    FanfanRobot,
+    FanfanOmniYawSymmetryCfg(),
+    FanfanOmniYawSymmetryCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_yaw_path_fix",
+    FanfanRobot,
+    FanfanOmniYawPathFixCfg(),
+    FanfanOmniYawPathFixCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_diagonal_coord",
+    FanfanRobot,
+    FanfanOmniDiagonalCoordCfg(),
+    FanfanOmniDiagonalCoordCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_coordinated_straight",
+    FanfanRobot,
+    FanfanOmniCoordinatedStraightCfg(),
+    FanfanOmniCoordinatedStraightCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_projected_coord",
+    FanfanRobot,
+    FanfanOmniProjectedCoordCfg(),
+    FanfanOmniProjectedCoordCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_strong_symmetry",
+    FanfanRobot,
+    FanfanOmniStrongSymmetryCfg(),
+    FanfanOmniStrongSymmetryCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_no_comp_symmetry",
+    FanfanRobot,
+    FanfanOmniNoCompSymmetryCfg(),
+    FanfanOmniNoCompSymmetryCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_heading_bound_symmetry",
+    FanfanRobot,
+    FanfanOmniHeadingBoundSymmetryCfg(),
+    FanfanOmniHeadingBoundSymmetryCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_force_coord",
+    FanfanRobot,
+    FanfanOmniForceCoordCfg(),
+    FanfanOmniForceCoordCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_force_desat",
+    FanfanRobot,
+    FanfanOmniForceDesatCfg(),
+    FanfanOmniForceDesatCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_calibrated_symmetry",
+    FanfanRobot,
+    FanfanOmniCalibratedSymmetryCfg(),
+    FanfanOmniCalibratedSymmetryCfgPPO(),
 )

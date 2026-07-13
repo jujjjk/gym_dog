@@ -1,6 +1,6 @@
 """Generic Fanfan MuJoCo runner driven entirely by ONNX deployment metadata."""
 from pathlib import Path
-import argparse,json,time,mujoco,numpy as np,onnxruntime as ort
+import argparse,csv,json,time,mujoco,numpy as np,onnxruntime as ort
 
 def load_contract(session):
     meta=session.get_modelmeta().custom_metadata_map
@@ -56,7 +56,7 @@ class Sim:
         raw=self.kp*(self.target-self.d.qpos[self.q])-self.kd*self.d.qvel[self.v];self.d.ctrl[self.aid]=np.clip(raw,-self.limits,self.limits);mujoco.mj_step(self.m,self.d);return raw
 
 def main():
-    root=Path(__file__).parent;p=argparse.ArgumentParser();p.add_argument("--model",type=Path,default=root/"models/fanfan_scene.xml");p.add_argument("--policy",type=Path,default=root/"models/fanfan_best.onnx");p.add_argument("--duration",type=float,default=20);p.add_argument("--command",nargs=3,type=float);p.add_argument("--viewer",action="store_true");p.add_argument("--demo-matrix",action="store_true");p.add_argument("--segment-duration",type=float,default=8.0);a=p.parse_args();s=Sim(a.model,a.policy,a.command)
+    root=Path(__file__).parent;p=argparse.ArgumentParser();p.add_argument("--model",type=Path,default=root/"models/fanfan_scene.xml");p.add_argument("--policy",type=Path,default=root/"models/fanfan_best.onnx");p.add_argument("--duration",type=float,default=20);p.add_argument("--command",nargs=3,type=float);p.add_argument("--viewer",action="store_true");p.add_argument("--demo-matrix",action="store_true");p.add_argument("--segment-duration",type=float,default=8.0);p.add_argument("--csv",type=Path);a=p.parse_args();s=Sim(a.model,a.policy,a.command)
     if a.viewer:
         import mujoco.viewer
         with mujoco.viewer.launch_passive(s.m,s.d) as v:
@@ -71,10 +71,24 @@ def main():
                 if i%s.decimation==0:s.policy()
                 s.step();v.cam.lookat[:]=s.d.qpos[:3];v.sync();i+=1;time.sleep(max(0,s.m.opt.timestep-(time.time()-st)))
     else:
-        raw=[];start=s.d.qpos[:2].copy();minz=99
+        raw=[];start=s.d.qpos[:2].copy();minz=99;csv_file=None;writer=None
+        if a.csv:
+            a.csv.parent.mkdir(parents=True,exist_ok=True);csv_file=a.csv.open("w",newline="")
+            writer=csv.writer(csv_file);writer.writerow([
+                "step","time_s","cmd_vx","cmd_vy","cmd_yaw","x","y","z","yaw",
+                "vx_body","vy_body","vz_body","roll_rate","pitch_rate","yaw_rate",
+                "action_abs_mean","action_abs_max","action_sat75_ratio",
+                "torque_abs_mean","torque_abs_max",
+            ]+[f"action_{name}" for name in s.names]+[f"raw_torque_{name}" for name in s.names])
         for i in range(int(a.duration/s.m.opt.timestep)):
-            if i%s.decimation==0:s.policy()
-            raw.append(s.step());minz=min(minz,s.d.qpos[2])
+            control_step=i%s.decimation==0
+            if control_step:s.policy()
+            raw_torque=s.step();raw.append(raw_torque);minz=min(minz,s.d.qpos[2])
+            if writer is not None and control_step:
+                q=s.d.qpos[3:7];linear=body_linear_velocity(q,s.d.qvel[:3]);angular=s.d.qvel[3:6]
+                yaw=np.arctan2(2*(q[0]*q[3]+q[1]*q[2]),1-2*(q[2]**2+q[3]**2));absolute=np.abs(raw_torque)
+                writer.writerow([i//s.decimation,i*s.m.opt.timestep,*s.command,*s.d.qpos[:3],yaw,*linear,*angular,np.abs(s.action).mean(),np.abs(s.action).max(),(np.abs(s.action)>.75).mean(),absolute.mean(),absolute.max(),*s.action,*raw_torque])
+        if csv_file is not None:csv_file.close()
         x=np.abs(raw);q=s.d.qpos[3:7];yaw=np.arctan2(2*(q[0]*q[3]+q[1]*q[2]),1-2*(q[2]**2+q[3]**2));d=s.d.qpos[:2]-start
         print(f"duration_s={a.duration:.3f}\nforward_displacement_m={d[0]:.6f}\nlateral_displacement_m={d[1]:.6f}\nfinal_yaw_rad={yaw:.6f}\nfinal_base_height_m={s.d.qpos[2]:.6f}\nmin_base_height_m={minz:.6f}\nmean_abs_raw_torque_nm={x.mean():.6f}\nmax_abs_raw_torque_nm={x.max():.6f}\ntorque_over_13_ratio={(x>13).mean():.8f}\ntorque_over_15_ratio={(x>15).mean():.8f}\ntorque_over_limit_ratio={(x>s.limits).mean():.8f}")
 if __name__=="__main__":main()

@@ -7,15 +7,143 @@ import isaacgym
 import torch
 
 class Actor(torch.nn.Sequential):
-    def __init__(self, observations):
+    def __init__(self, observations, cfg=None):
         super().__init__(torch.nn.Linear(observations,512),torch.nn.ELU(),torch.nn.Linear(512,256),
                          torch.nn.ELU(),torch.nn.Linear(256,128),torch.nn.ELU(),
                          torch.nn.Linear(128,12))
+        self.cfg = cfg
+
+    def forward(self, observations):
+        control = getattr(self.cfg, "control", None)
+        feedback_gain = float(getattr(
+            control, "straight_vy_feedback_gain", 0.0
+        ))
+        forward_boost = float(getattr(
+            control, "straight_vx_feedback_boost", 0.0
+        ))
+        sagittal_blend = float(getattr(
+            control, "straight_vy_feedback_sagittal_blend", 1.0
+        ))
+        base_raw = super().forward(observations)
+        actor_observations = observations
+        if feedback_gain != 0.0:
+            lin_scale = float(self.cfg.normalization.obs_scales.lin_vel)
+            yaw_scale = float(self.cfg.normalization.obs_scales.ang_vel)
+            straight_feedback = (
+                (torch.abs(observations[:, 9]) > 0.03 * lin_scale)
+                & (torch.abs(observations[:, 10]) < 0.02 * lin_scale)
+                & (torch.abs(observations[:, 11]) < 0.05 * yaw_scale)
+            )
+            corrected_vy_command = torch.clamp(
+                observations[:, 10] - feedback_gain * observations[:, 1],
+                -0.12 * lin_scale,
+                0.12 * lin_scale,
+            )
+            corrected_vy_command = torch.where(
+                straight_feedback,
+                corrected_vy_command,
+                observations[:, 10],
+            )
+            corrected_vx_command = torch.clamp(
+                observations[:, 9]
+                + forward_boost * torch.abs(observations[:, 1]),
+                -0.12 * lin_scale,
+                0.46 * lin_scale,
+            )
+            corrected_vx_command = torch.where(
+                straight_feedback,
+                corrected_vx_command,
+                observations[:, 9],
+            )
+            actor_observations = torch.cat((
+                observations[:, :9],
+                corrected_vx_command.unsqueeze(1),
+                corrected_vy_command.unsqueeze(1),
+                observations[:, 11:],
+            ), dim=1)
+        if feedback_gain != 0.0:
+            corrected_raw = super().forward(actor_observations)
+            names = list(control.policy_joint_order)
+            blend = base_raw.new_tensor([
+                1.0 if "hip" in name else sagittal_blend for name in names
+            ])
+            raw = base_raw + blend * (corrected_raw - base_raw)
+        else:
+            raw = base_raw
+        bias_cfg = getattr(
+            control,
+            "straight_action_bias_by_joint",
+            None,
+        )
+        project = bool(getattr(control, "project_straight_diagonal_actions", False))
+        if bias_cfg is None and not project:
+            return raw
+        names = list(control.policy_joint_order)
+        lin_scale = float(self.cfg.normalization.obs_scales.lin_vel)
+        yaw_scale = float(self.cfg.normalization.obs_scales.ang_vel)
+        straight = (
+            (torch.abs(observations[:, 9]) > 0.03 * lin_scale)
+            & (torch.abs(observations[:, 10]) < 0.02 * lin_scale)
+            & (torch.abs(observations[:, 11]) < 0.05 * yaw_scale)
+        ).unsqueeze(1)
+        bounded = torch.tanh(raw)
+        if bias_cfg is not None:
+            bias = raw.new_tensor([
+                float(bias_cfg.get(name, 0.0)) for name in names
+            ])
+            corrected = torch.clamp(bounded + bias, -0.999999, 0.999999)
+            bounded = torch.where(straight, corrected, bounded)
+
+        if project:
+            scales = []
+            for name in names:
+                if "hip" in name:
+                    scales.append(float(control.hip_action_scale))
+                elif name.startswith(("RL_", "RR_")):
+                    scales.append(float(control.rear_action_scale))
+                else:
+                    scales.append(float(control.action_scale))
+            scales = raw.new_tensor(scales)
+            physical = bounded * scales
+            name_to_index = {name: index for index, name in enumerate(names)}
+            pair = {"FL": "RR", "RR": "FL", "FR": "RL", "RL": "FR"}
+            projected = []
+            for index, name in enumerate(names):
+                leg, joint, _ = name.split("_", 2)
+                other = name_to_index[f"{pair[leg]}_{joint}_joint"]
+                if joint == "hip":
+                    sign = 1.0 if leg in ("FL", "FR") else -1.0
+                    value = sign * 0.5 * (
+                        sign * physical[:, index]
+                        - sign * physical[:, other]
+                    )
+                else:
+                    value = 0.5 * (
+                        physical[:, index] + physical[:, other]
+                    )
+                projected.append(value / scales[index])
+            projected = torch.stack(projected, dim=1).clamp(-0.999999, 0.999999)
+            bounded = torch.where(straight, projected, bounded)
+
+        # The deployment loop applies tanh to actor output, so map the bounded
+        # transformed action back to the actor's raw-action contract.
+        return 0.5 * (
+            torch.log(1.0 + bounded) - torch.log(1.0 - bounded)
+        )
 
 def matched(mapping,name):
     values=[value for key,value in mapping.items() if key in name]
     if len(values)!=1: raise ValueError(f"Expected one cfg match for {name}, got {values}")
     return values[0]
+
+def torque_limits(cfg, names, effort):
+    per_joint = getattr(cfg.control, "torque_limits_by_joint", None)
+    if per_joint is not None:
+        return [float(matched(per_joint, name)) for name in names]
+    override = getattr(cfg.control, "torque_limit_override", None)
+    if override is not None:
+        return [float(override) for _ in names]
+    return [effort[name] for name in names]
 
 def deployment_config(cfg, checkpoint, gym_root):
     names=list(cfg.control.policy_joint_order)
@@ -44,9 +172,11 @@ def deployment_config(cfg, checkpoint, gym_root):
                    "policy_action_accel_limits":[
                        matched(cfg.control.policy_action_accel_limits,n) for n in names
                    ] if hasattr(cfg.control,"policy_action_accel_limits") else None,
-                   "action_scale":scales,"torque_limits":[
-                       float(cfg.control.torque_limit_override) for _ in names
-                   ] if hasattr(cfg.control,"torque_limit_override") else [effort[n] for n in names],
+                   "action_scale":scales,
+                   "torque_limits":torque_limits(cfg,names,effort),
+                   "straight_vy_feedback_gain":getattr(cfg.control,"straight_vy_feedback_gain",0.0),
+                   "straight_vx_feedback_boost":getattr(cfg.control,"straight_vx_feedback_boost",0.0),
+                   "straight_vy_feedback_sagittal_blend":getattr(cfg.control,"straight_vy_feedback_sagittal_blend",1.0),
                    "output_transform":"tanh"},
         "observations":{"clip":cfg.normalization.clip_observations,
                         "lin_vel_scale":cfg.normalization.obs_scales.lin_vel,
@@ -72,10 +202,16 @@ def deployment_config(cfg, checkpoint, gym_root):
 if __name__ == "__main__":
     p=argparse.ArgumentParser();p.add_argument("checkpoint",type=Path);p.add_argument("output",type=Path)
     p.add_argument("--config-class",default="legged_gym.envs.fanfan.fanfan_config:FanfanRoughCfg")
-    p.add_argument("--gym-root",type=Path,default=Path(__file__).resolve().parents[1]/"unitree_rl_gym");a=p.parse_args()
+    p.add_argument("--gym-root",type=Path,default=Path(__file__).resolve().parents[1]/"unitree_rl_gym")
+    p.add_argument("--straight-vy-feedback-gain",type=float)
+    p.add_argument("--straight-vx-feedback-boost",type=float)
+    p.add_argument("--straight-vy-feedback-sagittal-blend",type=float);a=p.parse_args()
     sys.path.insert(0,str(a.gym_root));module_name,class_name=a.config_class.split(":",1);cfg=getattr(importlib.import_module(module_name),class_name)
+    if a.straight_vy_feedback_gain is not None:cfg.control.straight_vy_feedback_gain=a.straight_vy_feedback_gain
+    if a.straight_vx_feedback_boost is not None:cfg.control.straight_vx_feedback_boost=a.straight_vx_feedback_boost
+    if a.straight_vy_feedback_sagittal_blend is not None:cfg.control.straight_vy_feedback_sagittal_blend=a.straight_vy_feedback_sagittal_blend
     state=torch.load(a.checkpoint,map_location="cpu")["model_state_dict"]
-    actor=Actor(cfg.env.num_observations).eval();actor.load_state_dict({k[6:]:v for k,v in state.items() if k.startswith("actor.")})
+    actor=Actor(cfg.env.num_observations,cfg).eval();actor.load_state_dict({k[6:]:v for k,v in state.items() if k.startswith("actor.")})
     a.output.parent.mkdir(parents=True,exist_ok=True)
     torch.onnx.export(actor,torch.zeros(1,cfg.env.num_observations),a.output,input_names=["observations"],output_names=["raw_actions"],dynamic_axes={"observations":{0:"batch"},"raw_actions":{0:"batch"}},opset_version=17)
     manifest=deployment_config(cfg,a.checkpoint,a.gym_root)

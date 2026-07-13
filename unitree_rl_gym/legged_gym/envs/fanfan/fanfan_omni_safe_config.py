@@ -868,3 +868,527 @@ class FanfanOmniYawDriftCleanCfgPPO(FanfanOmniDesatTorqueCfgPPO):
         # Keep same experiment folder so resume from desat_torque run is easy.
         experiment_name = "rough_fanfan_omni_desat_torque"
         run_name = "yaw_drift_clean_from_5750"
+
+
+class FanfanOmniYawSymmetryCfg(FanfanOmniYawDriftCleanCfg):
+    """Continue from yaw-clean 5100 and improve straight-motion symmetry."""
+
+    class control(FanfanOmniYawDriftCleanCfg.control):
+        torque_limit_override = None
+        torque_limits_by_joint = {
+            "hip": 10.0,
+            "thigh": 10.0,
+            "calf": 13.0,
+        }
+
+    class commands(FanfanOmniYawDriftCleanCfg.commands):
+        stand_probability = 0.12
+        pure_yaw_probability = 0.06
+        pure_lateral_probability = 0.18
+        pure_sagittal_probability = 0.50
+        resampling_time = 6.0
+
+        omni_curriculum = True
+        omni_curriculum_stages = [
+            {
+                "until_iteration": 400,
+                "lin_vel_x": [0.06, 0.35],
+                "lin_vel_y": [-0.03, 0.03],
+                "ang_vel_yaw": [-0.20, 0.20],
+            },
+            {
+                "until_iteration": 1.0e12,
+                "lin_vel_x": [-0.12, 0.46],
+                "lin_vel_y": [-0.12, 0.12],
+                "ang_vel_yaw": [-0.85, 0.85],
+            },
+        ]
+
+    class rewards(FanfanOmniYawDriftCleanCfg.rewards):
+        class scales(FanfanOmniYawDriftCleanCfg.rewards.scales):
+            straight_policy_side_balance = -0.08
+            straight_torque_side_balance = -0.18
+            straight_diagonal_target_sync = -0.35
+
+
+class FanfanOmniYawSymmetryCfgPPO(FanfanOmniYawDriftCleanCfgPPO):
+    class algorithm(FanfanOmniYawDriftCleanCfgPPO.algorithm):
+        entropy_coef = 0.00015
+
+    class runner(FanfanOmniYawDriftCleanCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "yaw_symmetry_from_5100"
+
+
+class FanfanOmniYawPathFixCfg(FanfanOmniYawSymmetryCfg):
+    """Correct visible straight-path drift found in symmetry model 5400."""
+
+    class commands(FanfanOmniYawSymmetryCfg.commands):
+        # Spend the first 150 continuation iterations correcting the measured
+        # straight-path bias, then replay the complete omni envelope.
+        stand_probability = 0.12
+        pure_yaw_probability = 0.06
+        pure_lateral_probability = 0.14
+        pure_sagittal_probability = 0.58
+        resampling_time = 6.0
+
+        omni_curriculum = True
+        omni_curriculum_stages = [
+            {
+                "until_iteration": 150,
+                "lin_vel_x": [0.12, 0.38],
+                "lin_vel_y": [-0.01, 0.01],
+                "ang_vel_yaw": [-0.08, 0.08],
+            },
+            {
+                "until_iteration": 1.0e12,
+                "lin_vel_x": [-0.12, 0.46],
+                "lin_vel_y": [-0.12, 0.12],
+                "ang_vel_yaw": [-0.85, 0.85],
+            },
+        ]
+
+    class rewards(FanfanOmniYawSymmetryCfg.rewards):
+        class scales(FanfanOmniYawSymmetryCfg.rewards.scales):
+            # Directly optimize the world-visible path drift while retaining
+            # the existing body-frame vy and heading constraints.
+            straight_path_lateral_velocity = -28.0
+            straight_lateral_drift = -28.0
+            straight_yaw_error = -13.0
+
+            # The first symmetry run increased raw-action saturation from
+            # about 52.6% to 59.7%. Keep the objectives, but stop rewarding a
+            # high-energy solution merely because both sides use equal energy.
+            straight_policy_side_balance = -0.03
+            straight_torque_side_balance = -0.08
+            straight_diagonal_target_sync = -0.18
+            policy_action_magnitude = -0.13
+            policy_action_saturation = -1.60
+
+
+class FanfanOmniYawPathFixCfgPPO(FanfanOmniYawSymmetryCfgPPO):
+    class algorithm(FanfanOmniYawSymmetryCfgPPO.algorithm):
+        entropy_coef = 0.00010
+
+    class runner(FanfanOmniYawSymmetryCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "yaw_path_fix_from_symmetry_5400"
+
+
+class FanfanOmniDiagonalCoordCfg(FanfanOmniYawDriftCleanCfg):
+    """Joint-level diagonal coordination continuation from yaw-clean 5100."""
+
+    class control(FanfanOmniYawDriftCleanCfg.control):
+        torque_limit_override = None
+        torque_limits_by_joint = {
+            "hip": 10.0,
+            "thigh": 10.0,
+            "calf": 13.0,
+        }
+
+    class commands(FanfanOmniYawDriftCleanCfg.commands):
+        stand_probability = 0.10
+        pure_yaw_probability = 0.06
+        pure_lateral_probability = 0.14
+        pure_sagittal_probability = 0.62
+        resampling_time = 6.0
+
+        omni_curriculum = True
+        omni_curriculum_stages = [
+            {
+                "until_iteration": 300,
+                "lin_vel_x": [0.08, 0.38],
+                "lin_vel_y": [-0.015, 0.015],
+                "ang_vel_yaw": [-0.10, 0.10],
+            },
+            {
+                "until_iteration": 1.0e12,
+                "lin_vel_x": [-0.12, 0.46],
+                "lin_vel_y": [-0.12, 0.12],
+                "ang_vel_yaw": [-0.85, 0.85],
+            },
+        ]
+
+    class rewards(FanfanOmniYawDriftCleanCfg.rewards):
+        class scales(FanfanOmniYawDriftCleanCfg.rewards.scales):
+            # The old front/rear hip pairing compares opposite trot phases.
+            # Replace it and the ungated sagittal-only sync with physical
+            # same-phase diagonal mirror objectives.
+            hip_symmetry = 0.0
+            diagonal_joint_sync = 0.0
+            straight_diagonal_target_mirror = -1.20
+            straight_diagonal_joint_mirror = -0.80
+            straight_diagonal_torque_mirror = -0.12
+
+            # Require both a square body and a straight world path. The path
+            # term is deliberately weaker so yaw cannot compensate for vy.
+            straight_lateral_drift = -32.0
+            straight_yaw_error = -24.0
+            straight_path_lateral_velocity = -8.0
+
+            # Prevent the coordinated solution from increasing action energy.
+            policy_action_magnitude = -0.13
+            policy_action_saturation = -1.55
+
+
+class FanfanOmniDiagonalCoordCfgPPO(FanfanOmniYawDriftCleanCfgPPO):
+    class algorithm(FanfanOmniYawDriftCleanCfgPPO.algorithm):
+        entropy_coef = 0.00015
+
+    class runner(FanfanOmniYawDriftCleanCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "diagonal_coord_from_yaw_clean_5100"
+
+
+class FanfanOmniCoordinatedStraightCfg(FanfanOmniDiagonalCoordCfg):
+    """Remove residual side slip without allowing compensating body yaw."""
+
+    class commands(FanfanOmniDiagonalCoordCfg.commands):
+        stand_probability = 0.08
+        pure_yaw_probability = 0.02
+        pure_lateral_probability = 0.04
+        pure_sagittal_probability = 0.82
+        resampling_time = 6.0
+
+        omni_curriculum_stages = [
+            {
+                "until_iteration": 200,
+                "lin_vel_x": [0.15, 0.38],
+                "lin_vel_y": [0.0, 0.0],
+                "ang_vel_yaw": [0.0, 0.0],
+            },
+            {
+                "until_iteration": 1.0e12,
+                "lin_vel_x": [-0.12, 0.46],
+                "lin_vel_y": [-0.12, 0.12],
+                "ang_vel_yaw": [-0.85, 0.85],
+            },
+        ]
+
+    class rewards(FanfanOmniDiagonalCoordCfg.rewards):
+        class scales(FanfanOmniDiagonalCoordCfg.rewards.scales):
+            # Absolute-value terms retain useful gradient at the measured
+            # 0.02-0.03 m/s side-slip level where exp/square terms stagnated.
+            straight_lateral_speed = -18.0
+            straight_heading_error = -6.0
+            straight_lateral_drift = -36.0
+            straight_yaw_error = -20.0
+            straight_path_lateral_velocity = -4.0
+
+            # Keep joint-level coordination, with a little more pressure on
+            # physical targets than on raw torque equality.
+            straight_diagonal_target_mirror = -1.40
+            straight_diagonal_joint_mirror = -0.90
+            straight_diagonal_torque_mirror = -0.10
+
+            policy_action_magnitude = -0.14
+            policy_action_saturation = -1.80
+
+
+class FanfanOmniCoordinatedStraightCfgPPO(FanfanOmniDiagonalCoordCfgPPO):
+    class algorithm(FanfanOmniDiagonalCoordCfgPPO.algorithm):
+        entropy_coef = 0.00010
+
+    class runner(FanfanOmniDiagonalCoordCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "coordinated_straight_from_diagonal_5150"
+
+
+class FanfanOmniProjectedCoordCfg(FanfanOmniDiagonalCoordCfg):
+    """Structurally guarantee straight diagonal action coordination."""
+
+    class control(FanfanOmniDiagonalCoordCfg.control):
+        project_straight_diagonal_actions = True
+
+    class domain_rand(FanfanOmniDiagonalCoordCfg.domain_rand):
+        # Preserve robustness without injecting an artificial left/right
+        # actuator mismatch that a deliberately symmetric controller cannot
+        # and should not cancel with asymmetric actions.
+        pair_diagonal_motor_strength = True
+
+    class commands(FanfanOmniDiagonalCoordCfg.commands):
+        stand_probability = 0.10
+        pure_yaw_probability = 0.06
+        pure_lateral_probability = 0.12
+        pure_sagittal_probability = 0.66
+        omni_curriculum_stages = [
+            {
+                "until_iteration": 200,
+                "lin_vel_x": [0.10, 0.38],
+                "lin_vel_y": [0.0, 0.0],
+                "ang_vel_yaw": [0.0, 0.0],
+            },
+            {
+                "until_iteration": 1.0e12,
+                "lin_vel_x": [-0.12, 0.46],
+                "lin_vel_y": [-0.12, 0.12],
+                "ang_vel_yaw": [-0.85, 0.85],
+            },
+        ]
+
+    class rewards(FanfanOmniDiagonalCoordCfg.rewards):
+        class scales(FanfanOmniDiagonalCoordCfg.rewards.scales):
+            straight_lateral_drift = -48.0
+            straight_yaw_error = -30.0
+            straight_path_lateral_velocity = -8.0
+            policy_action_magnitude = -0.14
+            policy_action_saturation = -1.80
+
+
+class FanfanOmniProjectedCoordCfgPPO(FanfanOmniDiagonalCoordCfgPPO):
+    class algorithm(FanfanOmniDiagonalCoordCfgPPO.algorithm):
+        entropy_coef = 0.00010
+
+    class runner(FanfanOmniDiagonalCoordCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "projected_coord_from_yaw_clean_5100"
+
+
+class FanfanOmniStrongSymmetryCfg(FanfanOmniDiagonalCoordCfg):
+    """High-signal soft symmetry training without rigid action projection."""
+
+    class commands(FanfanOmniDiagonalCoordCfg.commands):
+        stand_probability = 0.06
+        pure_yaw_probability = 0.02
+        pure_lateral_probability = 0.04
+        pure_sagittal_probability = 0.86
+        resampling_time = 6.0
+        omni_curriculum_stages = [
+            {
+                "until_iteration": 150,
+                "lin_vel_x": [0.15, 0.38],
+                "lin_vel_y": [0.0, 0.0],
+                "ang_vel_yaw": [0.0, 0.0],
+            },
+            {
+                "until_iteration": 1.0e12,
+                "lin_vel_x": [-0.12, 0.46],
+                "lin_vel_y": [-0.12, 0.12],
+                "ang_vel_yaw": [-0.85, 0.85],
+            },
+        ]
+
+    class rewards(FanfanOmniDiagonalCoordCfg.rewards):
+        class scales(FanfanOmniDiagonalCoordCfg.rewards.scales):
+            # Calibrated so the measured 0.02-0.03 m/s residual contributes
+            # several reward units per second instead of less than one.
+            straight_lateral_speed = -200.0
+            straight_heading_error = -40.0
+            straight_lateral_drift = -80.0
+            straight_yaw_error = -40.0
+            straight_path_lateral_velocity = -10.0
+
+            straight_diagonal_target_mirror = -10.0
+            straight_diagonal_joint_mirror = -6.0
+            straight_diagonal_torque_mirror = -0.50
+
+            policy_action_magnitude = -0.15
+            policy_action_saturation = -2.00
+
+
+class FanfanOmniStrongSymmetryCfgPPO(FanfanOmniDiagonalCoordCfgPPO):
+    class algorithm(FanfanOmniDiagonalCoordCfgPPO.algorithm):
+        entropy_coef = 0.00010
+
+    class runner(FanfanOmniDiagonalCoordCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "strong_symmetry_from_yaw_clean_5100"
+
+
+class FanfanOmniNoCompSymmetryCfg(FanfanOmniDiagonalCoordCfg):
+    """Symmetry polish that forbids the yaw/side-slip compensation shortcut."""
+
+    class commands(FanfanOmniDiagonalCoordCfg.commands):
+        stand_probability = 0.06
+        pure_yaw_probability = 0.02
+        pure_lateral_probability = 0.04
+        pure_sagittal_probability = 0.86
+        resampling_time = 6.0
+        omni_curriculum_stages = [
+            {
+                "until_iteration": 150,
+                "lin_vel_x": [0.15, 0.38],
+                "lin_vel_y": [0.0, 0.0],
+                "ang_vel_yaw": [0.0, 0.0],
+            },
+            {
+                "until_iteration": 1.0e12,
+                "lin_vel_x": [-0.12, 0.46],
+                "lin_vel_y": [-0.12, 0.12],
+                "ang_vel_yaw": [-0.85, 0.85],
+            },
+        ]
+
+    class rewards(FanfanOmniDiagonalCoordCfg.rewards):
+        class scales(FanfanOmniDiagonalCoordCfg.rewards.scales):
+            # Do not reward world-path cancellation. Require each underlying
+            # error to independently approach zero.
+            straight_path_lateral_velocity = 0.0
+            straight_lateral_speed = -250.0
+            straight_heading_error = -120.0
+            straight_lateral_drift = -80.0
+            straight_yaw_error = -80.0
+
+            straight_diagonal_target_mirror = -5.0
+            straight_diagonal_joint_mirror = -3.0
+            straight_diagonal_torque_mirror = -0.20
+            policy_action_magnitude = -0.14
+            policy_action_saturation = -1.80
+
+
+class FanfanOmniNoCompSymmetryCfgPPO(FanfanOmniDiagonalCoordCfgPPO):
+    class algorithm(FanfanOmniDiagonalCoordCfgPPO.algorithm):
+        entropy_coef = 0.0
+        learning_rate = 1.0e-4
+        desired_kl = 0.003
+
+    class runner(FanfanOmniDiagonalCoordCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "no_comp_symmetry_from_yaw_clean_5100"
+
+
+class FanfanOmniHeadingBoundSymmetryCfg(FanfanOmniNoCompSymmetryCfg):
+    """Reject compensating-yaw policies during straight symmetry training."""
+
+    class rewards(FanfanOmniNoCompSymmetryCfg.rewards):
+        terminate_straight_heading_error = 0.08
+
+        class scales(FanfanOmniNoCompSymmetryCfg.rewards.scales):
+            termination = -20.0
+            straight_lateral_speed = -250.0
+            straight_heading_error = -160.0
+            straight_path_lateral_velocity = 0.0
+
+
+class FanfanOmniHeadingBoundSymmetryCfgPPO(FanfanOmniNoCompSymmetryCfgPPO):
+    class runner(FanfanOmniNoCompSymmetryCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "heading_bound_symmetry_from_yaw_clean_5100"
+
+
+class FanfanOmniForceCoordCfg(FanfanOmniHeadingBoundSymmetryCfg):
+    """Coordinate straight gait through ground reaction forces, not action equality."""
+
+    class domain_rand(FanfanOmniHeadingBoundSymmetryCfg.domain_rand):
+        # Independent, unobserved actuator asymmetry obscures whether the gait
+        # itself is balanced. Validate actuator robustness separately.
+        randomize_motor_strength = False
+
+    class commands(FanfanOmniHeadingBoundSymmetryCfg.commands):
+        stand_probability = 0.06
+        pure_yaw_probability = 0.03
+        pure_lateral_probability = 0.08
+        pure_sagittal_probability = 0.78
+        resampling_time = 6.0
+        omni_curriculum_stages = [
+            {
+                "until_iteration": 120,
+                "lin_vel_x": [0.12, 0.40],
+                "lin_vel_y": [0.0, 0.0],
+                "ang_vel_yaw": [0.0, 0.0],
+            },
+            {
+                "until_iteration": 1.0e12,
+                "lin_vel_x": [-0.12, 0.46],
+                "lin_vel_y": [-0.12, 0.12],
+                "ang_vel_yaw": [-0.85, 0.85],
+            },
+        ]
+
+    class rewards(FanfanOmniHeadingBoundSymmetryCfg.rewards):
+        class scales(FanfanOmniHeadingBoundSymmetryCfg.rewards.scales):
+            # The hard-projection experiment proved that equal targets can
+            # produce unequal forces on this front/rear-asymmetric mechanism.
+            straight_diagonal_target_mirror = -0.40
+            straight_diagonal_joint_mirror = -0.25
+            straight_diagonal_torque_mirror = -0.08
+
+            straight_contact_lateral_force = -18.0
+            straight_contact_yaw_moment = -24.0
+            straight_contact_side_load_balance = -6.0
+            straight_diagonal_contact_sync = -1.2
+
+            straight_lateral_speed = -180.0
+            straight_heading_error = -120.0
+            straight_lateral_drift = -60.0
+            straight_yaw_error = -60.0
+            policy_action_magnitude = -0.15
+            policy_action_saturation = -2.0
+
+
+class FanfanOmniForceCoordCfgPPO(FanfanOmniHeadingBoundSymmetryCfgPPO):
+    class algorithm(FanfanOmniHeadingBoundSymmetryCfgPPO.algorithm):
+        learning_rate = 7.5e-5
+        desired_kl = 0.0025
+
+    class runner(FanfanOmniHeadingBoundSymmetryCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "force_coord_from_heading_bound_5100"
+
+
+class FanfanOmniForceDesatCfg(FanfanOmniForceCoordCfg):
+    """Retain force coordination while reducing normalized action saturation."""
+
+    class control(FanfanOmniForceCoordCfg.control):
+        action_scale = 0.232
+        rear_action_scale = 0.254
+        hip_action_scale = 0.100
+
+    class commands(FanfanOmniForceCoordCfg.commands):
+        omni_curriculum_stages = [
+            {
+                "until_iteration": 80,
+                "lin_vel_x": [0.12, 0.40],
+                "lin_vel_y": [0.0, 0.0],
+                "ang_vel_yaw": [0.0, 0.0],
+            },
+            {
+                "until_iteration": 1.0e12,
+                "lin_vel_x": [-0.12, 0.46],
+                "lin_vel_y": [-0.12, 0.12],
+                "ang_vel_yaw": [-0.85, 0.85],
+            },
+        ]
+
+    class rewards(FanfanOmniForceCoordCfg.rewards):
+        action_saturation_threshold = 0.70
+
+        class scales(FanfanOmniForceCoordCfg.rewards.scales):
+            policy_action_magnitude = -0.24
+            policy_action_saturation = -5.0
+
+
+class FanfanOmniForceDesatCfgPPO(FanfanOmniForceCoordCfgPPO):
+    class algorithm(FanfanOmniForceCoordCfgPPO.algorithm):
+        learning_rate = 6.0e-5
+        desired_kl = 0.002
+
+    class runner(FanfanOmniForceCoordCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "force_desat_from_force_coord_5250"
+
+
+class FanfanOmniCalibratedSymmetryCfg(FanfanOmniHeadingBoundSymmetryCfg):
+    """Selected 5100 plus straight-only cross-simulator action calibration."""
+
+    class control(FanfanOmniHeadingBoundSymmetryCfg.control):
+        straight_action_bias_by_joint = {
+            "FL_hip_joint": 0.07,
+            "FR_hip_joint": -0.07,
+            "RL_hip_joint": 0.07,
+            "RR_hip_joint": -0.07,
+            "FL_thigh_joint": -0.04,
+            "FR_thigh_joint": -0.04,
+            "RL_thigh_joint": 0.04,
+            "RR_thigh_joint": 0.04,
+            "FL_calf_joint": -0.01,
+            "FR_calf_joint": 0.01,
+            "RL_calf_joint": 0.01,
+            "RR_calf_joint": -0.01,
+        }
+
+
+class FanfanOmniCalibratedSymmetryCfgPPO(FanfanOmniHeadingBoundSymmetryCfgPPO):
+    class runner(FanfanOmniHeadingBoundSymmetryCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "calibrated_symmetry_5100"
