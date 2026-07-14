@@ -1368,6 +1368,414 @@ class FanfanOmniForceDesatCfgPPO(FanfanOmniForceCoordCfgPPO):
         run_name = "force_desat_from_force_coord_5250"
 
 
+class FanfanOmniHighSpeedTransitionCfg(FanfanOmniForceCoordCfg):
+    """Fast omnidirectional tracking with frequent mixed-command transitions."""
+
+    class control(FanfanOmniForceCoordCfg.control):
+        action_scale = 0.225
+        rear_action_scale = 0.245
+        hip_action_scale = 0.098
+        policy_action_filter_alpha = 0.32
+        policy_action_rate_limits = {
+            "hip": 0.95 / 0.098,
+            "thigh": 1.75 / 0.225,
+            "calf": 2.70 / 0.225,
+        }
+        policy_action_accel_limits = {
+            "hip": 34.0 / 0.098,
+            "thigh": 58.0 / 0.225,
+            "calf": 96.0 / 0.225,
+        }
+
+    class domain_rand(FanfanOmniForceCoordCfg.domain_rand):
+        randomize_friction = True
+        friction_range = [0.65, 1.30]
+        randomize_base_mass = True
+        added_mass_range = [-0.30, 0.30]
+        randomize_base_com = True
+        base_com_x_range = [-0.010, 0.010]
+        base_com_y_range = [-0.018, 0.018]
+        randomize_motor_strength = True
+        motor_strength_range = [0.85, 1.15]
+        pair_diagonal_motor_strength = False
+        push_robots = True
+        push_interval_s = 5
+        max_push_vel_xy = 0.20
+
+    class commands(FanfanOmniForceCoordCfg.commands):
+        resampling_time = 2.0
+        stand_probability = 0.08
+        pure_yaw_probability = 0.10
+        pure_lateral_probability = 0.14
+        pure_sagittal_probability = 0.18
+        hard_transition_probability = 0.28
+        omni_curriculum = True
+        omni_curriculum_stages = [
+            {
+                "until_iteration": 180,
+                "lin_vel_x": [-0.16, 0.50],
+                "lin_vel_y": [-0.16, 0.16],
+                "ang_vel_yaw": [-1.00, 1.00],
+            },
+            {
+                "until_iteration": 420,
+                "lin_vel_x": [-0.22, 0.56],
+                "lin_vel_y": [-0.22, 0.22],
+                "ang_vel_yaw": [-1.18, 1.18],
+            },
+            {
+                "until_iteration": 1.0e12,
+                "lin_vel_x": [-0.25, 0.60],
+                "lin_vel_y": [-0.26, 0.26],
+                "ang_vel_yaw": [-1.30, 1.30],
+            },
+        ]
+
+        class ranges(FanfanOmniForceCoordCfg.commands.ranges):
+            lin_vel_x = [-0.25, 0.60]
+            lin_vel_y = [-0.26, 0.26]
+            ang_vel_yaw = [-1.30, 1.30]
+
+    class rewards(FanfanOmniForceCoordCfg.rewards):
+        tracking_sigma = 0.010
+        longitudinal_tracking_sigma = 0.0010
+        lateral_tracking_sigma = 0.00018
+        command_transition_duration = 1.2
+        terminate_straight_heading_error = 0.10
+
+        class scales(FanfanOmniForceCoordCfg.rewards.scales):
+            tracking_lin_vel = 18.0
+            tracking_longitudinal_vel = 15.0
+            tracking_lateral_vel = 18.0
+            tracking_ang_vel = 12.0
+            heading_tracking = 5.0
+            planar_direction_error = -8.0
+            command_transition_tracking = 7.0
+            absolute_longitudinal_tracking_error = -12.0
+            absolute_lateral_tracking_error = -14.0
+            absolute_yaw_tracking_error = -8.0
+
+            translation_yaw_error = -15.0
+            lateral_yaw_error = -17.0
+            diagonal_yaw_error = -13.0
+            lateral_forward_drift = -14.0
+            straight_lateral_speed = -110.0
+            straight_heading_error = -80.0
+            straight_lateral_drift = -45.0
+            straight_yaw_error = -45.0
+
+            diagonal_contact_sync_all = -1.5
+            straight_diagonal_target_mirror = -0.30
+            straight_diagonal_joint_mirror = -0.18
+            straight_diagonal_torque_mirror = -0.06
+
+            action_magnitude = -0.018
+            policy_action_magnitude = -0.055
+            action_rate = -0.16
+            policy_action_rate = -0.24
+            action_saturation = -0.25
+            policy_action_saturation = -0.65
+            policy_filter_gap = -0.25
+
+            torque_near_limit = -0.18
+            peak_torque = -0.18
+            sustained_torque = -0.24
+            torque_clip = -0.40
+            torques = -7.0e-6
+
+
+class FanfanOmniHighSpeedTransitionCfgPPO(FanfanOmniForceCoordCfgPPO):
+    class algorithm(FanfanOmniForceCoordCfgPPO.algorithm):
+        entropy_coef = 0.0007
+        learning_rate = 1.0e-4
+        desired_kl = 0.004
+
+    class runner(FanfanOmniForceCoordCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "high_speed_transition_from_force_coord_5280"
+
+
+class FanfanOmniHighAuthorityTransitionCfg(FanfanOmniHighSpeedTransitionCfg):
+    """Add physical stride authority after the high-speed actor saturates."""
+
+    class control(FanfanOmniHighSpeedTransitionCfg.control):
+        action_scale = 0.260
+        rear_action_scale = 0.280
+        hip_action_scale = 0.130
+        policy_action_filter_alpha = 0.36
+        policy_action_rate_limits = {
+            "hip": 1.25 / 0.130,
+            "thigh": 2.10 / 0.260,
+            "calf": 3.10 / 0.260,
+        }
+        policy_action_accel_limits = {
+            "hip": 46.0 / 0.130,
+            "thigh": 72.0 / 0.260,
+            "calf": 116.0 / 0.260,
+        }
+
+    class commands(FanfanOmniHighSpeedTransitionCfg.commands):
+        resampling_time = 2.5
+        hard_transition_probability = 0.25
+        omni_curriculum_stages = [
+            {
+                "until_iteration": 140,
+                "lin_vel_x": [-0.20, 0.54],
+                "lin_vel_y": [-0.20, 0.20],
+                "ang_vel_yaw": [-1.10, 1.10],
+            },
+            {
+                "until_iteration": 1.0e12,
+                "lin_vel_x": [-0.25, 0.60],
+                "lin_vel_y": [-0.26, 0.26],
+                "ang_vel_yaw": [-1.30, 1.30],
+            },
+        ]
+
+    class rewards(FanfanOmniHighSpeedTransitionCfg.rewards):
+        class scales(FanfanOmniHighSpeedTransitionCfg.rewards.scales):
+            absolute_longitudinal_tracking_error = -18.0
+            absolute_lateral_tracking_error = -20.0
+            absolute_yaw_tracking_error = -10.0
+            planar_direction_error = -10.0
+            command_transition_tracking = 8.0
+
+            action_magnitude = -0.014
+            policy_action_magnitude = -0.040
+            action_saturation = -0.30
+            policy_action_saturation = -0.90
+            policy_filter_gap = -0.22
+
+            torque_near_limit = -0.24
+            peak_torque = -0.24
+            sustained_torque = -0.30
+            torque_clip = -0.50
+
+
+class FanfanOmniHighAuthorityTransitionCfgPPO(
+        FanfanOmniHighSpeedTransitionCfgPPO):
+    class algorithm(FanfanOmniHighSpeedTransitionCfgPPO.algorithm):
+        entropy_coef = 0.0015
+        learning_rate = 2.0e-4
+        desired_kl = 0.008
+
+    class runner(FanfanOmniHighSpeedTransitionCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "high_authority_transition"
+
+
+class FanfanOmniHighAuthorityDirectionCfg(
+        FanfanOmniHighAuthorityTransitionCfg):
+    """Retain high-speed authority while rejecting directional drift."""
+
+    class rewards(FanfanOmniHighAuthorityTransitionCfg.rewards):
+        terminate_straight_heading_error = 0.06
+        terminate_translation_heading_error = 0.075
+
+        class scales(FanfanOmniHighAuthorityTransitionCfg.rewards.scales):
+            termination = -100.0
+            translation_heading_error_abs = -220.0
+            pure_lateral_forward_speed = -120.0
+            planar_direction_error = -16.0
+
+            straight_lateral_speed = -180.0
+            straight_heading_error = -180.0
+            straight_lateral_drift = -90.0
+            straight_yaw_error = -120.0
+            translation_yaw_error = -25.0
+            lateral_yaw_error = -28.0
+            diagonal_yaw_error = -22.0
+            lateral_forward_drift = -22.0
+
+
+class FanfanOmniHighAuthorityDirectionCfgPPO(
+        FanfanOmniHighAuthorityTransitionCfgPPO):
+    class algorithm(FanfanOmniHighAuthorityTransitionCfgPPO.algorithm):
+        entropy_coef = 0.0002
+        learning_rate = 8.0e-5
+        desired_kl = 0.003
+
+    class runner(FanfanOmniHighAuthorityTransitionCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "high_authority_direction"
+
+
+class FanfanOmniHighAuthorityClosedLoopCfg(
+        FanfanOmniHighAuthorityDirectionCfg):
+    """Deployment-oriented outer velocity and heading feedback."""
+
+    class control(FanfanOmniHighAuthorityDirectionCfg.control):
+        command_feedback_longitudinal_gain = 0.9
+        command_feedback_lateral_gain = 1.2
+        command_feedback_yaw_gain = 0.45
+        command_feedback_heading_gain = 1.8
+        command_feedback_heading_damping = 0.65
+
+
+class FanfanOmniHighAuthorityClosedLoopCfgPPO(
+        FanfanOmniHighAuthorityDirectionCfgPPO):
+    class runner(FanfanOmniHighAuthorityDirectionCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "high_authority_closed_loop"
+
+
+class FanfanOmniHighCadenceCfg(FanfanOmniForceCoordCfg):
+    """Probe a faster cadence without changing the selected actor weights."""
+
+    class commands(FanfanOmniForceCoordCfg.commands):
+        omni_curriculum = False
+
+        class ranges(FanfanOmniForceCoordCfg.commands.ranges):
+            lin_vel_x = [-0.25, 0.60]
+            lin_vel_y = [-0.26, 0.26]
+            ang_vel_yaw = [-1.30, 1.30]
+
+    class rewards(FanfanOmniForceCoordCfg.rewards):
+        gait_period = 0.45
+
+
+class FanfanOmniHighCadenceCfgPPO(FanfanOmniForceCoordCfgPPO):
+    class runner(FanfanOmniForceCoordCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "high_cadence_probe"
+
+
+class FanfanOmniSymmetricTransitionCfg(FanfanOmniForceCoordCfg):
+    """High-cadence all-motion task with transition and hardware robustness."""
+
+    class control(FanfanOmniForceCoordCfg.control):
+        # Preserve the authority of the selected 5280 actor. The smaller
+        # high-speed envelope was the main cause of forward under-tracking.
+        action_scale = 0.215
+        rear_action_scale = 0.235
+        hip_action_scale = 0.115
+        policy_action_filter_alpha = 0.30
+        policy_action_rate_limits = {
+            "hip": 1.05 / 0.115,
+            "thigh": 1.70 / 0.215,
+            "calf": 2.65 / 0.215,
+        }
+        policy_action_accel_limits = {
+            "hip": 40.0 / 0.115,
+            "thigh": 58.0 / 0.215,
+            "calf": 94.0 / 0.215,
+        }
+        command_feedback_longitudinal_gain = 0.40
+        command_feedback_lateral_gain = 0.80
+        command_feedback_yaw_gain = 0.25
+        command_feedback_heading_gain = 4.00
+        command_feedback_heading_damping = 1.00
+        command_feedback_diagonal_longitudinal_scale = 0.60
+        enforce_policy_symmetry = True
+
+    class domain_rand(FanfanOmniForceCoordCfg.domain_rand):
+        randomize_friction = True
+        friction_range = [0.75, 1.20]
+        randomize_base_mass = True
+        added_mass_range = [-0.20, 0.20]
+        randomize_base_com = True
+        base_com_x_range = [-0.006, 0.006]
+        base_com_y_range = [-0.010, 0.010]
+        randomize_motor_strength = True
+        motor_strength_range = [0.90, 1.10]
+        pair_diagonal_motor_strength = False
+        push_robots = True
+        push_interval_s = 6
+        max_push_vel_xy = 0.14
+
+    class commands(FanfanOmniForceCoordCfg.commands):
+        resampling_time = 2.5
+        stand_probability = 0.04
+        pure_yaw_probability = 0.08
+        pure_lateral_probability = 0.22
+        pure_sagittal_probability = 0.14
+        hard_transition_probability = 0.30
+        omni_curriculum = False
+        omni_curriculum_stages = [
+            {
+                "until_iteration": 100,
+                "lin_vel_x": [-0.18, 0.50],
+                "lin_vel_y": [-0.18, 0.18],
+                "ang_vel_yaw": [-1.00, 1.00],
+            },
+            {
+                "until_iteration": 240,
+                "lin_vel_x": [-0.22, 0.56],
+                "lin_vel_y": [-0.22, 0.22],
+                "ang_vel_yaw": [-1.18, 1.18],
+            },
+            {
+                "until_iteration": 1.0e12,
+                "lin_vel_x": [-0.25, 0.60],
+                "lin_vel_y": [-0.26, 0.26],
+                "ang_vel_yaw": [-1.30, 1.30],
+            },
+        ]
+
+        class ranges(FanfanOmniForceCoordCfg.commands.ranges):
+            lin_vel_x = [-0.25, 0.60]
+            lin_vel_y = [-0.26, 0.26]
+            ang_vel_yaw = [-1.30, 1.30]
+
+    class rewards(FanfanOmniForceCoordCfg.rewards):
+        gait_period = 0.45
+        tracking_sigma = 0.012
+        longitudinal_tracking_sigma = 0.0015
+        lateral_tracking_sigma = 0.00025
+        command_transition_duration = 1.2
+        terminate_straight_heading_error = 0.10
+
+        class scales(FanfanOmniForceCoordCfg.rewards.scales):
+            tracking_lin_vel = 18.0
+            tracking_longitudinal_vel = 15.0
+            tracking_lateral_vel = 25.0
+            tracking_ang_vel = 11.0
+            heading_tracking = 5.0
+            absolute_longitudinal_tracking_error = -15.0
+            absolute_lateral_tracking_error = -40.0
+            absolute_yaw_tracking_error = -9.0
+            planar_direction_error = -25.0
+            command_transition_tracking = 8.0
+
+            translation_heading_error_abs = -80.0
+            pure_lateral_forward_speed = -80.0
+            translation_yaw_error = -20.0
+            lateral_yaw_error = -80.0
+            diagonal_yaw_error = -17.0
+            lateral_forward_drift = -18.0
+            straight_lateral_speed = -180.0
+            straight_heading_error = -140.0
+            straight_lateral_drift = -75.0
+            straight_yaw_error = -85.0
+            diagonal_contact_sync_all = -1.5
+
+            action_magnitude = -0.020
+            policy_action_magnitude = -0.070
+            action_rate = -0.18
+            policy_action_rate = -0.25
+            action_saturation = -0.30
+            policy_action_saturation = -0.80
+            policy_filter_gap = -0.28
+            torque_near_limit = -0.20
+            peak_torque = -0.20
+            sustained_torque = -0.26
+            torque_clip = -0.42
+
+
+class FanfanOmniSymmetricTransitionCfgPPO(FanfanOmniForceCoordCfgPPO):
+    class algorithm(FanfanOmniForceCoordCfgPPO.algorithm):
+        entropy_coef = 0.0008
+        learning_rate = 1.0e-4
+        desired_kl = 0.0035
+
+    class runner(FanfanOmniForceCoordCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "symmetric_transition_from_force_coord_5280"
+        # The deployable actor is exactly symmetrized; this term keeps each
+        # branch close while leaving PPO enough freedom to learn fast diagonals.
+        symmetry_coef = 1.0
+
+
 class FanfanOmniCalibratedSymmetryCfg(FanfanOmniHeadingBoundSymmetryCfg):
     """Selected 5100 plus straight-only cross-simulator action calibration."""
 

@@ -1,6 +1,10 @@
 """Show the omni policy and log play data to CSV for analysis."""
 import isaacgym
 import torch
+from legged_gym.algorithms.symmetry_ppo import (
+    mirror_fanfan_actions,
+    mirror_fanfan_observations,
+)
 import os
 import csv
 from datetime import datetime
@@ -34,6 +38,18 @@ FAST_COMMANDS = (
     (0.20, 0.07, 0.00),
 )
 
+HIGH_SPEED_COMMANDS = (
+    (0.45, 0.00, 0.00),
+    (-0.18, 0.00, 0.00),
+    (0.00, 0.15, 0.00),
+    (0.00, -0.15, 0.00),
+    (0.00, 0.00, 0.90),
+    (0.00, 0.00, -0.90),
+    (0.35, 0.00, 0.80),
+    (-0.15, 0.00, 0.60),
+    (0.35, 0.15, 0.00),
+)
+
 
 def quat_xyzw_to_yaw(quat):
     qx = quat[:, 0]
@@ -58,10 +74,15 @@ def play(args):
     env_cfg.domain_rand.randomize_friction = False
     env_cfg.domain_rand.push_robots = False
     env_cfg.domain_rand.randomize_motor_strength = False
+    env_cfg.domain_rand.randomize_base_mass = False
+    if hasattr(env_cfg.domain_rand, "randomize_base_com"):
+        env_cfg.domain_rand.randomize_base_com = False
     if hasattr(env_cfg.rewards, "terminate_straight_heading_error"):
         # Training-only guard: evaluation must reveal accumulated heading
         # error instead of hiding it behind an automatic environment reset.
         env_cfg.rewards.terminate_straight_heading_error = None
+    if hasattr(env_cfg.rewards, "terminate_translation_heading_error"):
+        env_cfg.rewards.terminate_translation_heading_error = None
     env_cfg.env.test = True
 
     env, _ = task_registry.make_env(args.task, args=args, env_cfg=env_cfg)
@@ -71,10 +92,31 @@ def play(args):
         env=env, args=args, train_cfg=train_cfg
     )
     policy = runner.get_inference_policy(device=env.device)
+    if (
+        getattr(env_cfg.control, "enforce_policy_symmetry", False)
+        or os.environ.get("FANFAN_SYMMETRY_ENSEMBLE", "0") == "1"
+    ):
+        base_policy = policy
 
-    matrix = FAST_COMMANDS if any(
-        tag in args.task for tag in ("fast", "smooth", "filtered")
-    ) else COMMANDS
+        def policy(observations):
+            direct = base_policy(observations)
+            mirrored = mirror_fanfan_actions(
+                base_policy(mirror_fanfan_observations(observations))
+            )
+            return 0.5 * (direct + mirrored)
+
+    if any(tag in args.task for tag in (
+        "high_speed_transition", "high_authority_transition"
+        , "high_authority_direction"
+        , "high_authority_closed_loop"
+        , "high_cadence"
+        , "symmetric_transition"
+    )):
+        matrix = HIGH_SPEED_COMMANDS
+    elif any(tag in args.task for tag in ("fast", "smooth", "filtered")):
+        matrix = FAST_COMMANDS
+    else:
+        matrix = COMMANDS
 
     commands = torch.tensor(matrix, device=env.device).repeat_interleave(2, 0)
     commands = commands[:env.num_envs]
@@ -118,9 +160,24 @@ def play(args):
     print("[play_omni] press Ctrl+C to stop and save CSV.")
 
     step = 0
+    transition_interval_steps = max(1, int(2.0 / env.dt))
+    transition_eval = os.environ.get("FANFAN_PLAY_TRANSITIONS", "1") != "0"
 
     try:
         while True:
+            if (
+                transition_eval
+                and any(tag in args.task for tag in (
+                    "high_speed_transition", "high_authority_transition"
+                    , "high_authority_direction"
+                    , "high_authority_closed_loop"
+                    , "high_cadence"
+                    , "symmetric_transition"
+                ))
+                and step > 0
+                and step % transition_interval_steps == 0
+            ):
+                commands = torch.roll(commands, shifts=2, dims=0)
             env.commands[:, :3] = commands
             env.compute_observations()
             obs = env.get_observations()

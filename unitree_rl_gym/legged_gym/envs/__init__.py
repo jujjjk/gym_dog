@@ -23,6 +23,16 @@ from legged_gym.envs.fanfan.fanfan_omni_safe_config import (
     FanfanOmniHeadingBoundSymmetryCfg, FanfanOmniHeadingBoundSymmetryCfgPPO,
     FanfanOmniForceCoordCfg, FanfanOmniForceCoordCfgPPO,
     FanfanOmniForceDesatCfg, FanfanOmniForceDesatCfgPPO,
+    FanfanOmniHighSpeedTransitionCfg, FanfanOmniHighSpeedTransitionCfgPPO,
+    FanfanOmniHighAuthorityTransitionCfg,
+    FanfanOmniHighAuthorityTransitionCfgPPO,
+    FanfanOmniHighAuthorityDirectionCfg,
+    FanfanOmniHighAuthorityDirectionCfgPPO,
+    FanfanOmniHighAuthorityClosedLoopCfg,
+    FanfanOmniHighAuthorityClosedLoopCfgPPO,
+    FanfanOmniHighCadenceCfg, FanfanOmniHighCadenceCfgPPO,
+    FanfanOmniSymmetricTransitionCfg,
+    FanfanOmniSymmetricTransitionCfgPPO,
     FanfanOmniCalibratedSymmetryCfg, FanfanOmniCalibratedSymmetryCfgPPO,
 )
 from legged_gym.envs.fanfan_rouhe.fanfan_config import FanfanRouheRoughCfg, FanfanRouheRoughCfgPPO
@@ -140,6 +150,42 @@ task_registry.register(
     FanfanRobot,
     FanfanOmniForceDesatCfg(),
     FanfanOmniForceDesatCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_high_speed_transition",
+    FanfanRobot,
+    FanfanOmniHighSpeedTransitionCfg(),
+    FanfanOmniHighSpeedTransitionCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_high_authority_transition",
+    FanfanRobot,
+    FanfanOmniHighAuthorityTransitionCfg(),
+    FanfanOmniHighAuthorityTransitionCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_high_authority_direction",
+    FanfanRobot,
+    FanfanOmniHighAuthorityDirectionCfg(),
+    FanfanOmniHighAuthorityDirectionCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_high_authority_closed_loop",
+    FanfanRobot,
+    FanfanOmniHighAuthorityClosedLoopCfg(),
+    FanfanOmniHighAuthorityClosedLoopCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_high_cadence",
+    FanfanRobot,
+    FanfanOmniHighCadenceCfg(),
+    FanfanOmniHighCadenceCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_symmetric_transition",
+    FanfanRobot,
+    FanfanOmniSymmetricTransitionCfg(),
+    FanfanOmniSymmetricTransitionCfgPPO(),
 )
 task_registry.register(
     "fanfan_omni_calibrated_symmetry",

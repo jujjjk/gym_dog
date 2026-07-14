@@ -15,6 +15,75 @@ class Actor(torch.nn.Sequential):
 
     def forward(self, observations):
         control = getattr(self.cfg, "control", None)
+        longitudinal_gain = float(getattr(
+            control, "command_feedback_longitudinal_gain", 0.0
+        ))
+        lateral_gain = float(getattr(
+            control, "command_feedback_lateral_gain", 0.0
+        ))
+        yaw_gain = float(getattr(
+            control, "command_feedback_yaw_gain", 0.0
+        ))
+        heading_gain = float(getattr(
+            control, "command_feedback_heading_gain", 0.0
+        ))
+        heading_damping = float(getattr(
+            control, "command_feedback_heading_damping", 0.0
+        ))
+        diagonal_x_scale = float(getattr(
+            control, "command_feedback_diagonal_longitudinal_scale", 1.0
+        ))
+        if any(gain != 0.0 for gain in (
+            longitudinal_gain, lateral_gain, yaw_gain, heading_gain
+        )):
+            lin_scale = float(self.cfg.normalization.obs_scales.lin_vel)
+            ang_scale = float(self.cfg.normalization.obs_scales.ang_vel)
+            vx = observations[:, 0] / lin_scale
+            vy = observations[:, 1] / lin_scale
+            yaw_rate = observations[:, 5] / ang_scale
+            cmd_x = observations[:, 9] / lin_scale
+            cmd_y = observations[:, 10] / lin_scale
+            cmd_yaw = observations[:, 11] / ang_scale
+            effective_x = cmd_x + longitudinal_gain * (cmd_x - vx)
+            effective_y = cmd_y + lateral_gain * (cmd_y - vy)
+            effective_yaw = cmd_yaw + yaw_gain * (cmd_yaw - yaw_rate)
+            diagonal = (
+                (torch.abs(cmd_x) > 0.05)
+                & (torch.abs(cmd_y) > 0.05)
+                & (torch.abs(cmd_yaw) < 0.05)
+            )
+            effective_x = torch.where(
+                diagonal, diagonal_x_scale * effective_x, effective_x
+            )
+            heading_error = torch.atan2(
+                observations[:, 50], observations[:, 51]
+            )
+            heading_hold = (
+                torch.sqrt(cmd_x * cmd_x + cmd_y * cmd_y) > 0.04
+            ) & (torch.abs(cmd_yaw) < 0.05)
+            heading_correction = (
+                heading_gain * heading_error - heading_damping * yaw_rate
+            )
+            effective_yaw = torch.where(
+                heading_hold, heading_correction, effective_yaw
+            )
+            ranges = self.cfg.commands.ranges
+            effective_x = effective_x.clamp(
+                ranges.lin_vel_x[0], ranges.lin_vel_x[1]
+            )
+            effective_y = effective_y.clamp(
+                ranges.lin_vel_y[0], ranges.lin_vel_y[1]
+            )
+            effective_yaw = effective_yaw.clamp(
+                ranges.ang_vel_yaw[0], ranges.ang_vel_yaw[1]
+            )
+            observations = torch.cat((
+                observations[:, :9],
+                (effective_x * lin_scale).unsqueeze(1),
+                (effective_y * lin_scale).unsqueeze(1),
+                (effective_yaw * ang_scale).unsqueeze(1),
+                observations[:, 12:],
+            ), dim=1)
         feedback_gain = float(getattr(
             control, "straight_vy_feedback_gain", 0.0
         ))
@@ -70,6 +139,31 @@ class Actor(torch.nn.Sequential):
             raw = base_raw + blend * (corrected_raw - base_raw)
         else:
             raw = base_raw
+        if bool(getattr(control, "enforce_policy_symmetry", False)):
+            mirrored_observations = observations.clone()
+            mirrored_observations[:, 1] *= -1.0
+            mirrored_observations[:, 7] *= -1.0
+            mirrored_observations[:, 10] *= -1.0
+            mirrored_observations[:, 3] *= -1.0
+            mirrored_observations[:, 5] *= -1.0
+            mirrored_observations[:, 11] *= -1.0
+            leg_mirror = torch.tensor(
+                [1, 0, 3, 2], dtype=torch.long,
+                device=observations.device,
+            )
+            joint_sign = observations.new_tensor([-1.0, 1.0, 1.0])
+            for start in (12, 24, 36):
+                block = observations[:, start:start + 12].reshape(-1, 4, 3)
+                block = block.index_select(1, leg_mirror) * joint_sign
+                mirrored_observations[:, start:start + 12] = block.reshape(-1, 12)
+            mirrored_observations[:, 48:50] *= -1.0
+            mirrored_observations[:, 50] *= -1.0
+            mirrored_raw = super().forward(mirrored_observations)
+            mirrored_actions = mirrored_raw.reshape(-1, 4, 3)
+            mirrored_actions = (
+                mirrored_actions.index_select(1, leg_mirror) * joint_sign
+            ).reshape(-1, 12)
+            raw = 0.5 * (raw + mirrored_actions)
         bias_cfg = getattr(
             control,
             "straight_action_bias_by_joint",
@@ -177,6 +271,13 @@ def deployment_config(cfg, checkpoint, gym_root):
                    "straight_vy_feedback_gain":getattr(cfg.control,"straight_vy_feedback_gain",0.0),
                    "straight_vx_feedback_boost":getattr(cfg.control,"straight_vx_feedback_boost",0.0),
                    "straight_vy_feedback_sagittal_blend":getattr(cfg.control,"straight_vy_feedback_sagittal_blend",1.0),
+                   "command_feedback_longitudinal_gain":getattr(cfg.control,"command_feedback_longitudinal_gain",0.0),
+                   "command_feedback_lateral_gain":getattr(cfg.control,"command_feedback_lateral_gain",0.0),
+                   "command_feedback_yaw_gain":getattr(cfg.control,"command_feedback_yaw_gain",0.0),
+                   "command_feedback_heading_gain":getattr(cfg.control,"command_feedback_heading_gain",0.0),
+                   "command_feedback_heading_damping":getattr(cfg.control,"command_feedback_heading_damping",0.0),
+                   "command_feedback_diagonal_longitudinal_scale":getattr(cfg.control,"command_feedback_diagonal_longitudinal_scale",1.0),
+                   "enforce_policy_symmetry":getattr(cfg.control,"enforce_policy_symmetry",False),
                    "output_transform":"tanh"},
         "observations":{"clip":cfg.normalization.clip_observations,
                         "lin_vel_scale":cfg.normalization.obs_scales.lin_vel,

@@ -1,0 +1,214 @@
+{
+  "schema_version": 1,
+  "task": "FanfanOmniSymmetricTransitionCfg",
+  "checkpoint": "/home/nszb/gym/unitree_rl_gym/logs/rough_fanfan_omni_desat_torque/Jul14_11-59-33_symmetric_transition_from_force_coord_5280/model_5530.pt",
+  "dimensions": {
+    "observations": 52,
+    "actions": 12
+  },
+  "joint_names": [
+    "FL_hip_joint",
+    "FL_thigh_joint",
+    "FL_calf_joint",
+    "FR_hip_joint",
+    "FR_thigh_joint",
+    "FR_calf_joint",
+    "RL_hip_joint",
+    "RL_thigh_joint",
+    "RL_calf_joint",
+    "RR_hip_joint",
+    "RR_thigh_joint",
+    "RR_calf_joint"
+  ],
+  "default_joint_angles": [
+    0.0,
+    0.563,
+    -0.95,
+    0.0,
+    0.563,
+    -0.95,
+    0.0,
+    0.563,
+    -0.95,
+    0.0,
+    0.563,
+    -0.95
+  ],
+  "initial_state": {
+    "base_position": [
+      0.0,
+      0.0,
+      0.295
+    ],
+    "base_quaternion_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "control": {
+    "sim_dt": 0.005,
+    "decimation": 4,
+    "stiffness": [
+      60.0,
+      70.0,
+      70.0,
+      60.0,
+      70.0,
+      70.0,
+      60.0,
+      70.0,
+      70.0,
+      60.0,
+      70.0,
+      70.0
+    ],
+    "damping": [
+      1.2,
+      1.6,
+      1.6,
+      1.2,
+      1.6,
+      1.6,
+      1.2,
+      1.6,
+      1.6,
+      1.2,
+      1.6,
+      1.6
+    ],
+    "filter_policy_actions": true,
+    "policy_action_filter_alpha": 0.3,
+    "policy_action_rate_limits": [
+      9.130434782608695,
+      7.906976744186046,
+      12.325581395348838,
+      9.130434782608695,
+      7.906976744186046,
+      12.325581395348838,
+      9.130434782608695,
+      7.906976744186046,
+      12.325581395348838,
+      9.130434782608695,
+      7.906976744186046,
+      12.325581395348838
+    ],
+    "policy_action_accel_limits": [
+      347.82608695652175,
+      269.7674418604651,
+      437.2093023255814,
+      347.82608695652175,
+      269.7674418604651,
+      437.2093023255814,
+      347.82608695652175,
+      269.7674418604651,
+      437.2093023255814,
+      347.82608695652175,
+      269.7674418604651,
+      437.2093023255814
+    ],
+    "action_scale": [
+      0.115,
+      0.215,
+      0.215,
+      0.115,
+      0.215,
+      0.215,
+      0.115,
+      0.235,
+      0.235,
+      0.115,
+      0.235,
+      0.235
+    ],
+    "torque_limits": [
+      10.0,
+      10.0,
+      13.0,
+      10.0,
+      10.0,
+      13.0,
+      10.0,
+      10.0,
+      13.0,
+      10.0,
+      10.0,
+      13.0
+    ],
+    "straight_vy_feedback_gain": 0.0,
+    "straight_vx_feedback_boost": 0.0,
+    "straight_vy_feedback_sagittal_blend": 1.0,
+    "command_feedback_longitudinal_gain": 0.4,
+    "command_feedback_lateral_gain": 0.8,
+    "command_feedback_yaw_gain": 0.25,
+    "command_feedback_heading_gain": 4.0,
+    "command_feedback_heading_damping": 1.0,
+    "command_feedback_diagonal_longitudinal_scale": 0.6,
+    "enforce_policy_symmetry": true,
+    "output_transform": "tanh"
+  },
+  "observations": {
+    "clip": 100.0,
+    "lin_vel_scale": 2.0,
+    "ang_vel_scale": 0.25,
+    "dof_pos_scale": 1.0,
+    "dof_vel_scale": 0.05,
+    "command_scale": [
+      2.0,
+      2.0,
+      0.25
+    ],
+    "layout": [
+      "base_lin_vel",
+      "base_ang_vel",
+      "projected_gravity",
+      "commands",
+      "dof_pos_error",
+      "dof_vel",
+      "previous_actions",
+      "gait_phase_sin_cos",
+      "heading_error_sin_cos"
+    ]
+  },
+  "commands": {
+    "default": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "heading_command": false,
+    "observe_heading_error": true,
+    "ranges": {
+      "lin_vel_x": [
+        -0.25,
+        0.6
+      ],
+      "lin_vel_y": [
+        -0.26,
+        0.26
+      ],
+      "ang_vel_yaw": [
+        -1.3,
+        1.3
+      ]
+    },
+    "default_heading": 0.0,
+    "heading_gain": 0.5
+  },
+  "gait": {
+    "period": 0.45,
+    "stance_ratio": 0.62,
+    "thigh_amplitude": 0.0,
+    "calf_amplitude": -0.3,
+    "gate_with_command": true,
+    "command_gate_sigma": 0.0004,
+    "phase_offsets": {
+      "FL": 0.0,
+      "FR": 0.5,
+      "RL": 0.5,
+      "RR": 0.0
+    }
+  },
+  "episode_length_s": 20
+}

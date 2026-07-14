@@ -1,6 +1,7 @@
 from legged_gym.envs.base.legged_robot import LeggedRobot
 from isaacgym import gymtorch
 from isaacgym.torch_utils import torch_rand_float
+import numpy as np
 import torch
 
 
@@ -143,6 +144,12 @@ class FanfanRobot(LeggedRobot):
             phase_offsets, dtype=torch.float, device=self.device
         )
         self.gait_phase = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
+        self.command_transition_age = torch.full(
+            (self.num_envs,), 10.0, dtype=torch.float, device=self.device
+        )
+        self.command_transition_magnitude = torch.zeros(
+            self.num_envs, dtype=torch.float, device=self.device
+        )
         self.leg_dof_indices = {}
         for leg in ("FL", "FR", "RL", "RR"):
             self.leg_dof_indices[leg] = {
@@ -388,8 +395,20 @@ class FanfanRobot(LeggedRobot):
         self.torque_metric_count[env_ids] = 0.0
         for values in self.torque_metric_sums.values():
             values[env_ids] = 0.0
+        self.command_transition_age[env_ids] = 0.0
+        self.command_transition_magnitude[env_ids] = 0.0
+
+    def _process_rigid_body_props(self, props, env_id):
+        props = super()._process_rigid_body_props(props, env_id)
+        if getattr(self.cfg.domain_rand, "randomize_base_com", False):
+            x_range = self.cfg.domain_rand.base_com_x_range
+            y_range = self.cfg.domain_rand.base_com_y_range
+            props[0].com.x += np.random.uniform(x_range[0], x_range[1])
+            props[0].com.y += np.random.uniform(y_range[0], y_range[1])
+        return props
 
     def _post_physics_step_callback(self):
+        self.command_transition_age += self.dt
         super()._post_physics_step_callback()
         if (not self.cfg.commands.heading_command
                 and getattr(self.cfg.commands, "observe_heading_error", False)):
@@ -416,11 +435,77 @@ class FanfanRobot(LeggedRobot):
         else:
             heading_obs = torch.zeros(self.num_envs, 2, device=self.device)
             heading_obs[:, 1] = 1.0
+        observed_commands = self.commands[:, :3].clone()
+        longitudinal_gain = getattr(
+            self.cfg.control, "command_feedback_longitudinal_gain", 0.0
+        )
+        lateral_gain = getattr(
+            self.cfg.control, "command_feedback_lateral_gain", 0.0
+        )
+        yaw_gain = getattr(
+            self.cfg.control, "command_feedback_yaw_gain", 0.0
+        )
+        heading_gain = getattr(
+            self.cfg.control, "command_feedback_heading_gain", 0.0
+        )
+        heading_damping = getattr(
+            self.cfg.control, "command_feedback_heading_damping", 0.0
+        )
+        diagonal_x_scale = getattr(
+            self.cfg.control,
+            "command_feedback_diagonal_longitudinal_scale",
+            1.0,
+        )
+        if longitudinal_gain != 0.0:
+            observed_commands[:, 0] += longitudinal_gain * (
+                self.commands[:, 0] - self.base_lin_vel[:, 0]
+            )
+        if lateral_gain != 0.0:
+            observed_commands[:, 1] += lateral_gain * (
+                self.commands[:, 1] - self.base_lin_vel[:, 1]
+            )
+        if yaw_gain != 0.0:
+            observed_commands[:, 2] += yaw_gain * (
+                self.commands[:, 2] - self.base_ang_vel[:, 2]
+            )
+        if diagonal_x_scale != 1.0:
+            diagonal = (
+                (torch.abs(self.commands[:, 0]) > 0.05)
+                & (torch.abs(self.commands[:, 1]) > 0.05)
+                & (torch.abs(self.commands[:, 2]) < 0.05)
+            )
+            observed_commands[:, 0] = torch.where(
+                diagonal,
+                diagonal_x_scale * observed_commands[:, 0],
+                observed_commands[:, 0],
+            )
+        if heading_gain != 0.0:
+            heading_error = torch.atan2(heading_obs[:, 0], heading_obs[:, 1])
+            heading_hold = (
+                torch.linalg.norm(self.commands[:, :2], dim=1) > 0.04
+            ) & (torch.abs(self.commands[:, 2]) < 0.05)
+            heading_correction = (
+                heading_gain * heading_error
+                - heading_damping * self.base_ang_vel[:, 2]
+            )
+            observed_commands[:, 2] = torch.where(
+                heading_hold, heading_correction, observed_commands[:, 2]
+            )
+        ranges = self.cfg.commands.ranges
+        observed_commands[:, 0].clip_(
+            ranges.lin_vel_x[0], ranges.lin_vel_x[1]
+        )
+        observed_commands[:, 1].clip_(
+            ranges.lin_vel_y[0], ranges.lin_vel_y[1]
+        )
+        observed_commands[:, 2].clip_(
+            ranges.ang_vel_yaw[0], ranges.ang_vel_yaw[1]
+        )
         self.obs_buf = torch.cat((
             self.base_lin_vel * self.obs_scales.lin_vel,
             self.base_ang_vel * self.obs_scales.ang_vel,
             self.projected_gravity,
-            self.commands[:, :3] * self.commands_scale,
+            observed_commands * self.commands_scale,
             (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,
             self.dof_vel * self.obs_scales.dof_vel,
             self.filtered_actions if getattr(self.cfg.control, "filter_policy_actions", False) else self.actions,
@@ -505,6 +590,9 @@ class FanfanRobot(LeggedRobot):
         return self.rear_leg_dof_indices
 
     def _resample_commands(self, env_ids):
+        if len(env_ids) == 0:
+            return
+        previous = self.commands[env_ids, :3].clone()
         ranges = self._active_command_ranges()
         self.commands[env_ids, 0] = torch_rand_float(
             ranges["lin_vel_x"][0], ranges["lin_vel_x"][1],
@@ -544,6 +632,39 @@ class FanfanRobot(LeggedRobot):
             self.commands[env_ids[pure_lateral], 2] = 0.0
             self.commands[env_ids[pure_sagittal], 1:3] = 0.0
 
+            hard_probability = getattr(
+                self.cfg.commands, "hard_transition_probability", 0.0
+            )
+            if hard_probability > 0.0:
+                hard = (
+                    torch.rand(len(env_ids), device=self.device)
+                    < hard_probability
+                ) & (torch.linalg.norm(previous, dim=1) > 0.05)
+                hard_ids = env_ids[hard]
+                if len(hard_ids) > 0:
+                    factor = torch_rand_float(
+                        0.75, 1.10, (len(hard_ids), 1), device=self.device
+                    )
+                    flipped = -previous[hard] * factor
+                    for axis, key in enumerate(
+                        ("lin_vel_x", "lin_vel_y", "ang_vel_yaw")
+                    ):
+                        flipped[:, axis] = flipped[:, axis].clip(
+                            ranges[key][0], ranges[key][1]
+                        )
+                    self.commands[hard_ids, :3] = flipped
+
+        delta = self.commands[env_ids, :3] - previous
+        normalized_delta = torch.stack((
+            delta[:, 0] / 0.40,
+            delta[:, 1] / 0.18,
+            delta[:, 2] / 0.90,
+        ), dim=1)
+        self.command_transition_magnitude[env_ids] = torch.linalg.norm(
+            normalized_delta, dim=1
+        )
+        self.command_transition_age[env_ids] = 0.0
+
     def _active_command_ranges(self):
         if not getattr(self.cfg.commands, "omni_curriculum", False):
             return self.command_ranges
@@ -570,6 +691,20 @@ class FanfanRobot(LeggedRobot):
             )
             self.reset_buf |= straight & (
                 torch.abs(heading_error) > max_straight_heading_error
+            )
+        max_translation_heading_error = getattr(
+            self.cfg.rewards, "terminate_translation_heading_error", None
+        )
+        if max_translation_heading_error is not None:
+            heading_error = torch.atan2(
+                torch.sin(self.commands[:, 3] - self.rpy[:, 2]),
+                torch.cos(self.commands[:, 3] - self.rpy[:, 2]),
+            )
+            translation = (
+                torch.linalg.norm(self.commands[:, :2], dim=1) > 0.05
+            ) & (torch.abs(self.commands[:, 2]) < 0.05)
+            self.reset_buf |= translation & (
+                torch.abs(heading_error) > max_translation_heading_error
             )
         min_base_height = getattr(self.cfg.rewards, "min_base_height", None)
         if min_base_height is not None:
@@ -836,6 +971,94 @@ class FanfanRobot(LeggedRobot):
             self._diagonal_mirror_error(normalized_torque)
             * self._straight_motion_gate()
         )
+
+    def _reward_planar_direction_error(self):
+        """Penalize velocity pointing away from the commanded xy direction."""
+        command = self.commands[:, :2]
+        velocity = self.base_lin_vel[:, :2]
+        command_norm = torch.linalg.norm(command, dim=1)
+        velocity_norm = torch.linalg.norm(velocity, dim=1)
+        cosine = torch.sum(command * velocity, dim=1) / (
+            command_norm * velocity_norm + 1.0e-5
+        )
+        activity = 1.0 - torch.exp(-torch.square(command_norm) / 0.01)
+        return (1.0 - cosine.clip(-1.0, 1.0)) * activity
+
+    def _reward_absolute_longitudinal_tracking_error(self):
+        """Keep useful gradient when high-speed vx error is large."""
+        return torch.abs(self.commands[:, 0] - self.base_lin_vel[:, 0])
+
+    def _reward_absolute_lateral_tracking_error(self):
+        """Keep useful gradient across the full left/right speed envelope."""
+        return torch.abs(self.commands[:, 1] - self.base_lin_vel[:, 1])
+
+    def _reward_absolute_yaw_tracking_error(self):
+        """Keep useful gradient for fast turns and mixed-command tracking."""
+        return torch.abs(self.commands[:, 2] - self.base_ang_vel[:, 2])
+
+    def _reward_translation_heading_error_abs(self):
+        """Lock heading for forward, lateral, and diagonal translation."""
+        heading_error = torch.atan2(
+            torch.sin(self.commands[:, 3] - self.rpy[:, 2]),
+            torch.cos(self.commands[:, 3] - self.rpy[:, 2]),
+        )
+        planar_activity = 1.0 - torch.exp(
+            -torch.sum(torch.square(self.commands[:, :2]), dim=1) / 0.01
+        )
+        yaw_gate = torch.exp(-torch.square(self.commands[:, 2]) / 0.01)
+        return torch.abs(heading_error) * planar_activity * yaw_gate
+
+    def _reward_pure_lateral_forward_speed(self):
+        """Prevent lateral commands from leaking into forward motion."""
+        lateral_activity = 1.0 - torch.exp(
+            -torch.square(self.commands[:, 1]) / 0.0036
+        )
+        sagittal_gate = torch.exp(-torch.square(self.commands[:, 0]) / 0.0036)
+        yaw_gate = torch.exp(-torch.square(self.commands[:, 2]) / 0.01)
+        return (
+            torch.abs(self.base_lin_vel[:, 0])
+            * lateral_activity
+            * sagittal_gate
+            * yaw_gate
+        )
+
+    def _reward_command_transition_tracking(self):
+        """Reward rapid tracking after command changes and direction reversals."""
+        duration = getattr(
+            self.cfg.rewards, "command_transition_duration", 1.2
+        )
+        time_gate = (self.command_transition_age < duration).float()
+        change_gate = self.command_transition_magnitude.clip(0.0, 1.0)
+        vx_error = (
+            self.commands[:, 0] - self.base_lin_vel[:, 0]
+        ) / (torch.abs(self.commands[:, 0]) + 0.12)
+        vy_error = (
+            self.commands[:, 1] - self.base_lin_vel[:, 1]
+        ) / (torch.abs(self.commands[:, 1]) + 0.08)
+        yaw_error = (
+            self.commands[:, 2] - self.base_ang_vel[:, 2]
+        ) / (torch.abs(self.commands[:, 2]) + 0.30)
+        normalized_error = (
+            torch.square(vx_error)
+            + torch.square(vy_error)
+            + torch.square(yaw_error)
+        ) / 3.0
+        return (
+            torch.exp(-normalized_error / 0.35)
+            * time_gate
+            * change_gate
+        )
+
+    def _reward_diagonal_contact_sync_all(self):
+        """Keep trot contact timing coordinated for every command mixture."""
+        contact = self.contact_forces[:, self.feet_indices, 2] > 1.0
+        mismatch = torch.zeros(self.num_envs, device=self.device)
+        for first, second in (("FL", "RR"), ("FR", "RL")):
+            mismatch += (
+                contact[:, self.foot_slot_by_leg[first]]
+                != contact[:, self.foot_slot_by_leg[second]]
+            ).float()
+        return mismatch
 
     def _straight_contact_load(self):
         """Return foot contact data and a gate that excludes flight phases."""
