@@ -19,24 +19,43 @@ class Sim:
     def __init__(self,model,policy,command=None):
         self.m=mujoco.MjModel.from_xml_path(str(model));self.d=mujoco.MjData(self.m);self.net=ort.InferenceSession(str(policy));self.cfg=load_contract(self.net)
         c=self.cfg;ctl=c["control"];obs=c["observations"];gait=c["gait"]
-        self.names=c["joint_names"];self.default=np.asarray(c["default_joint_angles"],np.float32);self.kp=np.asarray(ctl["stiffness"],np.float32);self.kd=np.asarray(ctl["damping"],np.float32);self.scale=np.asarray(ctl["action_scale"],np.float32);self.limits=np.asarray(ctl["torque_limits"],np.float32);self.filter_actions=ctl.get("filter_policy_actions",False);self.filter_alpha=float(ctl.get("policy_action_filter_alpha",1.0));self.action_rate_limits=np.asarray(ctl.get("policy_action_rate_limits") or [1e6]*len(self.names),np.float32);self.action_accel_limits=np.asarray(ctl.get("policy_action_accel_limits") or [1e6]*len(self.names),np.float32)
+        self.names=c["joint_names"];self.default=np.asarray(c["default_joint_angles"],np.float32);self.kp=np.asarray(ctl["stiffness"],np.float32);self.kd=np.asarray(ctl["damping"],np.float32);self.scale=np.asarray(ctl["action_scale"],np.float32);self.limits=np.asarray(ctl["torque_limits"],np.float32);self.filter_actions=ctl.get("filter_policy_actions",False);self.filter_alpha=float(ctl.get("policy_action_filter_alpha",1.0));self.action_rate_limits=np.asarray(ctl.get("policy_action_rate_limits") or [1e6]*len(self.names),np.float32);self.action_accel_limits=np.asarray(ctl.get("policy_action_accel_limits") or [1e6]*len(self.names),np.float32);self.target_rate_limits=np.asarray(ctl.get("final_target_rate_limits") or [1e6]*len(self.names),np.float32);self.target_accel_limits=np.asarray(ctl.get("final_target_accel_limits") or [1e6]*len(self.names),np.float32);rear_scale=float(ctl.get("rear_calf_target_rate_scale",1.0));self.rear_calf=np.asarray([i for i,n in enumerate(self.names) if n.startswith(("RL_calf","RR_calf"))]);self.target_rate_limits[self.rear_calf]*=rear_scale;self.target_accel_limits[self.rear_calf]*=rear_scale;self.use_actuator_model=bool(ctl.get("use_real_actuator_model",False));self.actuator_tau=np.asarray(ctl.get("sim2sim_actuator_time_constants") or [0.0]*len(self.names),np.float32);self.backlash=np.asarray(ctl.get("sim2sim_backlash") or [0.0]*len(self.names),np.float32);self.command_delay_steps=max(0,int(round(float(ctl.get("sim2sim_command_delay_s",0.0))/self.m.opt.timestep)))
         self.command=np.asarray(command if command is not None else c["commands"]["default"],np.float32);self.obs_cfg=obs;self.gait=gait
         if abs(self.m.opt.timestep-ctl["sim_dt"])>1e-9: raise RuntimeError(f"MJCF timestep {self.m.opt.timestep} != exported cfg {ctl['sim_dt']}")
         self.decimation=int(ctl["decimation"]);self.q=np.array([self.m.jnt_qposadr[mujoco.mj_name2id(self.m,mujoco.mjtObj.mjOBJ_JOINT,x)] for x in self.names]);self.v=np.array([self.m.jnt_dofadr[mujoco.mj_name2id(self.m,mujoco.mjtObj.mjOBJ_JOINT,x)] for x in self.names]);self.aid=np.array([mujoco.mj_name2id(self.m,mujoco.mjtObj.mjOBJ_ACTUATOR,x+"_motor") for x in self.names]);self.bid=mujoco.mj_name2id(self.m,mujoco.mjtObj.mjOBJ_BODY,"Trunk");self.reset()
     def reset(self):
-        mujoco.mj_resetData(self.m,self.d);pos=self.cfg["initial_state"]["base_position"];xyzw=self.cfg["initial_state"]["base_quaternion_xyzw"];self.d.qpos[:7]=[*pos,xyzw[3],xyzw[0],xyzw[1],xyzw[2]];self.d.qpos[self.q]=self.default;self.action=np.zeros(len(self.names),np.float32);self.action_velocity=np.zeros(len(self.names),np.float32);self.target=self.default.copy();self.n=0;self.heading_target=0.0;mujoco.mj_forward(self.m,self.d)
+        mujoco.mj_resetData(self.m,self.d);pos=self.cfg["initial_state"]["base_position"];xyzw=self.cfg["initial_state"]["base_quaternion_xyzw"];self.d.qpos[:7]=[*pos,xyzw[3],xyzw[0],xyzw[1],xyzw[2]];self.d.qpos[self.q]=self.default;self.action=np.zeros(len(self.names),np.float32);self.action_velocity=np.zeros(len(self.names),np.float32);self.target=self.default.copy();self.motor_target=self.default.copy();self.target_velocity=np.zeros(len(self.names),np.float32);self.target_history=[self.default.copy() for _ in range(self.command_delay_steps+1)];self.n=0;self.gait_phase=0.0;self.heading_target=0.0;mujoco.mj_forward(self.m,self.d)
     def gait_offset(self,phase):
         out=np.zeros(len(self.names),np.float32);r=self.gait["stance_ratio"]
+        calf_amplitude=float(self.gait["calf_amplitude"])
+        if self.gait.get("continuous_scaling",False):
+            weights=np.asarray(self.gait["equivalent_speed_weights"],np.float32);speed=float(np.sqrt(np.sum(np.square(self.command*weights))));knots=self.gait["speed_knots"];amplitudes=self.gait["calf_amplitude_knots"];amplitude=float(np.interp(speed,knots,amplitudes));amplitude*=float(self.gait["calf_amplitude_max"])/max(float(amplitudes[-1]),1e-6)
+            if self.command[0] < -0.03:amplitude*=float(self.gait["backward_scale"])
+            calf_amplitude=-amplitude
+        thigh_amplitude=float(self.gait["thigh_amplitude"])
+        if self.gait.get("continuous_scaling",False):
+            max_amplitude=max(float(self.gait["calf_amplitude_max"]),1e-6)
+            thigh_amplitude*=abs(calf_amplitude)/max_amplitude
+            if self.command[0] < -0.03:thigh_amplitude*=-1.0
+            if abs(self.command[0])<0.03 and abs(self.command[1])>0.02:thigh_amplitude*=float(self.gait.get("thigh_lateral_scale",1.0))
         for i,name in enumerate(self.names):
             leg=name[:2];p=(phase+self.gait["phase_offsets"][leg])%1;s=np.clip((p-r)/(1-r),0,1);smooth=s*s*(3-2*s)
-            if "thigh" in name:out[i]=self.gait["thigh_amplitude"]*(-1+2*np.clip(p/r,0,1) if p<r else 1-2*smooth)
-            elif "calf" in name:out[i]=self.gait["calf_amplitude"]*np.sin(np.pi*smooth)*(p>=r)
+            if "thigh" in name:out[i]=thigh_amplitude*(-1+2*np.clip(p/r,0,1) if p<r else 1-2*smooth)
+            elif "calf" in name:out[i]=calf_amplitude*np.sin(np.pi*smooth)*(p>=r)
+        lateral_hip_amplitude=float(self.gait.get("lateral_hip_amplitude",0.0))
+        if abs(lateral_hip_amplitude)>1e-8:
+            lateral_scale=max(float(self.gait.get("lateral_command_scale",0.08)),1e-6);lateral_fraction=np.clip(self.command[1]/lateral_scale,-1.0,1.0)
+            if abs(self.command[0])>0.05:lateral_fraction*=float(self.gait.get("lateral_diagonal_scale",1.0))
+            if self.gait.get("continuous_scaling",False):lateral_fraction*=abs(calf_amplitude)/max(float(self.gait["calf_amplitude_max"]),1e-6)
+            for i,name in enumerate(self.names):
+                if "hip" in name:
+                    leg=name[:2];p=(phase+self.gait["phase_offsets"][leg])%1;s=np.clip((p-r)/(1-r),0,1);smooth=s*s*(3-2*s);profile=(-1+2*np.clip(p/r,0,1) if p<r else 1-2*smooth);out[i]+=lateral_hip_amplitude*lateral_fraction*profile
         if self.gait.get("gate_with_command",False):
             energy=np.sum(np.square(self.command[:2]))+0.04*self.command[2]**2
             out*=1.0-np.exp(-energy/self.gait["command_gate_sigma"])
         return out
     def policy(self):
-        quat=self.d.qpos[3:7];linear=body_linear_velocity(quat,self.d.qvel[:3]);angular=self.d.qvel[3:6];phase=(self.n*self.m.opt.timestep*self.decimation%self.gait["period"])/self.gait["period"];o=self.obs_cfg
+        quat=self.d.qpos[3:7];linear=body_linear_velocity(quat,self.d.qvel[:3]);angular=self.d.qvel[3:6];phase=self.gait_phase;o=self.obs_cfg
         command=self.command.copy();r=np.empty(9);mujoco.mju_quat2Mat(r,quat);r=r.reshape(3,3);yaw=np.arctan2(r[1,0],r[0,0]);heading_obs=[]
         if self.cfg["commands"]["heading_command"]:
             error=np.arctan2(np.sin(self.cfg["commands"]["default_heading"]-yaw),np.cos(self.cfg["commands"]["default_heading"]-yaw));command[2]=np.clip(self.cfg["commands"]["heading_gain"]*error,-1,1);heading_obs=[np.sin(error),np.cos(error)]
@@ -49,15 +68,35 @@ class Sim:
         if self.filter_actions:
             dt=self.m.opt.timestep*self.decimation;desired=self.action+self.filter_alpha*(policy_action-self.action);desired_velocity=np.clip((desired-self.action)/dt,-self.action_rate_limits,self.action_rate_limits);dv=np.clip(desired_velocity-self.action_velocity,-self.action_accel_limits*dt,self.action_accel_limits*dt);next_velocity=self.action_velocity+dv;next_action=self.action+next_velocity*dt;crossed=(desired-self.action)*(desired-next_action)<0;next_action=np.where(crossed,desired,next_action);self.action_velocity=(next_action-self.action)/dt;self.action=next_action
         else:self.action=policy_action
-        self.target=self.default+self.scale*self.action+self.gait_offset(phase)
+        target_phase=(phase+float(self.gait.get("target_phase_lead",0.0)))%1.0
+        gait_offset=self.gait_offset(target_phase);raw_target=self.default+self.scale*self.action+gait_offset
+        if self.cfg["control"].get("enforce_swing_calf_reference",False):
+            reference_scale=float(self.cfg["control"].get("swing_calf_reference_scale",1.0))
+            for i,name in enumerate(self.names):
+                if "calf" in name and gait_offset[i] < -1e-5:
+                    leg_scale=float(self.cfg["control"].get("front_swing_calf_reference_scale" if name.startswith(("FL_","FR_")) else "rear_swing_calf_reference_scale",reference_scale));clean_forward=bool(self.command[0]>0.03 and abs(self.command[1])<0.02 and abs(self.command[2])<0.10);leg_scale=reference_scale if self.cfg["control"].get("preserve_forward_gait",False) and clean_forward else leg_scale;raw_target[i]=min(raw_target[i],self.default[i]+leg_scale*gait_offset[i])
+        if self.cfg["control"].get("enforce_stance_leg_extension",False):
+            weights=np.asarray(self.gait["equivalent_speed_weights"],np.float32);speed=float(np.sqrt(np.sum(np.square(self.command*weights))));amplitude=float(np.interp(speed,self.gait["speed_knots"],self.gait["calf_amplitude_knots"]));fraction=np.clip(amplitude/max(float(self.gait["calf_amplitude_knots"][-1]),1e-6),0.0,1.0);clean_forward=bool(self.command[0]>0.03 and abs(self.command[1])<0.02 and abs(self.command[2])<0.10);extension_gate=0.0 if self.cfg["control"].get("preserve_forward_gait",False) and clean_forward else 1.0;calf_extension=float(self.cfg["control"].get("stance_calf_extension",0.0))*fraction*extension_gate;thigh_extension=float(self.cfg["control"].get("stance_thigh_extension",0.0))*fraction*extension_gate
+            if extension_gate > 0.5:
+                for i,name in enumerate(self.names):
+                    leg=name[:2];leg_phase=(target_phase+self.gait["phase_offsets"][leg])%1.0
+                    if leg_phase < float(self.gait["stance_ratio"]):
+                        if "calf" in name:raw_target[i]=max(raw_target[i],self.default[i]+calf_extension)
+                        elif "thigh" in name:raw_target[i]=min(raw_target[i],self.default[i]+thigh_extension)
         rear_calf_min=self.cfg["control"].get("backward_rear_calf_target_min")
         if rear_calf_min is not None and self.command[0] < -0.03:
-            rear_calf=np.array([i for i,name in enumerate(self.names) if name.startswith(("RL_calf","RR_calf"))])
-            self.target[rear_calf]=np.maximum(self.target[rear_calf],float(rear_calf_min))
+            raw_target[self.rear_calf]=np.maximum(raw_target[self.rear_calf],float(rear_calf_min))
+        dt=self.m.opt.timestep*self.decimation;desired_velocity=np.clip((raw_target-self.target)/dt,-self.target_rate_limits,self.target_rate_limits);dv=np.clip(desired_velocity-self.target_velocity,-self.target_accel_limits*dt,self.target_accel_limits*dt);next_velocity=self.target_velocity+dv;next_target=self.target+next_velocity*dt;crossed=(raw_target-self.target)*(raw_target-next_target)<0;next_target=np.where(crossed,raw_target,next_target);self.target_velocity=(next_target-self.target)/dt;self.target=next_target
         if not self.cfg["commands"]["heading_command"] and self.cfg["commands"].get("observe_heading_error",False):self.heading_target=np.arctan2(np.sin(self.heading_target+self.command[2]*self.m.opt.timestep*self.decimation),np.cos(self.heading_target+self.command[2]*self.m.opt.timestep*self.decimation))
+        if self.gait.get("continuous_scaling",False):
+            weights=np.asarray(self.gait["equivalent_speed_weights"],np.float32);speed=float(np.sqrt(np.sum(np.square(self.command*weights))));blend=np.clip((speed-0.01)/0.29,0.0,1.0);period=float(self.gait["period_low_speed"])+blend*(float(self.gait["period_high_speed"])-float(self.gait["period_low_speed"]));self.gait_phase=(self.gait_phase+dt/max(period,0.20))%1.0
+        else:self.gait_phase=(self.gait_phase+dt/float(self.gait["period"]))%1.0
         self.n+=1
     def step(self):
-        raw=self.kp*(self.target-self.d.qpos[self.q])-self.kd*self.d.qvel[self.v];self.d.ctrl[self.aid]=np.clip(raw,-self.limits,self.limits);mujoco.mj_step(self.m,self.d);return raw
+        pd_target=self.target
+        if self.use_actuator_model:
+            self.target_history.append(self.target.copy());delayed=self.target_history.pop(0);error=delayed-self.motor_target;effective=np.sign(error)*np.maximum(np.abs(error)-self.backlash,0.0);alpha=self.m.opt.timestep/(self.actuator_tau+self.m.opt.timestep);self.motor_target+=alpha*effective;pd_target=self.motor_target
+        raw=self.kp*(pd_target-self.d.qpos[self.q])-self.kd*self.d.qvel[self.v];self.d.ctrl[self.aid]=np.clip(raw,-self.limits,self.limits);mujoco.mj_step(self.m,self.d);return raw
 
 def main():
     root=Path(__file__).parent;p=argparse.ArgumentParser();p.add_argument("--model",type=Path,default=root/"models/fanfan_scene.xml");p.add_argument("--policy",type=Path,default=root/"models/fanfan_best.onnx");p.add_argument("--duration",type=float,default=20);p.add_argument("--command",nargs=3,type=float);p.add_argument("--viewer",action="store_true");p.add_argument("--demo-matrix",action="store_true");p.add_argument("--segment-duration",type=float,default=8.0);p.add_argument("--csv",type=Path);a=p.parse_args();s=Sim(a.model,a.policy,a.command)

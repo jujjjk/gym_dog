@@ -24,7 +24,8 @@ setup(
         (
             "share/" + package_name + "/models",
             glob("resource/fanfan_clearance_robust_5730.*")
-            + glob("resource/fanfan_hardware_balance_5530_best.*"),
+            + glob("resource/fanfan_hardware_balance_5530_best.*")
+            + glob("resource/fanfan_realdata_best.*"),
         ),
     ],
     install_requires=["setuptools"],
@@ -76,6 +77,10 @@ setup(
             (
                 "mydog_hardware_balance_command = "
                 "mydog_policy.hardware_balance_command:main"
+            ),
+            (
+                "mydog_realdata_node = "
+                "mydog_policy.sim2real_realdata_node:main"
             ),
         ],
     },

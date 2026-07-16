@@ -34,7 +34,7 @@ def generate_launch_description():
 
     policy = Node(
         package="mydog_policy",
-        executable="mydog_hardware_balance_node",
+        executable=LaunchConfiguration("policy_executable"),
         name="mydog_hardware_balance_node",
         output="screen",
         parameters=[{
@@ -124,7 +124,7 @@ def generate_launch_description():
             "rear_torque_boost_q_error_rad": 0.12,
             "rear_torque_boost_overload_margin_nm": 1.0,
 
-            # Preserve the model's own 0.27 action filter and rate limits.
+            # Preserve the model's metadata action and final-target filters.
             "enable_target_smoothing": False,
             "enable_torque_error_limit": False,
             "enable_velocity_ff": False,
@@ -138,7 +138,9 @@ def generate_launch_description():
             "debug_csv_async": True,
             "debug_csv_queue_size": 256,
             "debug_csv_flush_every_n": 20,
-            "expected_policy_task": MODEL_TASK,
+            "expected_policy_task": LaunchConfiguration(
+                "expected_policy_task"
+            ),
             "expected_policy_sha256": LaunchConfiguration(
                 "expected_policy_sha256"
             ),
@@ -151,7 +153,7 @@ def generate_launch_description():
             default_value=PathJoinSubstitution([
                 FindPackageShare("mydog_policy"),
                 "models",
-                "fanfan_hardware_balance_5530_best.onnx",
+                LaunchConfiguration("model_filename"),
             ]),
         ),
         DeclareLaunchArgument(
@@ -161,6 +163,18 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "expected_policy_sha256",
             default_value=MODEL_SHA256,
+        ),
+        DeclareLaunchArgument(
+            "policy_executable",
+            default_value="mydog_hardware_balance_node",
+        ),
+        DeclareLaunchArgument(
+            "model_filename",
+            default_value="fanfan_hardware_balance_5530_best.onnx",
+        ),
+        DeclareLaunchArgument(
+            "expected_policy_task",
+            default_value=MODEL_TASK,
         ),
         # Motor output stays disabled unless explicitly enabled at launch.
         DeclareLaunchArgument("enable_send", default_value="false"),

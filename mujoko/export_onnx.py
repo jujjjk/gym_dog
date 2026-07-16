@@ -266,6 +266,21 @@ def deployment_config(cfg, checkpoint, gym_root):
                    "policy_action_accel_limits":[
                        matched(cfg.control.policy_action_accel_limits,n) for n in names
                    ] if hasattr(cfg.control,"policy_action_accel_limits") else None,
+                   "final_target_rate_limits":[
+                       matched(cfg.control.final_target_rate_limits_final,n) for n in names
+                   ] if hasattr(cfg.control,"final_target_rate_limits_final") else None,
+                   "final_target_accel_limits":[
+                       matched(cfg.control.final_target_accel_limits_final,n) for n in names
+                   ] if hasattr(cfg.control,"final_target_accel_limits_final") else None,
+                   "rear_calf_target_rate_scale":getattr(cfg.control,"rear_calf_target_rate_scale",1.0),
+                   "use_real_actuator_model":getattr(cfg.control,"use_real_actuator_model",False),
+                   "sim2sim_actuator_time_constants":[
+                       sum(matched(cfg.control.actuator_time_constant_ranges,n))/2 for n in names
+                   ] if hasattr(cfg.control,"actuator_time_constant_ranges") else None,
+                   "sim2sim_command_delay_s":sum(getattr(cfg.control,"command_delay_range_s",[0.0,0.0]))/2,
+                   "sim2sim_backlash":[
+                       sum(matched(cfg.domain_rand.joint_backlash_ranges,n))/2 for n in names
+                   ] if hasattr(cfg.domain_rand,"joint_backlash_ranges") else None,
                    "action_scale":scales,
                    "torque_limits":torque_limits(cfg,names,effort),
                    "straight_vy_feedback_gain":getattr(cfg.control,"straight_vy_feedback_gain",0.0),
@@ -278,6 +293,14 @@ def deployment_config(cfg, checkpoint, gym_root):
                    "command_feedback_heading_damping":getattr(cfg.control,"command_feedback_heading_damping",0.0),
                    "command_feedback_diagonal_longitudinal_scale":getattr(cfg.control,"command_feedback_diagonal_longitudinal_scale",1.0),
                    "enforce_policy_symmetry":getattr(cfg.control,"enforce_policy_symmetry",False),
+                   "enforce_swing_calf_reference":getattr(cfg.control,"enforce_swing_calf_reference",False),
+                   "swing_calf_reference_scale":getattr(cfg.control,"swing_calf_reference_scale",1.0),
+                   "front_swing_calf_reference_scale":getattr(cfg.control,"front_swing_calf_reference_scale",getattr(cfg.control,"swing_calf_reference_scale",1.0)),
+                   "rear_swing_calf_reference_scale":getattr(cfg.control,"rear_swing_calf_reference_scale",getattr(cfg.control,"swing_calf_reference_scale",1.0)),
+                   "enforce_stance_leg_extension":getattr(cfg.control,"enforce_stance_leg_extension",False),
+                   "preserve_forward_gait":getattr(cfg.control,"preserve_forward_gait",False),
+                   "stance_calf_extension":getattr(cfg.control,"stance_calf_extension",0.0),
+                   "stance_thigh_extension":getattr(cfg.control,"stance_thigh_extension",0.0),
                    "backward_rear_calf_target_min":getattr(cfg.control,"backward_rear_calf_target_min",None),
                    "output_transform":"tanh"},
         "observations":{"clip":cfg.normalization.clip_observations,
@@ -295,9 +318,24 @@ def deployment_config(cfg, checkpoint, gym_root):
                     "default_heading":sum(cfg.commands.ranges.heading)/2 if cfg.commands.heading_command else 0.0,"heading_gain":0.5},
         "gait":{"period":cfg.rewards.gait_period,"stance_ratio":cfg.rewards.gait_stance_ratio,
                 "thigh_amplitude":cfg.rewards.gait_thigh_amplitude,"calf_amplitude":cfg.rewards.gait_calf_amplitude,
-                "gate_with_command":getattr(cfg.control,"gate_gait_with_command",False),
+                "continuous_scaling":getattr(cfg.control,"use_continuous_gait_scaling",False),
+                "equivalent_speed_weights":list(getattr(cfg.control,"gait_equivalent_speed_weights",[1.0,1.5,0.18])),
+                "speed_knots":list(getattr(cfg.control,"gait_speed_knots",[])),
+                "calf_amplitude_knots":list(getattr(cfg.control,"gait_calf_amplitude_knots",[])),
+                # Deploy the trained upper envelope for reliable toe
+                # clearance; it remains inside the randomized 0.17-0.22 range.
+                "calf_amplitude_max":max(getattr(cfg.domain_rand,"gait_calf_amplitude_max_range",[abs(cfg.rewards.gait_calf_amplitude)])),
+                "period_low_speed":sum(getattr(cfg.domain_rand,"gait_low_speed_period_range",[cfg.rewards.gait_period]*2))/2,
+                "period_high_speed":sum(getattr(cfg.domain_rand,"gait_high_speed_period_range",[cfg.rewards.gait_period]*2))/2,
+                "backward_scale":sum(getattr(cfg.domain_rand,"gait_backward_scale_range",[1.0,1.0]))/2,
+                "target_phase_lead":getattr(cfg.control,"gait_target_phase_lead",0.0),
+                "gate_with_command":getattr(cfg.control,"gate_gait_with_command",False) and not getattr(cfg.control,"use_continuous_gait_scaling",False),
                 "command_gate_sigma":getattr(cfg.control,"gait_command_gate_sigma",0.0004),
-                "phase_offsets":{"FL":0.0,"FR":0.5,"RL":0.5,"RR":0.0}},
+                "phase_offsets":{"FL":0.0,"FR":0.5,"RL":0.5,"RR":0.0},
+                "lateral_hip_amplitude":getattr(cfg.rewards,"gait_lateral_hip_amplitude",0.0),
+                "lateral_command_scale":getattr(cfg.rewards,"gait_lateral_command_scale",0.08),
+                "lateral_diagonal_scale":getattr(cfg.rewards,"gait_lateral_diagonal_scale",1.0),
+                "thigh_lateral_scale":getattr(cfg.rewards,"gait_thigh_lateral_scale",1.0)},
         "episode_length_s":cfg.env.episode_length_s,
     }
 
@@ -307,11 +345,18 @@ if __name__ == "__main__":
     p.add_argument("--gym-root",type=Path,default=Path(__file__).resolve().parents[1]/"unitree_rl_gym")
     p.add_argument("--straight-vy-feedback-gain",type=float)
     p.add_argument("--straight-vx-feedback-boost",type=float)
-    p.add_argument("--straight-vy-feedback-sagittal-blend",type=float);a=p.parse_args()
+    p.add_argument("--straight-vy-feedback-sagittal-blend",type=float)
+    p.add_argument("--disable-policy-symmetry",action="store_true")
+    p.add_argument("--action-scale-multiplier",type=float,default=1.0);a=p.parse_args()
     sys.path.insert(0,str(a.gym_root));module_name,class_name=a.config_class.split(":",1);cfg=getattr(importlib.import_module(module_name),class_name)
     if a.straight_vy_feedback_gain is not None:cfg.control.straight_vy_feedback_gain=a.straight_vy_feedback_gain
     if a.straight_vx_feedback_boost is not None:cfg.control.straight_vx_feedback_boost=a.straight_vx_feedback_boost
     if a.straight_vy_feedback_sagittal_blend is not None:cfg.control.straight_vy_feedback_sagittal_blend=a.straight_vy_feedback_sagittal_blend
+    if a.disable_policy_symmetry:cfg.control.enforce_policy_symmetry=False
+    if a.action_scale_multiplier != 1.0:
+        cfg.control.action_scale*=a.action_scale_multiplier
+        cfg.control.rear_action_scale*=a.action_scale_multiplier
+        cfg.control.hip_action_scale*=a.action_scale_multiplier
     state=torch.load(a.checkpoint,map_location="cpu")["model_state_dict"]
     actor=Actor(cfg.env.num_observations,cfg).eval();actor.load_state_dict({k[6:]:v for k,v in state.items() if k.startswith("actor.")})
     a.output.parent.mkdir(parents=True,exist_ok=True)

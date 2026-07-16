@@ -16,7 +16,11 @@ import numpy as np
 import rclpy
 
 from .mydog_policy_node import MydogPolicyNode
-from .policy_contract import ContractPolicyActionFilter, PDTorqueEquivalentLimiter
+from .policy_contract import (
+    ContractJointTargetFilter,
+    ContractPolicyActionFilter,
+    PDTorqueEquivalentLimiter,
+)
 
 
 class MydogPolicyParityNode(MydogPolicyNode):
@@ -44,6 +48,10 @@ class MydogPolicyParityNode(MydogPolicyNode):
 
         control = self.deployment_config["control"]
         self.contract_action_filter = ContractPolicyActionFilter.from_control(control)
+        self.contract_target_filter = ContractJointTargetFilter(
+            control,
+            self.obs_builder.mapper.default_joint_angle,
+        )
         self.contract_torque_limiter = PDTorqueEquivalentLimiter()
         if not self.has_parameter("motion_torque_ff_limit_nm"):
             self.declare_parameter("motion_torque_ff_limit_nm", 17.0)
@@ -140,6 +148,9 @@ class MydogPolicyParityNode(MydogPolicyNode):
 
     def _reset_contract_state(self, *, reset_phase: bool) -> None:
         self.contract_action_filter.reset()
+        self.contract_target_filter.reset(
+            self.obs_builder.mapper.default_joint_angle
+        )
         self.obs_builder.set_last_action(np.zeros(12, dtype=np.float32))
         if reset_phase:
             self._contract_phase = 0.0
@@ -152,10 +163,26 @@ class MydogPolicyParityNode(MydogPolicyNode):
 
     def _advance_contract_phase(self) -> None:
         nominal_dt = 1.0 / max(float(self.policy_hz), 1.0e-6)
+        self.gait_phase_period = self._active_gait_period()
         self._contract_phase = (
             self._contract_phase + nominal_dt / max(self.gait_phase_period, 1.0e-6)
         ) % 1.0
         self.obs_builder.last_gait_phase = self._effective_contract_phase()
+
+    def _active_gait_period(self) -> float:
+        gait = self.deployment_config["gait"]
+        if not bool(gait.get("continuous_scaling", False)):
+            return self.model_gait_phase_period * self.contract_gait_period_scale
+        command = np.asarray(self.cmd, dtype=np.float32).reshape(3)
+        weights = np.asarray(
+            gait.get("equivalent_speed_weights", [1.0, 1.5, 0.18]),
+            dtype=np.float32,
+        )
+        speed = float(np.sqrt(np.sum(np.square(command * weights))))
+        blend = float(np.clip((speed - 0.01) / 0.29, 0.0, 1.0))
+        low = float(gait["period_low_speed"])
+        high = float(gait["period_high_speed"])
+        return (low + blend * (high - low)) * self.contract_gait_period_scale
 
     def cmd_callback(self, msg):
         was_zero = bool(np.all(np.abs(self.cmd) < self.zero_cmd_stand_threshold))
@@ -189,11 +216,44 @@ class MydogPolicyParityNode(MydogPolicyNode):
         """Exact NumPy counterpart of ``gym_dog/mujoko/sim2sim.py``."""
         gait = self.deployment_config["gait"]
         result = np.zeros(12, dtype=np.float32)
+        command = np.asarray(self.cmd, dtype=np.float32).reshape(3)
+        calf_amplitude = float(gait["calf_amplitude"])
+        amplitude_fraction = 1.0
+        if bool(gait.get("continuous_scaling", False)):
+            weights = np.asarray(
+                gait.get("equivalent_speed_weights", [1.0, 1.5, 0.18]),
+                dtype=np.float32,
+            )
+            speed = float(np.sqrt(np.sum(np.square(command * weights))))
+            knots = np.asarray(gait["speed_knots"], dtype=np.float32)
+            amplitudes = np.asarray(
+                gait["calf_amplitude_knots"], dtype=np.float32
+            )
+            amplitude = float(np.interp(speed, knots, amplitudes))
+            amplitude *= float(gait["calf_amplitude_max"]) / max(
+                float(amplitudes[-1]), 1.0e-6
+            )
+            if float(command[0]) < -0.03:
+                amplitude *= float(gait["backward_scale"])
+            calf_amplitude = -amplitude
+            amplitude_fraction = abs(calf_amplitude) / max(
+                float(gait["calf_amplitude_max"]), 1.0e-6
+            )
+        thigh_amplitude = float(gait["thigh_amplitude"])
+        if bool(gait.get("continuous_scaling", False)):
+            thigh_amplitude *= amplitude_fraction
+            if float(command[0]) < -0.03:
+                thigh_amplitude *= -1.0
+            if abs(float(command[0])) < 0.03 and abs(float(command[1])) > 0.02:
+                thigh_amplitude *= float(gait.get("thigh_lateral_scale", 1.0))
         stance_ratio = float(gait["stance_ratio"])
         offsets = gait["phase_offsets"]
+        target_phase = (
+            float(phase) + float(gait.get("target_phase_lead", 0.0))
+        ) % 1.0
         for i, name in enumerate(self.deployment_config["joint_names"]):
             leg = name[:2]
-            leg_phase = (float(phase) + float(offsets[leg])) % 1.0
+            leg_phase = (target_phase + float(offsets[leg])) % 1.0
             swing = np.clip(
                 (leg_phase - stance_ratio) / (1.0 - stance_ratio),
                 0.0,
@@ -209,16 +269,98 @@ class MydogPolicyParityNode(MydogPolicyNode):
                     )
                 else:
                     profile = 1.0 - 2.0 * smooth
-                result[i] = float(gait["thigh_amplitude"]) * profile
+                result[i] = thigh_amplitude * profile
             elif "calf" in name:
                 result[i] = (
-                    float(gait["calf_amplitude"])
+                    calf_amplitude
                     * np.sin(np.pi * smooth)
                     * float(leg_phase >= stance_ratio)
                 )
 
+        lateral_hip_amplitude = float(gait.get("lateral_hip_amplitude", 0.0))
+        if abs(lateral_hip_amplitude) > 1.0e-8:
+            lateral_scale = max(
+                float(gait.get("lateral_command_scale", 0.08)), 1.0e-6
+            )
+            lateral_fraction = float(np.clip(command[1] / lateral_scale, -1.0, 1.0))
+            if abs(float(command[0])) > 0.05:
+                lateral_fraction *= float(gait.get("lateral_diagonal_scale", 1.0))
+            if bool(gait.get("continuous_scaling", False)):
+                lateral_fraction *= amplitude_fraction
+            for i, name in enumerate(self.deployment_config["joint_names"]):
+                if "hip" not in name:
+                    continue
+                leg = name[:2]
+                leg_phase = (target_phase + float(offsets[leg])) % 1.0
+                swing = np.clip(
+                    (leg_phase - stance_ratio) / (1.0 - stance_ratio), 0.0, 1.0
+                )
+                smooth = swing * swing * (3.0 - 2.0 * swing)
+                if leg_phase < stance_ratio:
+                    profile = -1.0 + 2.0 * np.clip(
+                        leg_phase / stance_ratio, 0.0, 1.0
+                    )
+                else:
+                    profile = 1.0 - 2.0 * smooth
+                result[i] += lateral_hip_amplitude * lateral_fraction * profile
+
         self._contract_gait_gate = self.deployment_gait_gate()
         return (result * self._contract_gait_gate).astype(np.float32)
+
+    def transform_raw_policy_target(
+        self, target_policy_abs: np.ndarray
+    ) -> np.ndarray:
+        """Apply the same one-sided swing and rear-leg guards as training."""
+        target = np.asarray(target_policy_abs, dtype=np.float32).reshape(12).copy()
+        control = self.deployment_config["control"]
+        gait_offset = np.asarray(
+            self._last_gait_offset_policy, dtype=np.float32
+        ).reshape(12)
+        defaults = self.obs_builder.mapper.default_joint_angle
+        names = self.deployment_config["joint_names"]
+
+        if bool(control.get("enforce_swing_calf_reference", False)):
+            common_scale = float(control.get("swing_calf_reference_scale", 1.0))
+            for i, name in enumerate(names):
+                if "calf" not in name or gait_offset[i] >= -1.0e-5:
+                    continue
+                key = (
+                    "front_swing_calf_reference_scale"
+                    if name.startswith(("FL_", "FR_"))
+                    else "rear_swing_calf_reference_scale"
+                )
+                scale = float(control.get(key, common_scale))
+                reference = float(defaults[i]) + scale * float(gait_offset[i])
+                target[i] = min(float(target[i]), reference)
+
+        rear_min = control.get("backward_rear_calf_target_min")
+        if rear_min is not None and float(self.cmd[0]) < -0.03:
+            for i, name in enumerate(names):
+                if name.startswith(("RL_calf", "RR_calf")):
+                    target[i] = max(float(target[i]), float(rear_min))
+
+        return np.clip(
+            target,
+            self.obs_builder.mapper.policy_lower_limit,
+            self.obs_builder.mapper.policy_upper_limit,
+        ).astype(np.float32)
+
+    def action_to_policy_target_abs_by_mode(
+        self,
+        action_policy: np.ndarray,
+        dt: float,
+    ) -> tuple[np.ndarray, dict]:
+        target, info = super().action_to_policy_target_abs_by_mode(
+            action_policy, dt
+        )
+        raw_target = self.transform_raw_policy_target(target)
+        limited_target = self.contract_target_filter.step(raw_target, dt)
+        info = dict(info)
+        info["raw_final_target_policy"] = raw_target.copy()
+        info["final_target_filter_enabled"] = bool(
+            self.contract_target_filter.enabled
+        )
+        return limited_target.astype(np.float32), info
 
     @staticmethod
     def _disabled_pre_limit_info(q_raw, q_current, torque_budget):

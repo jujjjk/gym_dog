@@ -1002,14 +1002,18 @@ class MydogPolicyParityFixedNode(MydogPolicyParityNode):
         return (
             self.contract_action_filter.action.copy(),
             self.contract_action_filter.action_velocity.copy(),
+            self.contract_target_filter.target.copy(),
+            self.contract_target_filter.velocity.copy(),
         )
 
     def _restore_filter_state(self, state) -> None:
         if state is None:
             return
-        action, velocity = state
+        action, velocity, target, target_velocity = state
         self.contract_action_filter.action[:] = action
         self.contract_action_filter.action_velocity[:] = velocity
+        self.contract_target_filter.target[:] = target
+        self.contract_target_filter.velocity[:] = target_velocity
 
     def send_motion_batch(
         self,
