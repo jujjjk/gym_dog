@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Motor State Monitor</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Arial, sans-serif;
+      background: #f5f7fb;
+      color: #172033;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    label {
+      font-weight: 700;
+    }
+
+    input {
+      width: 110px;
+      padding: 8px 10px;
+      border: 1px solid #c8d0dd;
+      border-radius: 6px;
+      font: inherit;
+    }
+
+    button {
+      padding: 9px 14px;
+      border: 0;
+      border-radius: 6px;
+      background: #2563eb;
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .cell {
+      background: white;
+      border: 1px solid #dde3ed;
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .name {
+      color: #5d6b82;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .value {
+      font-family: Consolas, monospace;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .bad {
+      color: #dc2626;
+    }
+
+    .ok {
+      color: #16a34a;
+    }
+
+    pre {
+      margin: 0;
+      padding: 14px;
+      overflow: auto;
+      background: #101827;
+      color: #dce7ff;
+      border-radius: 8px;
+      min-height: 160px;
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <label for="motorId">Motor ID</label>
+    <input id="motorId" value="0x11" />
+    <label for="period">Period ms</label>
+    <input id="period" type="number" value="200" min="50" step="50" />
+    <button id="apply">Apply</button>
+    <span id="status"></span>
+  </div>
+
+  <div class="grid">
+    <div class="cell"><div class="name">can_id</div><div class="value" id="can_id">-</div></div>
+    <div class="cell"><div class="name">online</div><div class="value" id="online">-</div></div>
+    <div class="cell"><div class="name">age_ms</div><div class="value" id="age_ms">-</div></div>
+    <div class="cell"><div class="name">angle</div><div class="value" id="angle">-</div></div>
+    <div class="cell"><div class="name">speed</div><div class="value" id="speed">-</div></div>
+    <div class="cell"><div class="name">snapshot_seq</div><div class="value" id="snapshot_seq">-</div></div>
+    <div class="cell"><div class="name">board_tick_ms</div><div class="value" id="board_tick_ms">-</div></div>
+  </div>
+
+  <pre id="raw">{}</pre>
+
+  <script>
+    const els = {
+      can_id: document.getElementById("can_id"),
+      online: document.getElementById("online"),
+      age_ms: document.getElementById("age_ms"),
+      angle: document.getElementById("angle"),
+      speed: document.getElementById("speed"),
+      snapshot_seq: document.getElementById("snapshot_seq"),
+      board_tick_ms: document.getElementById("board_tick_ms"),
+      raw: document.getElementById("raw"),
+      status: document.getElementById("status"),
+      motorId: document.getElementById("motorId"),
+      period: document.getElementById("period"),
+      apply: document.getElementById("apply"),
+    };
+
+    let timer = null;
+
+    function parseMotorId(text) {
+      const s = String(text).trim();
+      if (s.toLowerCase().startsWith("0x")) return parseInt(s, 16);
+      return parseInt(s, 10);
+    }
+
+    function setText(id, value, className) {
+      els[id].textContent = value;
+      els[id].className = "value" + (className ? " " + className : "");
+    }
+
+    async function pollOnce() {
+      const motorId = parseMotorId(els.motorId.value);
+      if (!Number.isFinite(motorId)) {
+        els.status.textContent = "Invalid motor id";
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/state?motor_id=${motorId}`, { cache: "no-store" });
+        const data = await res.json();
+        const age = Number(data.age_ms ?? 999999);
+        const online = Boolean(data.online);
+
+        setText("can_id", `0x${Number(data.can_id ?? motorId).toString(16).toUpperCase()}`);
+        setText("online", online ? "true" : "false", online ? "ok" : "bad");
+        setText("age_ms", Number.isFinite(age) ? age.toFixed(0) : "-", online && age < 100 ? "ok" : "bad");
+        setText("angle", Number(data.angle ?? 0).toFixed(5));
+        setText("speed", Number(data.speed ?? 0).toFixed(5));
+        setText("snapshot_seq", data.snapshot_seq ?? "-");
+        setText("board_tick_ms", data.board_tick_ms ?? "-");
+        els.raw.textContent = JSON.stringify(data, null, 2);
+        els.status.textContent = new Date().toLocaleTimeString();
+      } catch (err) {
+        els.status.textContent = String(err);
+      }
+    }
+
+    function restart() {
+      if (timer) clearInterval(timer);
+      const period = Math.max(50, Number(els.period.value) || 200);
+      pollOnce();
+      timer = setInterval(pollOnce, period);
+    }
+
+    els.apply.addEventListener("click", restart);
+    restart();
+  </script>
+</body>
+</html>

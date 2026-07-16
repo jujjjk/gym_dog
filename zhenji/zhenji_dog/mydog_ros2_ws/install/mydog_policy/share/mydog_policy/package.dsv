@@ -1,0 +1,9 @@
+source;share/mydog_policy/hook/pythonpath.ps1
+source;share/mydog_policy/hook/pythonpath.dsv
+source;share/mydog_policy/hook/pythonpath.sh
+source;share/mydog_policy/hook/ament_prefix_path.ps1
+source;share/mydog_policy/hook/ament_prefix_path.dsv
+source;share/mydog_policy/hook/ament_prefix_path.sh
+source;../../build/mydog_policy/share/mydog_policy/hook/pythonpath_develop.ps1
+source;../../build/mydog_policy/share/mydog_policy/hook/pythonpath_develop.dsv
+source;../../build/mydog_policy/share/mydog_policy/hook/pythonpath_develop.sh

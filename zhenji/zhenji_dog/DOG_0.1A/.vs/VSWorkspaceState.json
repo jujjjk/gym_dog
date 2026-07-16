@@ -1,0 +1,17 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\Core",
+    "\\Core\\Inc",
+    "\\Core\\Src",
+    "\\Drivers",
+    "\\Drivers\\CMSIS",
+    "\\Drivers\\CMSIS\\Device",
+    "\\Drivers\\CMSIS\\Device\\ST",
+    "\\Drivers\\CMSIS\\Include",
+    "\\MDK-ARM",
+    "\\MDK-ARM\\DebugConfig"
+  ],
+  "SelectedNode": "\\Core\\Src\\main.c",
+  "PreviewInSolutionExplorer": false
+}
