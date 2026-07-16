@@ -1776,6 +1776,187 @@ class FanfanOmniSymmetricTransitionCfgPPO(FanfanOmniForceCoordCfgPPO):
         symmetry_coef = 1.0
 
 
+class FanfanOmniHardwareBalance5530Cfg(FanfanOmniSymmetricTransitionCfg):
+    """Conservative all-motion continuation from the selected model_5530.
+
+    Keep its forward gait and calf Kp=70, while replacing fast lateral throws
+    and deep backward rear-leg folds with small, level and symmetric steps.
+    """
+
+    class control(FanfanOmniSymmetricTransitionCfg.control):
+        # These are deliberately unchanged from model_5530. In particular,
+        # calf stiffness stays at 70 and forward physical authority is kept.
+        stiffness = {"hip": 60.0, "thigh": 70.0, "calf": 70.0}
+        action_scale = 0.215
+        rear_action_scale = 0.235
+        hip_action_scale = 0.115
+
+        # Slightly stronger filtering/rate bounds soften command transitions
+        # without changing the learned forward target scale.
+        policy_action_filter_alpha = 0.27
+        policy_action_rate_limits = {
+            "hip": 0.78 / 0.115,
+            "thigh": 1.35 / 0.215,
+            "calf": 2.20 / 0.215,
+        }
+        policy_action_accel_limits = {
+            "hip": 28.0 / 0.115,
+            "thigh": 44.0 / 0.215,
+            "calf": 72.0 / 0.215,
+        }
+
+        # Do not amplify the already-aggressive lateral command. Heading hold
+        # remains active to reject drift in every translation direction.
+        command_feedback_longitudinal_gain = 0.30
+        command_feedback_lateral_gain = 0.20
+        command_feedback_yaw_gain = 0.18
+        command_feedback_heading_gain = 4.00
+        command_feedback_heading_damping = 1.20
+        command_feedback_diagonal_longitudinal_scale = 0.70
+        enforce_policy_symmetry = True
+        # Final target-layer guard for weak/lagged real rear calves. It is
+        # command-gated and therefore leaves the selected forward gait intact.
+        backward_rear_calf_target_min = -1.38
+
+    class domain_rand(FanfanOmniSymmetricTransitionCfg.domain_rand):
+        # Retain moderate sim-to-real robustness without forcing a violent gait.
+        friction_range = [0.75, 1.20]
+        added_mass_range = [-0.20, 0.20]
+        base_com_x_range = [-0.006, 0.006]
+        base_com_y_range = [-0.010, 0.010]
+        motor_strength_range = [0.90, 1.10]
+        push_interval_s = 7
+        max_push_vel_xy = 0.12
+
+    class commands(FanfanOmniSymmetricTransitionCfg.commands):
+        # Forward 0.40 m/s stays in the replay set. Lateral and backward are
+        # intentionally slow because real-hardware safety outranks raw speed.
+        resampling_time = 3.0
+        stand_probability = 0.08
+        pure_yaw_probability = 0.10
+        pure_lateral_probability = 0.28
+        pure_sagittal_probability = 0.28
+        hard_transition_probability = 0.12
+        omni_curriculum = False
+
+        class ranges(FanfanOmniSymmetricTransitionCfg.commands.ranges):
+            lin_vel_x = [-0.12, 0.45]
+            lin_vel_y = [-0.08, 0.08]
+            ang_vel_yaw = [-0.80, 0.80]
+
+    class rewards(FanfanOmniSymmetricTransitionCfg.rewards):
+        gait_period = 0.45
+        swing_height_target = 0.050
+        swing_height_sigma = 0.00035
+        backward_rear_calf_soft_limit = -1.55
+        rear_calf_fold_limit = -1.80
+        transition_smooth_duration = 0.60
+        command_transition_duration = 1.2
+        terminate_straight_heading_error = 0.10
+        terminate_translation_heading_error = 0.14
+
+        class scales(FanfanOmniSymmetricTransitionCfg.rewards.scales):
+            # Preserve forward tracking but remove the incentive to lunge
+            # sideways or backwards merely to eliminate a small speed error.
+            tracking_lin_vel = 15.0
+            tracking_longitudinal_vel = 14.0
+            tracking_lateral_vel = 12.0
+            tracking_ang_vel = 9.0
+            absolute_longitudinal_tracking_error = -10.0
+            absolute_lateral_tracking_error = -10.0
+            absolute_yaw_tracking_error = -6.0
+            planar_direction_error = -18.0
+            command_transition_tracking = 3.0
+
+            # Direction and drift control in every translational mode.
+            translation_heading_error_abs = -100.0
+            pure_lateral_forward_speed = -80.0
+            translation_yaw_error = -24.0
+            lateral_yaw_error = -45.0
+            diagonal_yaw_error = -20.0
+            lateral_forward_drift = -24.0
+            straight_lateral_speed = -180.0
+            straight_heading_error = -140.0
+            straight_lateral_drift = -75.0
+            straight_yaw_error = -85.0
+
+            # Balance, diagonal timing and sufficient toe clearance produce a
+            # visibly coordinated trot instead of four independent legs.
+            orientation = -8.0
+            ang_vel_xy = -1.8
+            base_height = -14.0
+            low_base_height = -24.0
+            rear_sit = -24.0
+            rear_calf_fold = -12.0
+            rear_load_bias = -3.0
+            rear_leg_posture = -3.0
+            diagonal_gait = 7.0
+            swing_height = 0.8
+            diagonal_joint_sync = -0.9
+            diagonal_contact_sync_all = -3.0
+            diagonal_foot_height_sync_all = -120.0
+            translation_roll = -35.0
+            lateral_roll = -80.0
+            lateral_action_magnitude = -0.30
+            backward_rear_calf_fold = -80.0
+            backward_rear_action = -0.12
+            transition_action_rate = -0.45
+            feet_contact_forces = -0.001
+
+            # A conservative, recoverable motion envelope for real hardware.
+            action_magnitude = -0.030
+            policy_action_magnitude = -0.095
+            action_rate = -0.25
+            policy_action_rate = -0.36
+            action_saturation = -0.45
+            policy_action_saturation = -1.10
+            policy_filter_gap = -0.38
+            dof_acc = -4.0e-7
+            torque_near_limit = -0.24
+            peak_torque = -0.24
+            sustained_torque = -0.30
+            torque_clip = -0.50
+
+
+class FanfanOmniHardwareBalance5530CfgPPO(
+        FanfanOmniSymmetricTransitionCfgPPO):
+    class algorithm(FanfanOmniSymmetricTransitionCfgPPO.algorithm):
+        entropy_coef = 0.0
+        learning_rate = 3.0e-5
+        desired_kl = 0.0015
+
+    class runner(FanfanOmniSymmetricTransitionCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "hardware_balance_safe_from_5530"
+        symmetry_coef = 1.5
+
+
+class FanfanOmniHardwareBalance5530V2Cfg(FanfanOmniHardwareBalance5530Cfg):
+    """Final rear-knee recovery polish from the best first-stage checkpoint."""
+
+    class rewards(FanfanOmniHardwareBalance5530Cfg.rewards):
+        # model_5800 reaches about -1.42 rad in simulation. Start penalizing
+        # before that point so real actuator lag cannot turn it into a squat.
+        backward_rear_target_soft_limit = -1.36
+
+        class scales(FanfanOmniHardwareBalance5530Cfg.rewards.scales):
+            backward_rear_target_fold = -140.0
+            backward_rear_calf_fold = -100.0
+            backward_rear_action = -0.16
+
+
+class FanfanOmniHardwareBalance5530V2CfgPPO(
+        FanfanOmniHardwareBalance5530CfgPPO):
+    class algorithm(FanfanOmniHardwareBalance5530CfgPPO.algorithm):
+        learning_rate = 1.5e-5
+        desired_kl = 0.001
+
+    class runner(FanfanOmniHardwareBalance5530CfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "hardware_balance_rear_recovery_from_5800"
+        symmetry_coef = 1.5
+
+
 class FanfanOmniCalibratedSymmetryCfg(FanfanOmniHeadingBoundSymmetryCfg):
     """Selected 5100 plus straight-only cross-simulator action calibration."""
 

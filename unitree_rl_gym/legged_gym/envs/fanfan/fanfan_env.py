@@ -312,6 +312,18 @@ class FanfanRobot(LeggedRobot):
             gait_gate = 1.0 - torch.exp(-command_energy / sigma)
             gait_offset *= gait_gate.unsqueeze(1)
         target_dof_pos = actions_scaled + gait_offset + self.default_dof_pos
+        backward_rear_calf_target_min = getattr(
+            self.cfg.control, "backward_rear_calf_target_min", None
+        )
+        if backward_rear_calf_target_min is not None:
+            backward = (self.commands[:, 0] < -0.03).unsqueeze(1)
+            rear_targets = target_dof_pos[:, self._get_rear_calf_indices()]
+            guarded_targets = torch.clamp(
+                rear_targets, min=float(backward_rear_calf_target_min)
+            )
+            target_dof_pos[:, self._get_rear_calf_indices()] = torch.where(
+                backward, guarded_targets, rear_targets
+            )
         raw_torques = self.motor_strength * (self.p_gains * (
             target_dof_pos - self.dof_pos
         ) - self.d_gains * self.dof_vel)
@@ -1059,6 +1071,122 @@ class FanfanRobot(LeggedRobot):
                 != contact[:, self.foot_slot_by_leg[second]]
             ).float()
         return mismatch
+
+    def _reward_diagonal_foot_height_sync_all(self):
+        """Synchronize swing height and vertical speed of diagonal leg pairs."""
+        error = torch.zeros(self.num_envs, device=self.device)
+        foot_vertical_velocity = self.feet_state[:, :, 9]
+        for first, second in (("FL", "RR"), ("FR", "RL")):
+            first_slot = self.foot_slot_by_leg[first]
+            second_slot = self.foot_slot_by_leg[second]
+            height_error = (
+                self.feet_pos[:, first_slot, 2]
+                - self.feet_pos[:, second_slot, 2]
+            )
+            velocity_error = (
+                foot_vertical_velocity[:, first_slot]
+                - foot_vertical_velocity[:, second_slot]
+            )
+            error += torch.square(height_error)
+            error += 0.01 * torch.square(velocity_error)
+        return error
+
+    def _reward_translation_roll(self):
+        """Keep the trunk level during forward, backward and lateral motion."""
+        planar_activity = 1.0 - torch.exp(
+            -torch.sum(torch.square(self.commands[:, :2]), dim=1) / 0.0025
+        )
+        return torch.square(self.rpy[:, 0]) * planar_activity
+
+    def _reward_lateral_roll(self):
+        """Apply an extra roll guard to the real-world-risky lateral gait."""
+        lateral_activity = 1.0 - torch.exp(
+            -torch.square(self.commands[:, 1]) / 0.0016
+        )
+        yaw_gate = torch.exp(-torch.square(self.commands[:, 2]) / 0.01)
+        return torch.square(self.rpy[:, 0]) * lateral_activity * yaw_gate
+
+    def _reward_lateral_action_magnitude(self):
+        """Prefer small lateral steps instead of abrupt whole-body throws."""
+        lateral_activity = 1.0 - torch.exp(
+            -torch.square(self.commands[:, 1]) / 0.0016
+        )
+        sagittal_gate = torch.exp(-torch.square(self.commands[:, 0]) / 0.01)
+        yaw_gate = torch.exp(-torch.square(self.commands[:, 2]) / 0.01)
+        hip_energy = torch.mean(
+            torch.square(self.policy_actions[:, self.hip_dof_indices]), dim=1
+        )
+        sagittal_energy = torch.mean(
+            torch.square(self.policy_actions[:, self.sagittal_dof_indices]), dim=1
+        )
+        return (
+            2.0 * hip_energy + sagittal_energy
+        ) * lateral_activity * sagittal_gate * yaw_gate
+
+    def _reward_backward_rear_calf_fold(self):
+        """Stop backward gait from folding the rear knees into a deep squat."""
+        soft_limit = getattr(
+            self.cfg.rewards, "backward_rear_calf_soft_limit", -1.60
+        )
+        rear_calf_pos = self.dof_pos[:, self._get_rear_calf_indices()]
+        fold = (soft_limit - rear_calf_pos).clip(min=0.0)
+        backward_activity = 1.0 - torch.exp(
+            -torch.square(torch.clamp(self.commands[:, 0], max=0.0)) / 0.0025
+        )
+        lateral_gate = torch.exp(-torch.square(self.commands[:, 1]) / 0.0025)
+        return (
+            # Linear excess keeps a useful gradient close to the safety
+            # boundary; the previous squared form was too weak around 0.05 rad.
+            torch.mean(fold, dim=1)
+            * backward_activity
+            * lateral_gate
+        )
+
+    def _reward_backward_rear_target_fold(self):
+        """Keep commanded rear-knee targets recoverable on weaker hardware."""
+        soft_limit = getattr(
+            self.cfg.rewards, "backward_rear_target_soft_limit", -1.38
+        )
+        rear_targets = self.target_dof_pos_rl[
+            :, self._get_rear_calf_indices()
+        ]
+        fold = (soft_limit - rear_targets).clip(min=0.0)
+        backward_activity = 1.0 - torch.exp(
+            -torch.square(torch.clamp(self.commands[:, 0], max=0.0)) / 0.0025
+        )
+        lateral_gate = torch.exp(-torch.square(self.commands[:, 1]) / 0.0025)
+        return (
+            torch.mean(fold, dim=1)
+            * backward_activity
+            * lateral_gate
+        )
+
+    def _reward_backward_rear_action(self):
+        """Keep rear-leg recovery authority during backward stepping."""
+        rear_energy = torch.mean(
+            torch.square(self.policy_actions[:, self.rear_sagittal_dof_indices]),
+            dim=1,
+        )
+        backward_activity = 1.0 - torch.exp(
+            -torch.square(torch.clamp(self.commands[:, 0], max=0.0)) / 0.0025
+        )
+        return rear_energy * backward_activity
+
+    def _reward_transition_action_rate(self):
+        """Make direction changes controlled during their first few steps."""
+        duration = getattr(
+            self.cfg.rewards, "transition_smooth_duration", 0.60
+        )
+        time_gate = (
+            1.0 - self.command_transition_age / duration
+        ).clip(min=0.0, max=1.0)
+        change_gate = self.command_transition_magnitude.clip(0.0, 1.0)
+        action_delta = self.policy_actions - self.last_policy_actions
+        return (
+            torch.mean(torch.square(action_delta), dim=1)
+            * time_gate
+            * change_gate
+        )
 
     def _straight_contact_load(self):
         """Return foot contact data and a gate that excludes flight phases."""

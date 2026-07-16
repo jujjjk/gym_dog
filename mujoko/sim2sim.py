@@ -50,6 +50,10 @@ class Sim:
             dt=self.m.opt.timestep*self.decimation;desired=self.action+self.filter_alpha*(policy_action-self.action);desired_velocity=np.clip((desired-self.action)/dt,-self.action_rate_limits,self.action_rate_limits);dv=np.clip(desired_velocity-self.action_velocity,-self.action_accel_limits*dt,self.action_accel_limits*dt);next_velocity=self.action_velocity+dv;next_action=self.action+next_velocity*dt;crossed=(desired-self.action)*(desired-next_action)<0;next_action=np.where(crossed,desired,next_action);self.action_velocity=(next_action-self.action)/dt;self.action=next_action
         else:self.action=policy_action
         self.target=self.default+self.scale*self.action+self.gait_offset(phase)
+        rear_calf_min=self.cfg["control"].get("backward_rear_calf_target_min")
+        if rear_calf_min is not None and self.command[0] < -0.03:
+            rear_calf=np.array([i for i,name in enumerate(self.names) if name.startswith(("RL_calf","RR_calf"))])
+            self.target[rear_calf]=np.maximum(self.target[rear_calf],float(rear_calf_min))
         if not self.cfg["commands"]["heading_command"] and self.cfg["commands"].get("observe_heading_error",False):self.heading_target=np.arctan2(np.sin(self.heading_target+self.command[2]*self.m.opt.timestep*self.decimation),np.cos(self.heading_target+self.command[2]*self.m.opt.timestep*self.decimation))
         self.n+=1
     def step(self):

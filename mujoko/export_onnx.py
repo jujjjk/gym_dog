@@ -278,6 +278,7 @@ def deployment_config(cfg, checkpoint, gym_root):
                    "command_feedback_heading_damping":getattr(cfg.control,"command_feedback_heading_damping",0.0),
                    "command_feedback_diagonal_longitudinal_scale":getattr(cfg.control,"command_feedback_diagonal_longitudinal_scale",1.0),
                    "enforce_policy_symmetry":getattr(cfg.control,"enforce_policy_symmetry",False),
+                   "backward_rear_calf_target_min":getattr(cfg.control,"backward_rear_calf_target_min",None),
                    "output_transform":"tanh"},
         "observations":{"clip":cfg.normalization.clip_observations,
                         "lin_vel_scale":cfg.normalization.obs_scales.lin_vel,

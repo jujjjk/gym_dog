@@ -33,6 +33,10 @@ from legged_gym.envs.fanfan.fanfan_omni_safe_config import (
     FanfanOmniHighCadenceCfg, FanfanOmniHighCadenceCfgPPO,
     FanfanOmniSymmetricTransitionCfg,
     FanfanOmniSymmetricTransitionCfgPPO,
+    FanfanOmniHardwareBalance5530Cfg,
+    FanfanOmniHardwareBalance5530CfgPPO,
+    FanfanOmniHardwareBalance5530V2Cfg,
+    FanfanOmniHardwareBalance5530V2CfgPPO,
     FanfanOmniCalibratedSymmetryCfg, FanfanOmniCalibratedSymmetryCfgPPO,
 )
 from legged_gym.envs.fanfan_rouhe.fanfan_config import FanfanRouheRoughCfg, FanfanRouheRoughCfgPPO
@@ -186,6 +190,18 @@ task_registry.register(
     FanfanRobot,
     FanfanOmniSymmetricTransitionCfg(),
     FanfanOmniSymmetricTransitionCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_hardware_balance_5530",
+    FanfanRobot,
+    FanfanOmniHardwareBalance5530Cfg(),
+    FanfanOmniHardwareBalance5530CfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_hardware_balance_5530_v2",
+    FanfanRobot,
+    FanfanOmniHardwareBalance5530V2Cfg(),
+    FanfanOmniHardwareBalance5530V2CfgPPO(),
 )
 task_registry.register(
     "fanfan_omni_calibrated_symmetry",

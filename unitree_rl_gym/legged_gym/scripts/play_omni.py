@@ -173,6 +173,7 @@ def play(args):
                     , "high_authority_closed_loop"
                     , "high_cadence"
                     , "symmetric_transition"
+                    , "hardware_balance_5530"
                 ))
                 and step > 0
                 and step % transition_interval_steps == 0
