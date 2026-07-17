@@ -37,6 +37,18 @@ from legged_gym.envs.fanfan.fanfan_omni_safe_config import (
     FanfanOmniHardwareBalance5530CfgPPO,
     FanfanOmniHardwareBalance5530V2Cfg,
     FanfanOmniHardwareBalance5530V2CfgPPO,
+    FanfanOmniRealDataCurriculumCfg,
+    FanfanOmniRealDataCurriculumCfgPPO,
+    FanfanOmniRealDataSpeedPolishCfg,
+    FanfanOmniRealDataSpeedPolishCfgPPO,
+    FanfanOmniRealDataCoordinatedCfg,
+    FanfanOmniRealDataCoordinatedCfgPPO,
+    FanfanOmniRealDataClearancePolishCfg,
+    FanfanOmniRealDataClearancePolishCfgPPO,
+    FanfanOmniRealDataDirectionalPolishCfg,
+    FanfanOmniRealDataDirectionalPolishCfgPPO,
+    FanfanOmniRealDataPerformanceRecoveryCfg,
+    FanfanOmniRealDataPerformanceRecoveryCfgPPO,
     FanfanOmniCalibratedSymmetryCfg, FanfanOmniCalibratedSymmetryCfgPPO,
 )
 from legged_gym.envs.fanfan_rouhe.fanfan_config import FanfanRouheRoughCfg, FanfanRouheRoughCfgPPO
@@ -202,6 +214,42 @@ task_registry.register(
     FanfanRobot,
     FanfanOmniHardwareBalance5530V2Cfg(),
     FanfanOmniHardwareBalance5530V2CfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_realdata_curriculum",
+    FanfanRobot,
+    FanfanOmniRealDataCurriculumCfg(),
+    FanfanOmniRealDataCurriculumCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_realdata_speed_polish",
+    FanfanRobot,
+    FanfanOmniRealDataSpeedPolishCfg(),
+    FanfanOmniRealDataSpeedPolishCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_realdata_coordinated",
+    FanfanRobot,
+    FanfanOmniRealDataCoordinatedCfg(),
+    FanfanOmniRealDataCoordinatedCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_realdata_clearance_polish",
+    FanfanRobot,
+    FanfanOmniRealDataClearancePolishCfg(),
+    FanfanOmniRealDataClearancePolishCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_realdata_directional_polish",
+    FanfanRobot,
+    FanfanOmniRealDataDirectionalPolishCfg(),
+    FanfanOmniRealDataDirectionalPolishCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_realdata_performance_recovery",
+    FanfanRobot,
+    FanfanOmniRealDataPerformanceRecoveryCfg(),
+    FanfanOmniRealDataPerformanceRecoveryCfgPPO(),
 )
 task_registry.register(
     "fanfan_omni_calibrated_symmetry",

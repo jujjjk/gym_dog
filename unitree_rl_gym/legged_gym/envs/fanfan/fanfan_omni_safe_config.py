@@ -1957,6 +1957,717 @@ class FanfanOmniHardwareBalance5530V2CfgPPO(
         symmetry_coef = 1.5
 
 
+class FanfanOmniRealDataCurriculumCfg(FanfanOmniHardwareBalance5530V2Cfg):
+    """Real-CSV-driven actuator, estimator and command curriculum."""
+
+    class control(FanfanOmniHardwareBalance5530V2Cfg.control):
+        # The real and simulated controller are both exactly 50 Hz with the
+        # deployed PD and strict per-joint hardware ceilings.
+        decimation = 4
+        stiffness = {"hip": 60.0, "thigh": 70.0, "calf": 70.0}
+        damping = {"hip": 1.2, "thigh": 1.6, "calf": 1.6}
+        torque_limits_by_joint = {"hip": 10.0, "thigh": 10.0, "calf": 13.0}
+        action_scale = 0.215
+        rear_action_scale = 0.235
+        hip_action_scale = 0.115
+
+        filter_policy_actions = True
+        policy_action_filter_alpha = 0.26
+        policy_action_filter_alpha_range = [0.22, 0.30]
+
+        # Gait amplitude is now genuinely small at low speed and grows
+        # continuously. Values are physical calf radians, not action units.
+        use_continuous_gait_scaling = True
+        gait_equivalent_speed_weights = [1.0, 1.5, 0.18]
+        gait_speed_knots = [0.0, 0.01, 0.02, 0.05, 0.12, 0.20, 0.30]
+        gait_calf_amplitude_knots = [
+            0.0, 0.0, 0.020, 0.040, 0.085, 0.140, 0.200
+        ]
+
+        # Limit default + filtered actor + gait, never the actor alone.
+        final_target_rate_limits_initial = {
+            "hip": 0.60, "thigh": 0.85, "calf": 1.20
+        }
+        final_target_accel_limits_initial = {
+            "hip": 16.0, "thigh": 24.0, "calf": 34.0
+        }
+        final_target_rate_limits_final = {
+            "hip": 0.85, "thigh": 1.20, "calf": 1.80
+        }
+        final_target_accel_limits_final = {
+            "hip": 25.0, "thigh": 38.0, "calf": 55.0
+        }
+        rear_calf_target_rate_scale = 0.90
+        final_target_limit_open_start_iteration = 250
+        final_target_limit_open_end_iteration = 1000
+
+        # A 5 ms internal actuator update reproduces the measured 80-100 ms
+        # response while policy commands still arrive only every 20 ms.
+        use_real_actuator_model = True
+        actuator_time_constant_ranges = {
+            "hip": [0.035, 0.070],
+            "thigh": [0.045, 0.090],
+            "calf": [0.055, 0.110],
+        }
+        command_delay_range_s = [0.005, 0.015]
+        command_delay_slow_probability = 0.10
+        command_delay_slow_range_s = [0.015, 0.030]
+        command_delay_max_s = 0.030
+
+        # Training authority is sometimes lower, but can never exceed the
+        # actual 10/10/13 Nm contract.
+        training_torque_limit_ranges = {
+            "hip": [8.5, 10.0],
+            "thigh": [8.5, 10.0],
+            "calf": [11.0, 13.0],
+        }
+
+    class domain_rand(FanfanOmniHardwareBalance5530V2Cfg.domain_rand):
+        randomize_friction = True
+        friction_range = [0.55, 1.20]
+        low_friction_probability = 0.10
+        low_friction_range = [0.35, 0.55]
+        randomize_foot_friction_independent = True
+        independent_shape_friction_fraction = 0.15
+
+        randomize_base_mass = False
+        base_mass_fraction_range = [0.95, 1.05]
+        randomize_base_com = True
+        base_com_x_range = [-0.015, 0.015]
+        base_com_y_range = [-0.012, 0.012]
+        base_com_z_range = [-0.008, 0.008]
+
+        randomize_motor_strength = True
+        motor_strength_range = [0.85, 1.05]
+        rear_calf_strength_range = [0.80, 1.03]
+        pair_diagonal_motor_strength = False
+        kp_multiplier_range = [0.80, 1.05]
+        kd_multiplier_range = [0.75, 1.25]
+        joint_zero_offset_ranges = {
+            "hip": [-0.012, 0.012],
+            "thigh": [-0.015, 0.015],
+            "calf": [-0.025, 0.025],
+        }
+        joint_backlash_ranges = {
+            "hip": [0.005, 0.015],
+            "thigh": [0.005, 0.015],
+            "calf": [0.010, 0.025],
+        }
+        randomize_joint_friction_damping = True
+        joint_friction_multiplier_range = [0.70, 1.30]
+        joint_damping_multiplier_range = [0.70, 1.30]
+
+        gait_calf_amplitude_max_range = [0.17, 0.22]
+        gait_stance_ratio_range = [0.60, 0.68]
+        gait_low_speed_period_range = [0.65, 0.85]
+        gait_high_speed_period_range = [0.48, 0.60]
+        gait_backward_scale_range = [0.75, 0.90]
+
+        randomize_initial_tilt = True
+        initial_tilt_range_rad = [-0.05, 0.05]
+        initial_velocity_max = 0.08
+        push_robots = True
+        push_interval_s = 6
+        max_push_vel_xy = 0.14
+
+    class noise(FanfanOmniHardwareBalance5530V2Cfg.noise):
+        # Disable the old broad uniform noise and use the measured stochastic
+        # model below. Observation dimensionality remains exactly 52.
+        add_noise = False
+        use_real_observation_model = True
+        joint_position_noise_sigma = 0.0015
+        joint_velocity_noise_sigma = 0.10
+        joint_velocity_noise_clip = 0.30
+        gravity_xy_noise_sigma = 0.007
+        imu_ang_vel_noise_sigma = 0.015
+        imu_install_bias_max_rad = 0.05
+
+        observation_delay_range_s = [0.015, 0.030]
+        observation_delay_slow_probability = 0.10
+        observation_delay_slow_range_s = [0.030, 0.050]
+        observation_delay_rare_probability = 0.02
+        observation_delay_rare_range_s = [0.040, 0.060]
+        observation_delay_max_s = 0.060
+
+        lin_vel_white_noise_sigma = 0.03
+        lin_vel_episode_bias_max = 0.04
+        lin_vel_random_walk_sigma_per_s = 0.02
+        lin_vel_random_walk_clip = 0.06
+        velocity_slip_event_probability_per_step = 0.0015
+        velocity_slip_error_range = [0.10, 0.25]
+        velocity_slip_duration_steps = [1, 3]
+        velocity_hold_event_probability_per_step = 0.003
+        velocity_hold_duration_steps = [1, 3]
+        velocity_zero_fraction = 0.35
+        contact_misclassification_probability = 0.025
+        contact_velocity_error_scale = 0.12
+
+    class commands(FanfanOmniHardwareBalance5530V2Cfg.commands):
+        resampling_time = 4.0
+        omni_curriculum = True
+        omni_curriculum_stages = [
+            {
+                "until_iteration": 150,
+                "lin_vel_x": [0.0, 0.12],
+                "lin_vel_y": [0.0, 0.0],
+                "ang_vel_yaw": [0.0, 0.0],
+                "stand_probability": 0.50,
+                "pure_yaw_probability": 0.0,
+                "pure_lateral_probability": 0.0,
+                "pure_sagittal_probability": 0.50,
+                "hard_transition_probability": 0.0,
+            },
+            {
+                "until_iteration": 400,
+                "lin_vel_x": [0.05, 0.30],
+                "lin_vel_y": [0.0, 0.0],
+                "ang_vel_yaw": [0.0, 0.0],
+                "stand_probability": 0.25,
+                "pure_yaw_probability": 0.0,
+                "pure_lateral_probability": 0.0,
+                "pure_sagittal_probability": 0.75,
+                "hard_transition_probability": 0.0,
+            },
+            {
+                "until_iteration": 700,
+                "lin_vel_x": [-0.08, 0.35],
+                "lin_vel_y": [0.0, 0.0],
+                "ang_vel_yaw": [-0.50, 0.50],
+                "stand_probability": 0.15,
+                "pure_yaw_probability": 0.20,
+                "pure_lateral_probability": 0.0,
+                "pure_sagittal_probability": 0.55,
+                "hard_transition_probability": 0.05,
+            },
+            {
+                "until_iteration": 1050,
+                "lin_vel_x": [-0.08, 0.35],
+                "lin_vel_y": [-0.04, 0.04],
+                "ang_vel_yaw": [-0.50, 0.50],
+                "stand_probability": 0.12,
+                "pure_yaw_probability": 0.16,
+                "pure_lateral_probability": 0.25,
+                "pure_sagittal_probability": 0.32,
+                "hard_transition_probability": 0.10,
+            },
+            {
+                "until_iteration": 1350,
+                "lin_vel_x": [-0.10, 0.40],
+                "lin_vel_y": [-0.06, 0.06],
+                "ang_vel_yaw": [-0.65, 0.65],
+                "stand_probability": 0.10,
+                "pure_yaw_probability": 0.15,
+                "pure_lateral_probability": 0.25,
+                "pure_sagittal_probability": 0.28,
+                "hard_transition_probability": 0.18,
+            },
+            {
+                "until_iteration": 1.0e12,
+                "lin_vel_x": [-0.12, 0.45],
+                "lin_vel_y": [-0.08, 0.08],
+                "ang_vel_yaw": [-0.80, 0.80],
+                "stand_probability": 0.08,
+                "pure_yaw_probability": 0.14,
+                "pure_lateral_probability": 0.25,
+                "pure_sagittal_probability": 0.25,
+                "hard_transition_probability": 0.30,
+            },
+        ]
+
+        class ranges(FanfanOmniHardwareBalance5530V2Cfg.commands.ranges):
+            lin_vel_x = [-0.12, 0.45]
+            lin_vel_y = [-0.08, 0.08]
+            ang_vel_yaw = [-0.80, 0.80]
+
+    class rewards(FanfanOmniHardwareBalance5530V2Cfg.rewards):
+        gait_period = 0.54
+        gait_stance_ratio = 0.64
+        gait_calf_amplitude = -0.20
+        torque_curriculum = False
+        torque_near_limit_ratio = 0.68
+        peak_torque_soft_ratio = 0.82
+        sustained_torque_ratio = 0.60
+        torque_ema_alpha = 0.99
+        pd_pos_err_soft_limit = {
+            "hip": 0.08, "thigh": 0.10, "calf": 0.12
+        }
+
+        enable_actuator_safety_termination = True
+        actuator_safety_grace_steps = 12
+        raw_torque_termination_ratio = 1.15
+        raw_torque_termination_steps = 2
+        torque_saturation_window_steps = 25
+        torque_saturation_window_ratio = 0.08
+        calf_error_termination_rad = 0.25
+        calf_error_termination_steps = 3
+
+        class scales(FanfanOmniHardwareBalance5530V2Cfg.rewards.scales):
+            termination = -120.0
+            torques = -1.5e-5
+            torque_near_limit = -1.00
+            peak_torque = -1.50
+            sustained_torque = -1.30
+            sustained_torque_max = -1.80
+            torque_clip = -2.50
+            mechanical_power = -0.002
+            pd_position_error_over_limit = -1.20
+            motor_target_tracking_error = -0.30
+
+            final_target_velocity = -0.55
+            final_target_acceleration = -0.22
+            action_rate = -0.35
+            policy_action_rate = -0.45
+            dof_acc = -7.0e-7
+            feet_contact_forces = -0.002
+
+
+class FanfanOmniRealDataCurriculumCfgPPO(
+        FanfanOmniHardwareBalance5530V2CfgPPO):
+    class algorithm(FanfanOmniHardwareBalance5530V2CfgPPO.algorithm):
+        entropy_coef = 0.0002
+        learning_rate = 2.0e-5
+        desired_kl = 0.0012
+
+    class runner(FanfanOmniHardwareBalance5530V2CfgPPO.runner):
+        # Keep the source experiment root so TaskRegistry can resume the
+        # selected 5550 checkpoint without copying or relabelling it.
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "realdata_curriculum_from_best_5550"
+        max_iterations = 1800
+        save_interval = 50
+        symmetry_coef = 1.5
+
+
+class FanfanOmniRealDataSpeedPolishCfg(FanfanOmniRealDataCurriculumCfg):
+    """All-direction speed recovery under the unchanged real-data contract."""
+
+    class control(FanfanOmniRealDataCurriculumCfg.control):
+        # The deployment filter is fully open in this continuation. All
+        # hardware authority, bandwidth and 10/10/13 Nm limits stay unchanged.
+        final_target_rate_limits_initial = {
+            "hip": 0.85, "thigh": 1.20, "calf": 2.00
+        }
+        final_target_accel_limits_initial = {
+            "hip": 25.0, "thigh": 38.0, "calf": 60.0
+        }
+        final_target_rate_limits_final = final_target_rate_limits_initial
+        final_target_accel_limits_final = final_target_accel_limits_initial
+        rear_calf_target_rate_scale = 0.95
+        final_target_limit_open_start_iteration = 0
+        final_target_limit_open_end_iteration = 1
+
+    class commands(FanfanOmniRealDataCurriculumCfg.commands):
+        omni_curriculum = False
+        resampling_time = 3.0
+        stand_probability = 0.08
+        pure_yaw_probability = 0.16
+        pure_lateral_probability = 0.26
+        pure_sagittal_probability = 0.30
+        hard_transition_probability = 0.30
+
+    class rewards(FanfanOmniRealDataCurriculumCfg.rewards):
+        class scales(FanfanOmniRealDataCurriculumCfg.rewards.scales):
+            # Reject the safe-but-nearly-stationary local optimum while keeping
+            # every direction, symmetry, posture and saturation penalty.
+            tracking_lin_vel = 28.0
+            tracking_longitudinal_vel = 26.0
+            tracking_lateral_vel = 24.0
+            tracking_ang_vel = 20.0
+            absolute_longitudinal_tracking_error = -24.0
+            absolute_lateral_tracking_error = -22.0
+            absolute_yaw_tracking_error = -14.0
+            command_transition_tracking = 6.0
+
+            # Permit the small additional residual motion needed to track, but
+            # retain the complete final-target velocity/acceleration limiter.
+            action_magnitude = -0.020
+            policy_action_magnitude = -0.060
+            action_rate = -0.28
+            policy_action_rate = -0.36
+
+
+class FanfanOmniRealDataSpeedPolishCfgPPO(
+        FanfanOmniRealDataCurriculumCfgPPO):
+    class algorithm(FanfanOmniRealDataCurriculumCfgPPO.algorithm):
+        learning_rate = 1.5e-5
+        desired_kl = 0.0010
+
+    class runner(FanfanOmniRealDataCurriculumCfgPPO.runner):
+        run_name = "realdata_speed_polish_from_7330"
+        max_iterations = 500
+        save_interval = 50
+        symmetry_coef = 1.5
+
+
+class FanfanOmniRealDataCoordinatedCfg(FanfanOmniRealDataCurriculumCfg):
+    """Recover useful, high-clearance motion without weakening real safety."""
+
+    class control(FanfanOmniRealDataCurriculumCfg.control):
+        # Start and finish at the measured deployable bandwidth.  The previous
+        # curriculum had already opened these limits before this continuation.
+        final_target_rate_limits_initial = {
+            "hip": 0.85, "thigh": 1.20, "calf": 1.80
+        }
+        final_target_accel_limits_initial = {
+            "hip": 25.0, "thigh": 38.0, "calf": 55.0
+        }
+        final_target_limit_open_start_iteration = 0
+        final_target_limit_open_end_iteration = 1
+
+        # Keep 11.md's continuous calf envelope, but give the trot a small
+        # coordinated thigh sweep instead of asking four independent policy
+        # outputs to invent the entire stride under delayed observations.
+        gait_calf_amplitude_knots = [
+            0.0, 0.0, 0.022, 0.045, 0.095, 0.155, 0.220
+        ]
+        enforce_swing_calf_reference = True
+        # Start the target before nominal lift-off so the measured command
+        # delay + first-order actuator lag puts physical toe lift in mid-swing.
+        gait_target_phase_lead = 0.14
+        # This is pre-limiter reference shaping, not extra motor authority.
+        swing_calf_reference_scale = 2.5
+        front_swing_calf_reference_scale = 4.0
+        rear_swing_calf_reference_scale = 2.5
+        enforce_stance_leg_extension = True
+        preserve_forward_gait = True
+        stance_calf_extension = 0.06
+        stance_thigh_extension = -0.02
+
+    class domain_rand(FanfanOmniRealDataCurriculumCfg.domain_rand):
+        gait_calf_amplitude_max_range = [0.20, 0.22]
+        gait_stance_ratio_range = [0.58, 0.62]
+        gait_low_speed_period_range = [0.62, 0.72]
+        gait_high_speed_period_range = [0.56, 0.60]
+
+    class commands(FanfanOmniRealDataCurriculumCfg.commands):
+        resampling_time = 4.0
+        omni_curriculum = True
+        omni_curriculum_stages = [
+            {
+                "until_iteration": 250,
+                "lin_vel_x": [0.05, 0.40],
+                "lin_vel_y": [0.0, 0.0],
+                "ang_vel_yaw": [0.0, 0.0],
+                "stand_probability": 0.12,
+                "pure_yaw_probability": 0.0,
+                "pure_lateral_probability": 0.0,
+                "pure_sagittal_probability": 0.88,
+                "hard_transition_probability": 0.05,
+            },
+            {
+                "until_iteration": 550,
+                "lin_vel_x": [-0.10, 0.42],
+                "lin_vel_y": [0.0, 0.0],
+                "ang_vel_yaw": [-0.60, 0.60],
+                "stand_probability": 0.10,
+                "pure_yaw_probability": 0.24,
+                "pure_lateral_probability": 0.0,
+                "pure_sagittal_probability": 0.58,
+                "hard_transition_probability": 0.12,
+            },
+            {
+                "until_iteration": 900,
+                "lin_vel_x": [-0.10, 0.45],
+                "lin_vel_y": [-0.06, 0.06],
+                "ang_vel_yaw": [-0.75, 0.75],
+                "stand_probability": 0.08,
+                "pure_yaw_probability": 0.18,
+                "pure_lateral_probability": 0.28,
+                "pure_sagittal_probability": 0.30,
+                "hard_transition_probability": 0.22,
+            },
+            {
+                "until_iteration": 1.0e12,
+                "lin_vel_x": [-0.12, 0.45],
+                "lin_vel_y": [-0.08, 0.08],
+                "ang_vel_yaw": [-0.80, 0.80],
+                "stand_probability": 0.08,
+                "pure_yaw_probability": 0.16,
+                "pure_lateral_probability": 0.28,
+                "pure_sagittal_probability": 0.28,
+                "hard_transition_probability": 0.30,
+            },
+        ]
+
+    class rewards(FanfanOmniRealDataCurriculumCfg.rewards):
+        # Preserve the selected policy's thigh trajectory.  Clearance is
+        # learned through the phase-aware reward rather than a hard reference
+        # that destabilizes the source gait during continuation.
+        gait_thigh_amplitude = 0.0
+        swing_height_target = 0.052
+        swing_height_sigma = 0.00022
+        swing_clearance_minimum = 0.045
+
+        class scales(FanfanOmniRealDataCurriculumCfg.rewards.scales):
+            # Dense progress eliminates the nearly-stationary local optimum.
+            command_velocity_progress = 12.0
+            normalized_command_tracking = 10.0
+            tracking_lin_vel = 22.0
+            tracking_longitudinal_vel = 20.0
+            tracking_lateral_vel = 18.0
+            tracking_ang_vel = 15.0
+            absolute_longitudinal_tracking_error = -15.0
+            absolute_lateral_tracking_error = -14.0
+            absolute_yaw_tracking_error = -9.0
+            command_transition_tracking = 5.0
+
+            # Clearance and diagonal timing are explicit acceptance targets.
+            swing_height = 8.0
+            swing_clearance_shortfall = -320.0
+            diagonal_gait = 10.0
+            diagonal_contact_sync_all = -5.0
+            diagonal_foot_height_sync_all = -160.0
+            diagonal_joint_sync = -1.2
+
+            # Avoid suppressing useful motion; the final-target hard limits and
+            # strict torque guards below remain fully active.
+            action_magnitude = -0.016
+            policy_action_magnitude = -0.045
+            action_rate = -0.22
+            policy_action_rate = -0.30
+            final_target_velocity = -0.38
+            final_target_acceleration = -0.16
+            dof_acc = -4.5e-7
+
+            torque_near_limit = -1.00
+            peak_torque = -1.50
+            sustained_torque = -1.30
+            sustained_torque_max = -1.80
+            torque_clip = -2.50
+
+
+class FanfanOmniRealDataCoordinatedCfgPPO(
+        FanfanOmniRealDataCurriculumCfgPPO):
+    class algorithm(FanfanOmniRealDataCurriculumCfgPPO.algorithm):
+        entropy_coef = 0.0020
+        learning_rate = 3.0e-5
+        desired_kl = 0.0015
+
+    class runner(FanfanOmniRealDataCurriculumCfgPPO.runner):
+        run_name = "realdata_coordinated_clearance_v2_from_7500"
+        max_iterations = 1200
+        save_interval = 50
+        symmetry_coef = 2.0
+
+
+class FanfanOmniRealDataClearancePolishCfg(
+        FanfanOmniRealDataCoordinatedCfg):
+    """Full-envelope polish with a guaranteed coordinated swing-lift floor."""
+
+    class commands(FanfanOmniRealDataCoordinatedCfg.commands):
+        omni_curriculum = False
+        resampling_time = 3.5
+        stand_probability = 0.08
+        pure_yaw_probability = 0.16
+        pure_lateral_probability = 0.28
+        pure_sagittal_probability = 0.28
+        hard_transition_probability = 0.30
+
+    class rewards(FanfanOmniRealDataCoordinatedCfg.rewards):
+        base_height_target = 0.292
+        min_base_height_soft = 0.268
+        gait_thigh_amplitude = 0.0
+
+        class scales(FanfanOmniRealDataCoordinatedCfg.rewards.scales):
+            swing_height = 14.0
+            swing_clearance_shortfall = -700.0
+            swing_contact = -10.0
+            diagonal_gait = 12.0
+            diagonal_contact_sync_all = -7.0
+            base_height = -30.0
+            low_base_height = -60.0
+            stand_height = 3.0
+
+
+class FanfanOmniRealDataClearancePolishCfgPPO(
+        FanfanOmniRealDataCoordinatedCfgPPO):
+    class algorithm(FanfanOmniRealDataCoordinatedCfgPPO.algorithm):
+        entropy_coef = 0.0010
+        learning_rate = 2.0e-5
+        desired_kl = 0.0012
+
+    class runner(FanfanOmniRealDataCoordinatedCfgPPO.runner):
+        run_name = "realdata_clearance_polish_from_coordinated"
+        max_iterations = 400
+        save_interval = 50
+        symmetry_coef = 2.5
+
+
+class FanfanOmniRealDataDirectionalPolishCfg(
+        FanfanOmniRealDataClearancePolishCfg):
+    """Recover lateral/yaw authority while retaining coordinated clearance."""
+
+    class commands(FanfanOmniRealDataClearancePolishCfg.commands):
+        omni_curriculum = False
+        resampling_time = 3.0
+        stand_probability = 0.05
+        pure_yaw_probability = 0.18
+        pure_lateral_probability = 0.42
+        pure_sagittal_probability = 0.22
+        hard_transition_probability = 0.32
+
+    class rewards(FanfanOmniRealDataClearancePolishCfg.rewards):
+        class scales(FanfanOmniRealDataClearancePolishCfg.rewards.scales):
+            command_velocity_progress = 28.0
+            normalized_command_tracking = 18.0
+            tracking_lin_vel = 26.0
+            tracking_longitudinal_vel = 22.0
+            tracking_lateral_vel = 40.0
+            tracking_ang_vel = 24.0
+            absolute_longitudinal_tracking_error = -18.0
+            absolute_lateral_tracking_error = -28.0
+            absolute_yaw_tracking_error = -14.0
+            command_transition_tracking = 8.0
+
+            # Lateral hip work is necessary for real translation; balance is
+            # enforced by roll, contact timing and torque constraints instead.
+            lateral_action_magnitude = -0.08
+            action_magnitude = -0.012
+            policy_action_magnitude = -0.035
+
+
+class FanfanOmniRealDataDirectionalPolishCfgPPO(
+        FanfanOmniRealDataClearancePolishCfgPPO):
+    class algorithm(FanfanOmniRealDataClearancePolishCfgPPO.algorithm):
+        entropy_coef = 0.0015
+        learning_rate = 3.0e-5
+        desired_kl = 0.0015
+
+    class runner(FanfanOmniRealDataClearancePolishCfgPPO.runner):
+        run_name = "realdata_directional_polish_from_8630"
+        max_iterations = 500
+        save_interval = 50
+        symmetry_coef = 2.5
+
+
+class FanfanOmniRealDataPerformanceRecoveryCfg(
+        FanfanOmniRealDataCurriculumCfg):
+    """Retain 5530's useful gait while adapting it to the real actuator chain.
+
+    The long conservative continuation from 5530 converged to a nearly static
+    solution.  This branch restarts from the last policy with genuine
+    all-direction authority, then learns the measured delay/randomization and
+    strict torque contract without a stance clamp that fights translation.
+    """
+
+    class control(FanfanOmniRealDataCurriculumCfg.control):
+        final_target_rate_limits_initial = {
+            "hip": 0.90, "thigh": 1.30, "calf": 3.50
+        }
+        final_target_accel_limits_initial = {
+            "hip": 28.0, "thigh": 42.0, "calf": 80.0
+        }
+        final_target_rate_limits_final = final_target_rate_limits_initial
+        final_target_accel_limits_final = final_target_accel_limits_initial
+        rear_calf_target_rate_scale = 0.92
+        final_target_limit_open_start_iteration = 0
+        final_target_limit_open_end_iteration = 1
+
+        # A moderate phase-leading calf floor compensates measured actuator
+        # lag, while leaving hip/thigh placement to the proven 5530 actor.
+        gait_calf_amplitude_knots = [
+            0.0, 0.0, 0.020, 0.042, 0.090, 0.150, 0.215
+        ]
+        gait_target_phase_lead = 0.12
+        enforce_swing_calf_reference = True
+        swing_calf_reference_scale = 3.50
+        front_swing_calf_reference_scale = 3.50
+        rear_swing_calf_reference_scale = 4.00
+        enforce_stance_leg_extension = False
+        preserve_forward_gait = False
+
+        # Training and export must see the same command observation.  Legacy
+        # post-export feedback was never present inside PPO and caused a
+        # policy/deployment mismatch.
+        command_feedback_longitudinal_gain = 0.0
+        command_feedback_lateral_gain = 0.0
+        command_feedback_yaw_gain = 0.0
+
+    class domain_rand(FanfanOmniRealDataCurriculumCfg.domain_rand):
+        gait_calf_amplitude_max_range = [0.19, 0.22]
+        gait_stance_ratio_range = [0.57, 0.63]
+        gait_low_speed_period_range = [0.58, 0.70]
+        gait_high_speed_period_range = [0.48, 0.56]
+
+    class commands(FanfanOmniRealDataCurriculumCfg.commands):
+        omni_curriculum = False
+        resampling_time = 3.5
+        stand_probability = 0.06
+        pure_yaw_probability = 0.17
+        pure_lateral_probability = 0.32
+        pure_sagittal_probability = 0.28
+        hard_transition_probability = 0.30
+
+    class rewards(FanfanOmniRealDataCurriculumCfg.rewards):
+        gait_period = 0.52
+        gait_stance_ratio = 0.60
+        # Positive phase-synchronous thigh sweep and calf flexion form one
+        # diagonal-leg trajectory.  This recovers the clean 5530 forward
+        # stride and lifts the toe instead of folding the knee in place.
+        gait_thigh_amplitude = 0.15
+        gait_lateral_hip_amplitude = -0.15
+        gait_lateral_command_scale = 0.08
+        gait_lateral_diagonal_scale = 0.35
+        gait_thigh_lateral_scale = 2.0
+        swing_height_target = 0.050
+        swing_height_sigma = 0.00025
+        swing_clearance_minimum = 0.042
+        base_height_target = 0.290
+        min_base_height_soft = 0.260
+
+        class scales(FanfanOmniRealDataCurriculumCfg.rewards.scales):
+            command_velocity_progress = 36.0
+            normalized_command_tracking = 24.0
+            tracking_lin_vel = 34.0
+            tracking_longitudinal_vel = 30.0
+            tracking_lateral_vel = 48.0
+            tracking_ang_vel = 30.0
+            absolute_longitudinal_tracking_error = -24.0
+            absolute_lateral_tracking_error = -34.0
+            absolute_yaw_tracking_error = -18.0
+            command_transition_tracking = 9.0
+
+            swing_height = 12.0
+            swing_clearance_shortfall = -420.0
+            swing_contact = -8.0
+            diagonal_gait = 11.0
+            diagonal_contact_sync_all = -6.0
+            diagonal_foot_height_sync_all = -140.0
+            diagonal_joint_sync = -1.0
+
+            # Keep enough residual authority to adapt the working 5530 gait;
+            # hard target bandwidth, torque clipping and saturation penalties
+            # remain the physical safety boundary.
+            action_magnitude = -0.014
+            policy_action_magnitude = -0.040
+            lateral_action_magnitude = -0.10
+            action_rate = -0.24
+            policy_action_rate = -0.32
+            final_target_velocity = -0.34
+            final_target_acceleration = -0.14
+            dof_acc = -4.5e-7
+
+            torque_near_limit = -1.20
+            peak_torque = -1.70
+            sustained_torque = -1.60
+            sustained_torque_max = -2.00
+            torque_clip = -2.80
+
+
+class FanfanOmniRealDataPerformanceRecoveryCfgPPO(
+        FanfanOmniRealDataCurriculumCfgPPO):
+    class algorithm(FanfanOmniRealDataCurriculumCfgPPO.algorithm):
+        entropy_coef = 0.0012
+        learning_rate = 2.5e-5
+        desired_kl = 0.0013
+
+    class runner(FanfanOmniRealDataCurriculumCfgPPO.runner):
+        run_name = "realdata_performance_recovery_from_5530"
+        max_iterations = 900
+        save_interval = 50
+        symmetry_coef = 2.0
+
+
 class FanfanOmniCalibratedSymmetryCfg(FanfanOmniHeadingBoundSymmetryCfg):
     """Selected 5100 plus straight-only cross-simulator action calibration."""
 

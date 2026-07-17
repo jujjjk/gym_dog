@@ -34,6 +34,10 @@ from .hardware_balance_contract import (
 class MydogHardwareBalanceNode(MydogPolicyParityFixedNode):
     """Deploy the selected policy with exact simulation target semantics."""
 
+    validate_contract = staticmethod(validate_metadata)
+    model_task = MODEL_TASK
+    expected_fixed_gait_period = 0.45
+
     def __init__(self):
         super().__init__()
 
@@ -41,7 +45,7 @@ class MydogHardwareBalanceNode(MydogPolicyParityFixedNode):
             raise RuntimeError(
                 "hardware-balance deployment requires ONNX metadata"
             )
-        validate_metadata(self.deployment_config)
+        self.validate_contract(self.deployment_config)
 
         if not self.has_parameter("transition_reset_vx_delta"):
             self.declare_parameter("transition_reset_vx_delta", 0.025)
@@ -114,8 +118,14 @@ class MydogHardwareBalanceNode(MydogPolicyParityFixedNode):
             raise RuntimeError(
                 "hardware-balance deployment requires policy_hz=50"
             )
-        if abs(float(self.model_gait_phase_period) - 0.45) > 1.0e-7:
-            raise RuntimeError("hardware-balance gait period must be 0.45 s")
+        if (
+            self.expected_fixed_gait_period is not None
+            and abs(
+                float(self.model_gait_phase_period)
+                - float(self.expected_fixed_gait_period)
+            ) > 1.0e-7
+        ):
+            raise RuntimeError("hardware-balance gait period mismatch")
 
         # Gym resets the desired heading to the current yaw whenever a new
         # command segment is sampled, while gait phase and action filter remain
@@ -142,7 +152,8 @@ class MydogHardwareBalanceNode(MydogPolicyParityFixedNode):
         )
         self.get_logger().warn(
             "[HARDWARE_BALANCE] exact metadata validated | "
-            f"task={MODEL_TASK}, gait=0.45s, feedback=[{feedback_text}], "
+            f"task={self.model_task}, gait={self.model_gait_phase_period:.3f}s, "
+            f"feedback=[{feedback_text}], "
             "strict_symmetry=true"
         )
         self.get_logger().warn(
@@ -232,6 +243,13 @@ class MydogHardwareBalanceNode(MydogPolicyParityFixedNode):
         )
         return bool(np.any(delta >= self.transition_reset_delta))
 
+    def transform_raw_policy_target(
+        self,
+        target_policy_abs: np.ndarray,
+    ) -> np.ndarray:
+        target = super().transform_raw_policy_target(target_policy_abs)
+        return guard_backward_rear_calf_target(target, self.cmd)
+
     def action_to_policy_target_abs_by_mode(
         self,
         action_policy: np.ndarray,
@@ -242,7 +260,6 @@ class MydogHardwareBalanceNode(MydogPolicyParityFixedNode):
             action_policy,
             dt,
         )
-        target = guard_backward_rear_calf_target(target, self.cmd)
         info = dict(info)
         info["backward_rear_calf_guard_active"] = bool(
             float(np.asarray(self.cmd, dtype=np.float32)[0]) < -0.03

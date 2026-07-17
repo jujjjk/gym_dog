@@ -152,7 +152,10 @@ def play(args):
         "roll_rate", "pitch_rate", "yaw_rate",
         "action_abs_mean", "action_abs_max", "action_sat75_ratio",
         "torque_abs_mean", "torque_abs_max",
-    ] + [f"policy_{name}" for name in joint_names]
+        "gait_phase",
+    ] + [f"foot_z_{leg}" for leg in ("FL", "FR", "RL", "RR")]
+      + [f"foot_contact_{leg}" for leg in ("FL", "FR", "RL", "RR")]
+      + [f"policy_{name}" for name in joint_names]
       + [f"target_delta_{name}" for name in joint_names]
       + [f"raw_torque_{name}" for name in joint_names])
 
@@ -160,7 +163,10 @@ def play(args):
     print("[play_omni] press Ctrl+C to stop and save CSV.")
 
     step = 0
-    transition_interval_steps = max(1, int(2.0 / env.dt))
+    segment_duration_s = float(os.environ.get("FANFAN_PLAY_SEGMENT_S", "15"))
+    duration_s = float(os.environ.get("FANFAN_PLAY_DURATION_S", "0"))
+    transition_interval_steps = max(1, int(segment_duration_s / env.dt))
+    max_steps = int(duration_s / env.dt) if duration_s > 0.0 else None
     transition_eval = os.environ.get("FANFAN_PLAY_TRANSITIONS", "1") != "0"
 
     try:
@@ -174,6 +180,10 @@ def play(args):
                     , "high_cadence"
                     , "symmetric_transition"
                     , "hardware_balance_5530"
+                    , "realdata_curriculum"
+                    , "realdata_coordinated"
+                    , "realdata_clearance_polish"
+                    , "realdata_performance_recovery"
                 ))
                 and step > 0
                 and step % transition_interval_steps == 0
@@ -219,6 +229,15 @@ def play(args):
                     - env.default_dof_pos
                 )
                 raw_torques = getattr(env, "raw_torques", env.torques)
+                foot_slots = [
+                    env.foot_slot_by_leg[leg]
+                    for leg in ("FL", "FR", "RL", "RR")
+                ]
+                foot_z = env.feet_pos[:, foot_slots, 2]
+                foot_contact = (
+                    env.contact_forces[:, env.feet_indices[foot_slots], 2]
+                    > 1.0
+                )
 
                 for eid in range(env.num_envs):
                     log_writer.writerow([
@@ -249,7 +268,10 @@ def play(args):
 
                         float(torque_abs_mean[eid].item()),
                         float(torque_abs_max[eid].item()),
-                    ] + policy_actions[eid].detach().cpu().tolist()
+                        float(env.gait_phase[eid].item()),
+                    ] + foot_z[eid].detach().cpu().tolist()
+                      + foot_contact[eid].int().detach().cpu().tolist()
+                      + policy_actions[eid].detach().cpu().tolist()
                       + target_delta[eid].detach().cpu().tolist()
                       + raw_torques[eid].detach().cpu().tolist())
 
@@ -257,6 +279,8 @@ def play(args):
                     log_file.flush()
 
                 step += 1
+                if max_steps is not None and step >= max_steps:
+                    break
 
     except KeyboardInterrupt:
         print("\n[play_omni] stopped by user.")

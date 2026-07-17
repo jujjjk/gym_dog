@@ -130,6 +130,59 @@ class ContractPolicyActionFilter:
         return self.action.copy()
 
 
+class ContractJointTargetFilter:
+    """Rate/acceleration limit the complete actor + gait joint target."""
+
+    def __init__(self, control: Mapping[str, Any], initial_target: np.ndarray):
+        self.size = int(np.asarray(initial_target).size)
+        rate = control.get("final_target_rate_limits")
+        accel = control.get("final_target_accel_limits")
+        self.enabled = rate is not None and accel is not None
+        self.rate_limits = _vector(
+            rate, self.size, name="final_target_rate_limits", default=1.0e9
+        )
+        self.accel_limits = _vector(
+            accel, self.size, name="final_target_accel_limits", default=1.0e9
+        )
+        rear_calf_scale = float(control.get("rear_calf_target_rate_scale", 1.0))
+        if self.size == 12:
+            self.rate_limits[[8, 11]] *= rear_calf_scale
+            self.accel_limits[[8, 11]] *= rear_calf_scale
+        if np.any(self.rate_limits <= 0.0) or np.any(self.accel_limits <= 0.0):
+            raise ValueError("final target limits must be positive")
+        self.target = np.asarray(initial_target, dtype=np.float32).reshape(
+            self.size
+        ).copy()
+        self.velocity = np.zeros(self.size, dtype=np.float32)
+
+    def reset(self, target: np.ndarray) -> None:
+        self.target[:] = np.asarray(target, dtype=np.float32).reshape(self.size)
+        self.velocity.fill(0.0)
+
+    def step(self, raw_target: np.ndarray, dt: float) -> np.ndarray:
+        raw = np.asarray(raw_target, dtype=np.float32).reshape(self.size)
+        if not self.enabled:
+            self.target[:] = raw
+            self.velocity.fill(0.0)
+            return raw.copy()
+        dt = max(float(dt), 1.0e-6)
+        desired_velocity = np.clip(
+            (raw - self.target) / dt, -self.rate_limits, self.rate_limits
+        )
+        velocity_delta = np.clip(
+            desired_velocity - self.velocity,
+            -self.accel_limits * dt,
+            self.accel_limits * dt,
+        )
+        next_velocity = self.velocity + velocity_delta
+        next_target = self.target + next_velocity * dt
+        crossed = (raw - self.target) * (raw - next_target) < 0.0
+        next_target = np.where(crossed, raw, next_target)
+        self.velocity[:] = (next_target - self.target) / dt
+        self.target[:] = next_target
+        return self.target.copy()
+
+
 class PDTorqueEquivalentLimiter:
     """Convert signed post-PD torque clipping back to a safe position target.
 

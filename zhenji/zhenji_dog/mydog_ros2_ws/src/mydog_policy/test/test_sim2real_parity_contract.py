@@ -4,9 +4,31 @@ import numpy as np
 
 from mydog_policy.policy_contract import (
     ActionFilterConfig,
+    ContractJointTargetFilter,
     ContractPolicyActionFilter,
     PDTorqueEquivalentLimiter,
 )
+
+
+def test_final_target_filter_limits_complete_target_velocity_and_acceleration():
+    control = {
+        "final_target_rate_limits": [0.85, 1.20, 1.80] * 4,
+        "final_target_accel_limits": [25.0, 38.0, 55.0] * 4,
+    }
+    initial = np.asarray([0.0, 0.563, -0.95] * 4, dtype=np.float32)
+    filt = ContractJointTargetFilter(control, initial)
+    raw = initial + 1.0
+    previous = initial.copy()
+    previous_velocity = np.zeros(12, dtype=np.float32)
+    dt = 0.02
+    for _ in range(20):
+        target = filt.step(raw, dt)
+        velocity = (target - previous) / dt
+        acceleration = (velocity - previous_velocity) / dt
+        assert np.all(np.abs(velocity) <= filt.rate_limits + 2.0e-5)
+        assert np.all(np.abs(acceleration) <= filt.accel_limits + 2.0e-4)
+        previous = target.copy()
+        previous_velocity = velocity.copy()
 
 
 def test_action_filter_matches_training_reference_step():
@@ -258,3 +280,20 @@ def test_parity_node_applies_one_shared_phase_lead_to_obs_and_gait():
     assert "self.obs_builder.last_gait_phase = self._effective_contract_phase()" in source
     assert 'cpg_action_info["phase_lead_sec"]' in source
     assert "gait_phase_lead_sec must be finite and in [0.00, 0.10] seconds" in source
+
+
+def test_parity_node_applies_performance_recovery_gait_contract():
+    node_file = (
+        Path(__file__).parents[1]
+        / "mydog_policy"
+        / "sim2real_parity_node.py"
+    )
+    source = node_file.read_text(encoding="utf-8")
+    assert 'gait.get("target_phase_lead", 0.0)' in source
+    assert 'gait.get("lateral_hip_amplitude", 0.0)' in source
+    assert 'gait.get("lateral_diagonal_scale", 1.0)' in source
+    assert 'gait.get("thigh_lateral_scale", 1.0)' in source
+    assert 'control.get("enforce_swing_calf_reference", False)' in source
+    assert '"front_swing_calf_reference_scale"' in source
+    assert '"rear_swing_calf_reference_scale"' in source
+    assert 'control.get("backward_rear_calf_target_min")' in source
