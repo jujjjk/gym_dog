@@ -23,7 +23,8 @@ setup(
         ),
         (
             "share/" + package_name + "/models",
-            glob("resource/fanfan_clearance_robust_5730.*")
+            glob("resource/fanfan_symmetric_transition_5530.*")
+            + glob("resource/fanfan_clearance_robust_5730.*")
             + glob("resource/fanfan_hardware_balance_5530_best.*")
             + glob("resource/fanfan_realdata_best.*"),
         ),

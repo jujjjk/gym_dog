@@ -11,7 +11,7 @@ from pathlib import Path
 
 import onnxruntime as ort
 
-from .symmetric_transition_contract import validate_metadata
+from .symmetric_transition_contract import MODEL_SHA256, validate_metadata
 
 
 def file_sha256(path: Path) -> str:
@@ -25,7 +25,7 @@ def file_sha256(path: Path) -> str:
 def main(args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("model", type=Path)
-    parser.add_argument("--expected-sha256", default="")
+    parser.add_argument("--expected-sha256", default=MODEL_SHA256)
     parsed = parser.parse_args(args=args)
 
     model = parsed.model.expanduser().resolve()

@@ -26,5 +26,5 @@ def test_realdata_launch_is_safe_by_default():
         / "launch"
         / "sim2real_realdata.launch.py"
     ).read_text(encoding="utf-8")
-    assert '"policy_executable": "mydog_realdata_node"' in launch
-    assert '"expected_policy_sha256": MODEL_SHA256' in launch
+    assert '"sim2real_symmetric_transition_5530.launch.py"' in launch
+    assert '"sim2real_hardware_balance.launch.py"' not in launch

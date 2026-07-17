@@ -7,6 +7,9 @@ from typing import Any, Iterable
 
 MODEL_TASK = "FanfanOmniSymmetricTransitionCfg"
 MODEL_FILENAME = "fanfan_symmetric_transition_5530.onnx"
+MODEL_SHA256 = (
+    "45af53978ba7c83c5b3419fe172ceb1a91b7f647861d77e9fc5b460e431a0343"
+)
 OBSERVATIONS = 52
 ACTIONS = 12
 

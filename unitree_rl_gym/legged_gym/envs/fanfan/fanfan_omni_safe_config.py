@@ -1771,6 +1771,11 @@ class FanfanOmniSymmetricTransitionCfgPPO(FanfanOmniForceCoordCfgPPO):
     class runner(FanfanOmniForceCoordCfgPPO.runner):
         experiment_name = "rough_fanfan_omni_desat_torque"
         run_name = "symmetric_transition_from_force_coord_5280"
+        # This is the selected production checkpoint.  Keep the task pinned to
+        # it so a plain train.py invocation cannot silently resume a later run.
+        resume = True
+        load_run = "Jul14_11-59-33_symmetric_transition_from_force_coord_5280"
+        checkpoint = 5530
         # The deployable actor is exactly symmetrized; this term keeps each
         # branch close while leaving PPO enough freedom to learn fast diagonals.
         symmetry_coef = 1.0

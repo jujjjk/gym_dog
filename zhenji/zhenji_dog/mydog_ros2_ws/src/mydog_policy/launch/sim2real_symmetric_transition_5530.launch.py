@@ -1,9 +1,14 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
 
-from mydog_policy.symmetric_transition_contract import MODEL_TASK
+from mydog_policy.symmetric_transition_contract import (
+    MODEL_FILENAME,
+    MODEL_SHA256,
+    MODEL_TASK,
+)
 
 
 def generate_launch_description():
@@ -18,6 +23,8 @@ def generate_launch_description():
             "motor_base_url": motor_url,
             "estimator_hz": 50.0,
             "max_motor_age_ms": LaunchConfiguration("max_motor_age_ms"),
+            "require_online": True,
+            "max_imu_sample_age_sec": 0.10,
             "robust_stance_height_margin": 0.035,
             "robust_vertical_speed_threshold": 0.22,
             "robust_velocity_residual_threshold": 0.30,
@@ -84,6 +91,7 @@ def generate_launch_description():
             # The model has strong velocity feedback. Do not inject zero velocity
             # for an isolated estimator/motor snapshot mismatch.
             "max_estimator_snapshot_lag": 3,
+            "max_estimator_tick_lag_ms": 35.0,
             "zero_lin_vel_on_estimator_mismatch": False,
             "hold_last_lin_vel_on_estimator_mismatch": True,
             "estimator_mismatch_velocity_decay": 0.98,
@@ -94,7 +102,7 @@ def generate_launch_description():
                 "startup_stand_first"
             ),
             "stand_pose_source": "policy_default",
-            "startup_stand_stop_torque_nm": 8.0,
+            "startup_stand_stop_torque_nm": 13.0,
             "require_online": True,
             "max_motor_age_ms": LaunchConfiguration("max_motor_age_ms"),
             "motor_state_async": True,
@@ -124,6 +132,14 @@ def generate_launch_description():
             "expected_active_torque_budget_nm": LaunchConfiguration(
                 "motor_torque_limit_nm"
             ),
+            "use_hardware_torque_limits": True,
+            "require_verified_hardware_limits": True,
+            "hip_current_limit_amp": 12.0,
+            "thigh_current_limit_amp": 12.0,
+            "calf_current_limit_amp": 16.0,
+            "critical_state_failure_stop_cycles": 5,
+            "critical_state_startup_grace_sec": 5.0,
+            "fail_safe_stop_timeout_sec": 0.5,
 
             "enable_target_smoothing": False,
             "enable_torque_error_limit": False,
@@ -174,16 +190,20 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             "onnx_path",
-            default_value=(
-                "/home/jetson/mydog_ros2_ws/src/mydog_policy/resource/"
-                "fanfan_symmetric_transition_5530.onnx"
-            ),
+            default_value=PathJoinSubstitution([
+                FindPackageShare("mydog_policy"),
+                "models",
+                MODEL_FILENAME,
+            ]),
         ),
         DeclareLaunchArgument(
             "motor_base_url",
             default_value="http://127.0.0.1:8000",
         ),
-        DeclareLaunchArgument("expected_policy_sha256", default_value=""),
+        DeclareLaunchArgument(
+            "expected_policy_sha256",
+            default_value=MODEL_SHA256,
+        ),
         DeclareLaunchArgument("enable_send", default_value="false"),
         DeclareLaunchArgument("print_only", default_value="false"),
         DeclareLaunchArgument(
@@ -201,15 +221,15 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             "motion_torque_ff_limit_nm",
-            default_value="17.0",
+            default_value="13.0",
         ),
         DeclareLaunchArgument(
             "enable_rear_torque_boost",
-            default_value="true",
+            default_value="false",
         ),
         DeclareLaunchArgument(
             "rear_torque_boost_nm",
-            default_value="17.0",
+            default_value="13.0",
         ),
         DeclareLaunchArgument(
             "rear_torque_boost_duration_sec",
@@ -229,15 +249,15 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             "enable_tilt_protection",
-            default_value="false",
+            default_value="true",
         ),
         DeclareLaunchArgument(
             "enable_command_timeout_stand_hold",
-            default_value="false",
+            default_value="true",
         ),
         DeclareLaunchArgument(
             "max_tilt_rad",
-            default_value="0.75",
+            default_value="0.45",
         ),
         DeclareLaunchArgument("max_motor_age_ms", default_value="100.0"),
         DeclareLaunchArgument(

@@ -223,10 +223,10 @@ def test_symmetric_transition_launch_exposes_torque_ff_protocol_limit():
     source = launch_file.read_text(encoding="utf-8")
     assert '"motion_torque_ff_limit_nm": LaunchConfiguration(' in source
     assert '"motion_torque_ff_limit_nm",' in source
-    assert 'default_value="17.0"' in source
+    assert 'default_value="13.0"' in source
 
 
-def test_symmetric_transition_launch_enables_short_rear_torque_recovery():
+def test_symmetric_transition_launch_disables_rear_torque_boost():
     launch_file = (
         Path(__file__).parents[1]
         / "launch"
@@ -238,7 +238,23 @@ def test_symmetric_transition_launch_enables_short_rear_torque_recovery():
     assert '"rear_torque_boost_duration_sec": LaunchConfiguration(' in source
     assert '"enable_rear_torque_boost",' in source
     assert '"rear_torque_boost_nm",' in source
-    assert 'default_value="2.5"' in source
+    assert 'DeclareLaunchArgument(\n            "enable_rear_torque_boost",\n            default_value="false"' in source
+    assert 'DeclareLaunchArgument(\n            "rear_torque_boost_nm",\n            default_value="13.0"' in source
+
+
+def test_symmetric_transition_launch_enforces_production_safety_defaults():
+    launch_file = (
+        Path(__file__).parents[1]
+        / "launch"
+        / "sim2real_symmetric_transition_5530.launch.py"
+    )
+    source = launch_file.read_text(encoding="utf-8")
+    assert '"use_hardware_torque_limits": True' in source
+    assert '"require_verified_hardware_limits": True' in source
+    assert '"critical_state_failure_stop_cycles": 5' in source
+    assert 'default_value=MODEL_SHA256' in source
+    assert '"enable_tilt_protection",\n            default_value="true"' in source
+    assert '"enable_command_timeout_stand_hold",\n            default_value="true"' in source
 
 
 def test_rear_torque_boost_changes_only_real_rear_limits():
