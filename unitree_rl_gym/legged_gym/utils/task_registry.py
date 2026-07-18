@@ -128,7 +128,12 @@ class TaskRegistry():
             # load previously trained model
             resume_path = get_load_path(log_root, load_run=train_cfg.runner.load_run, checkpoint=train_cfg.runner.checkpoint)
             print(f"Loading model from: {resume_path}")
-            runner.load(resume_path)
+            runner.load(
+                resume_path,
+                load_optimizer=getattr(
+                    train_cfg.runner, "load_optimizer", True
+                ),
+            )
         return runner, train_cfg
 
 # make global task registry

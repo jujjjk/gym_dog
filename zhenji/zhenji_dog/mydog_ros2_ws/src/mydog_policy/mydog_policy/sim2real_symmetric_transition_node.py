@@ -32,6 +32,10 @@ from .symmetric_transition_contract import (
 class MydogSymmetricTransition5530Node(MydogPolicyParityFixedNode):
     """Deploy model 5530 with continuous command-transition semantics."""
 
+    MODEL_TASK = MODEL_TASK
+    COMMAND_FEEDBACK = COMMAND_FEEDBACK
+    validate_deployment_metadata = staticmethod(validate_metadata)
+
     def __init__(self):
         super().__init__()
 
@@ -39,7 +43,7 @@ class MydogSymmetricTransition5530Node(MydogPolicyParityFixedNode):
             raise RuntimeError(
                 "symmetric-transition deployment requires ONNX metadata"
             )
-        validate_metadata(self.deployment_config)
+        self.validate_deployment_metadata(self.deployment_config)
 
         if not self.has_parameter("transition_reset_vx_delta"):
             self.declare_parameter("transition_reset_vx_delta", 0.025)
@@ -134,11 +138,11 @@ class MydogSymmetricTransition5530Node(MydogPolicyParityFixedNode):
         control = self.deployment_config["control"]
         feedback_text = ", ".join(
             f"{name}={float(control[name]):.3f}"
-            for name in COMMAND_FEEDBACK
+            for name in self.COMMAND_FEEDBACK
         )
         self.get_logger().warn(
             "[SYMMETRIC_TRANSITION_5530] exact metadata validated | "
-            f"task={MODEL_TASK}, gait=0.45s, feedback=[{feedback_text}], "
+            f"task={self.MODEL_TASK}, gait=0.45s, feedback=[{feedback_text}], "
             "strict_symmetry=true"
         )
         self.get_logger().warn(

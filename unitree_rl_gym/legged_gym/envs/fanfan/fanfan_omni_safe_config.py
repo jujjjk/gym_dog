@@ -1781,6 +1781,107 @@ class FanfanOmniSymmetricTransitionCfgPPO(FanfanOmniForceCoordCfgPPO):
         symmetry_coef = 1.0
 
 
+class FanfanOmniTiltRecovery5530Cfg(FanfanOmniSymmetricTransitionCfg):
+    """Teach checkpoint 5530 to leave a disturbed gait attractor."""
+
+    class control(FanfanOmniSymmetricTransitionCfg.control):
+        # This gain is trained, exported and deployed together.  The original
+        # 0.80 lateral feedback over-corrected small estimator transients and
+        # made the previous-action observation latch into a different gait.
+        command_feedback_lateral_gain = 0.55
+
+    class domain_rand(FanfanOmniSymmetricTransitionCfg.domain_rand):
+        recovery_curriculum_end_iteration = 300
+        randomize_initial_tilt = True
+        initial_roll_levels_deg = [3.0, 5.0, 8.0]
+        initial_roll_zero_probability_initial = 0.72
+        initial_roll_zero_probability = 0.38
+        initial_pitch_range_rad = [-0.035, 0.035]
+        initial_velocity_max = 0.05
+
+        randomize_gait_phase_on_reset = True
+        randomize_previous_action = True
+        abnormal_action_state_probability_initial = 0.10
+        abnormal_action_state_probability = 0.38
+        abnormal_action_magnitude = 0.72
+
+        randomize_asymmetric_joint_state = True
+        asymmetric_joint_state_probability_initial = 0.08
+        asymmetric_joint_state_probability = 0.32
+        asymmetric_joint_offset_ranges = {
+            "hip": [-0.035, 0.035],
+            "thigh": [-0.055, 0.055],
+            "calf": [-0.075, 0.075],
+        }
+        asymmetric_joint_velocity_max = 0.12
+
+        push_robots = True
+        push_interval_s = 4.0
+        lateral_push_only = True
+        max_push_vel_xy_initial = 0.07
+        max_push_vel_xy = 0.18
+        max_push_roll_rate = 0.24
+
+    class commands(FanfanOmniSymmetricTransitionCfg.commands):
+        resampling_time = 3.0
+        stand_probability = 0.05
+        pure_yaw_probability = 0.17
+        pure_lateral_probability = 0.27
+        pure_sagittal_probability = 0.27
+        hard_transition_probability = 0.34
+        omni_curriculum = False
+
+    class rewards(FanfanOmniSymmetricTransitionCfg.rewards):
+        terminate_straight_heading_error = None
+        recovery_trigger_tilt_deg = 3.0
+        recovery_upright_tilt_deg = 2.0
+        recovery_stable_steps = 10
+        post_recovery_hold_s = 2.0
+
+        class scales(FanfanOmniSymmetricTransitionCfg.rewards.scales):
+            # Reward not only becoming level, but resuming the original command
+            # for two seconds instead of remaining in the corrective gait.
+            recovery_upright = -45.0
+            recovery_command_tracking = -18.0
+            recovery_action_settle = -0.55
+            recovery_diagonal_symmetry = -1.8
+            recovery_completion = 6.0
+            post_recovery_stability = 8.0
+
+            orientation = -7.0
+            ang_vel_xy = -0.35
+            action_rate = -0.21
+            policy_action_rate = -0.30
+            command_transition_tracking = 10.0
+
+            # Preserve and slightly strengthen the weaker non-forward modes.
+            tracking_lateral_vel = 28.0
+            tracking_ang_vel = 13.0
+            tracking_longitudinal_vel = 16.0
+            lateral_roll = -42.0
+            translation_roll = -24.0
+            diagonal_contact_sync_all = -1.8
+
+
+class FanfanOmniTiltRecovery5530CfgPPO(
+        FanfanOmniSymmetricTransitionCfgPPO):
+    class algorithm(FanfanOmniSymmetricTransitionCfgPPO.algorithm):
+        entropy_coef = 0.00030
+        learning_rate = 2.0e-5
+        desired_kl = 0.0009
+
+    class runner(FanfanOmniSymmetricTransitionCfgPPO.runner):
+        experiment_name = "rough_fanfan_omni_desat_torque"
+        run_name = "tilt_recovery_allmotion_from_5530"
+        resume = True
+        load_run = "Jul14_11-59-33_symmetric_transition_from_force_coord_5280"
+        checkpoint = 5530
+        load_optimizer = False
+        max_iterations = 900
+        save_interval = 25
+        symmetry_coef = 2.0
+
+
 class FanfanOmniHardwareBalance5530Cfg(FanfanOmniSymmetricTransitionCfg):
     """Conservative all-motion continuation from the selected model_5530.
 

@@ -33,6 +33,8 @@ from legged_gym.envs.fanfan.fanfan_omni_safe_config import (
     FanfanOmniHighCadenceCfg, FanfanOmniHighCadenceCfgPPO,
     FanfanOmniSymmetricTransitionCfg,
     FanfanOmniSymmetricTransitionCfgPPO,
+    FanfanOmniTiltRecovery5530Cfg,
+    FanfanOmniTiltRecovery5530CfgPPO,
     FanfanOmniHardwareBalance5530Cfg,
     FanfanOmniHardwareBalance5530CfgPPO,
     FanfanOmniHardwareBalance5530V2Cfg,
@@ -202,6 +204,12 @@ task_registry.register(
     FanfanRobot,
     FanfanOmniSymmetricTransitionCfg(),
     FanfanOmniSymmetricTransitionCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_tilt_recovery_5530",
+    FanfanRobot,
+    FanfanOmniTiltRecovery5530Cfg(),
+    FanfanOmniTiltRecovery5530CfgPPO(),
 )
 task_registry.register(
     "fanfan_omni_hardware_balance_5530",

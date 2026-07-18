@@ -10,6 +10,22 @@ import torch
 
 
 class FanfanRobot(LeggedRobot):
+    def _recovery_curriculum_progress(self):
+        end = float(getattr(
+            self.cfg.domain_rand, "recovery_curriculum_end_iteration", 0.0
+        ))
+        if end <= 0.0:
+            return 1.0
+        steps_per_iteration = float(getattr(
+            self.cfg.rewards, "torque_curriculum_steps_per_iteration", 24.0
+        ))
+        iteration = float(self.common_step_counter) / steps_per_iteration
+        return min(max(iteration / end, 0.0), 1.0)
+
+    @staticmethod
+    def _curriculum_value(initial, final, progress):
+        return float(initial) + progress * (float(final) - float(initial))
+
     def step(self, actions):
         # A smooth bound preserves control resolution when the Gaussian policy
         # produces values outside [-1, 1]. Hard clipping made the legs bang
@@ -154,6 +170,9 @@ class FanfanRobot(LeggedRobot):
             phase_offsets, dtype=torch.float, device=self.device
         )
         self.gait_phase = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
+        self.gait_phase_reset_offset = torch.zeros(
+            self.num_envs, dtype=torch.float, device=self.device
+        )
         self.command_transition_age = torch.full(
             (self.num_envs,), 10.0, dtype=torch.float, device=self.device
         )
@@ -250,6 +269,18 @@ class FanfanRobot(LeggedRobot):
         self.filtered_actions = torch.zeros_like(self.actions)
         self.filtered_action_velocity = torch.zeros_like(self.actions)
         self.policy_filter_gap = torch.zeros_like(self.actions)
+        self.recovery_active = torch.zeros(
+            self.num_envs, dtype=torch.bool, device=self.device
+        )
+        self.recovery_upright_steps = torch.zeros(
+            self.num_envs, dtype=torch.long, device=self.device
+        )
+        self.recovery_completion_pulse = torch.zeros(
+            self.num_envs, dtype=torch.float, device=self.device
+        )
+        self.post_recovery_steps = torch.zeros(
+            self.num_envs, dtype=torch.long, device=self.device
+        )
         rate_cfg = getattr(self.cfg.control, "policy_action_rate_limits", {})
         accel_cfg = getattr(self.cfg.control, "policy_action_accel_limits", {})
         self.policy_action_rate_limits = torch.tensor(
@@ -934,6 +965,52 @@ class FanfanRobot(LeggedRobot):
         self.command_transition_age[env_ids] = 0.0
         self.command_transition_magnitude[env_ids] = 0.0
         self.gait_phase[env_ids] = 0.0
+        self.gait_phase_reset_offset[env_ids] = 0.0
+        self.recovery_active[env_ids] = False
+        self.recovery_upright_steps[env_ids] = 0
+        self.recovery_completion_pulse[env_ids] = 0.0
+        self.post_recovery_steps[env_ids] = 0
+
+        if getattr(
+            self.cfg.domain_rand, "randomize_gait_phase_on_reset", False
+        ):
+            self.gait_phase_reset_offset[env_ids] = torch.rand(
+                len(env_ids), device=self.device
+            )
+            self.gait_phase[env_ids] = self.gait_phase_reset_offset[env_ids]
+
+        if getattr(
+            self.cfg.domain_rand, "randomize_previous_action", False
+        ):
+            progress = self._recovery_curriculum_progress()
+            probability = self._curriculum_value(
+                getattr(
+                    self.cfg.domain_rand,
+                    "abnormal_action_state_probability_initial",
+                    0.10,
+                ),
+                getattr(
+                    self.cfg.domain_rand,
+                    "abnormal_action_state_probability",
+                    0.35,
+                ),
+                progress,
+            )
+            selected = torch.rand(len(env_ids), device=self.device) < probability
+            if torch.any(selected):
+                selected_ids = env_ids[selected]
+                magnitude = float(getattr(
+                    self.cfg.domain_rand, "abnormal_action_magnitude", 0.70
+                ))
+                previous = torch.empty(
+                    len(selected_ids), self.num_actions, device=self.device
+                ).uniform_(-magnitude, magnitude)
+                self.policy_actions[selected_ids] = previous
+                self.last_policy_actions[selected_ids] = previous
+                self.filtered_actions[selected_ids] = previous
+                self.actions[selected_ids] = previous
+                self.last_actions[selected_ids] = previous
+                self.recovery_active[selected_ids] = True
 
     def _sample_range(self, value_range, shape):
         # Isaac Gym's scripted helper only accepts a two-dimensional shape;
@@ -1199,8 +1276,86 @@ class FanfanRobot(LeggedRobot):
         else:
             period = self.cfg.rewards.gait_period
             self.gait_phase = (
-                (self.episode_length_buf * self.dt) % period / period
-            )
+                self.episode_length_buf * self.dt / period
+                + self.gait_phase_reset_offset
+            ) % 1.0
+        self._update_recovery_state()
+
+    def _update_recovery_state(self):
+        """Track a disturbance until level, low-rate walking is restored."""
+        self.recovery_completion_pulse.zero_()
+        trigger_deg = float(getattr(
+            self.cfg.rewards, "recovery_trigger_tilt_deg", 3.0
+        ))
+        upright_deg = float(getattr(
+            self.cfg.rewards, "recovery_upright_tilt_deg", 2.0
+        ))
+        tilt = torch.linalg.norm(self.projected_gravity[:, :2], dim=1)
+        self.recovery_active |= tilt > np.sin(np.deg2rad(trigger_deg))
+        upright = (
+            (tilt < np.sin(np.deg2rad(upright_deg)))
+            & (torch.linalg.norm(self.base_ang_vel[:, :2], dim=1) < 0.45)
+        )
+        stable = self.recovery_active & upright
+        self.recovery_upright_steps = torch.where(
+            stable,
+            self.recovery_upright_steps + 1,
+            torch.zeros_like(self.recovery_upright_steps),
+        )
+        required = int(getattr(
+            self.cfg.rewards, "recovery_stable_steps", 10
+        ))
+        completed = self.recovery_active & (
+            self.recovery_upright_steps >= required
+        )
+        self.recovery_completion_pulse[completed] = 1.0
+        self.recovery_active[completed] = False
+        self.recovery_upright_steps[completed] = 0
+        hold_steps = int(round(float(getattr(
+            self.cfg.rewards, "post_recovery_hold_s", 2.0
+        )) / self.dt))
+        self.post_recovery_steps[completed] = hold_steps
+        self.post_recovery_steps = torch.clamp(
+            self.post_recovery_steps - 1, min=0
+        )
+
+    def _push_robots(self):
+        """Push scheduled environments only, with balanced left/right draws."""
+        env_ids = torch.arange(self.num_envs, device=self.device)
+        interval = max(1, int(self.cfg.domain_rand.push_interval))
+        push_ids = env_ids[self.episode_length_buf % interval == 0]
+        if len(push_ids) == 0:
+            return
+        progress = self._recovery_curriculum_progress()
+        max_vel = self._curriculum_value(
+            getattr(self.cfg.domain_rand, "max_push_vel_xy_initial", 0.08),
+            self.cfg.domain_rand.max_push_vel_xy,
+            progress,
+        )
+        if getattr(self.cfg.domain_rand, "lateral_push_only", False):
+            self.root_states[push_ids, 7] = 0.0
+            self.root_states[push_ids, 8] = torch.empty(
+                len(push_ids), device=self.device
+            ).uniform_(-max_vel, max_vel)
+        else:
+            self.root_states[push_ids, 7:9] = torch.empty(
+                len(push_ids), 2, device=self.device
+            ).uniform_(-max_vel, max_vel)
+        max_roll_rate = float(getattr(
+            self.cfg.domain_rand, "max_push_roll_rate", 0.0
+        )) * progress
+        if max_roll_rate > 0.0:
+            self.root_states[push_ids, 10] = torch.empty(
+                len(push_ids), device=self.device
+            ).uniform_(-max_roll_rate, max_roll_rate)
+        self.recovery_active[push_ids] = True
+        env_ids_int32 = push_ids.to(dtype=torch.int32)
+        self.gym.set_actor_root_state_tensor_indexed(
+            self.sim,
+            gymtorch.unwrap_tensor(self.root_states),
+            gymtorch.unwrap_tensor(env_ids_int32),
+            len(env_ids_int32),
+        )
 
     def _fill_observation_history(self, env_ids):
         if not self.use_real_observation_model or len(env_ids) == 0:
@@ -1480,6 +1635,43 @@ class FanfanRobot(LeggedRobot):
         # spawn a foot through the floor or put a calf directly on its limit.
         self.dof_pos[env_ids] = self.default_dof_pos
         self.dof_vel[env_ids] = 0.0
+        if getattr(
+            self.cfg.domain_rand, "randomize_asymmetric_joint_state", False
+        ):
+            progress = self._recovery_curriculum_progress()
+            probability = self._curriculum_value(
+                getattr(
+                    self.cfg.domain_rand,
+                    "asymmetric_joint_state_probability_initial",
+                    0.10,
+                ),
+                getattr(
+                    self.cfg.domain_rand,
+                    "asymmetric_joint_state_probability",
+                    0.35,
+                ),
+                progress,
+            )
+            selected = torch.rand(len(env_ids), device=self.device) < probability
+            if torch.any(selected):
+                selected_ids = env_ids[selected]
+                ranges = getattr(
+                    self.cfg.domain_rand,
+                    "asymmetric_joint_offset_ranges",
+                    {"hip": [-0.03, 0.03], "thigh": [-0.05, 0.05],
+                     "calf": [-0.07, 0.07]},
+                )
+                self.dof_pos[selected_ids] += self._sample_joint_type_ranges(
+                    ranges, len(selected_ids)
+                )
+                velocity = float(getattr(
+                    self.cfg.domain_rand,
+                    "asymmetric_joint_velocity_max",
+                    0.12,
+                ))
+                self.dof_vel[selected_ids] = torch.empty(
+                    len(selected_ids), self.num_dof, device=self.device
+                ).uniform_(-velocity, velocity)
 
         env_ids_int32 = env_ids.to(dtype=torch.int32)
         self.gym.set_dof_state_tensor_indexed(
@@ -1495,9 +1687,51 @@ class FanfanRobot(LeggedRobot):
         if getattr(
             self.cfg.domain_rand, "randomize_initial_tilt", False
         ):
-            tilt = self.cfg.domain_rand.initial_tilt_range_rad
-            roll = self._sample_range(tilt, (len(env_ids),))
-            pitch = self._sample_range(tilt, (len(env_ids),))
+            levels = getattr(
+                self.cfg.domain_rand, "initial_roll_levels_deg", None
+            )
+            if levels is not None:
+                progress = self._recovery_curriculum_progress()
+                unlocked = max(1, min(
+                    len(levels), 1 + int(progress * len(levels))
+                ))
+                indices = torch.randint(
+                    0, unlocked, (len(env_ids),), device=self.device
+                )
+                level_tensor = torch.tensor(
+                    levels, dtype=torch.float, device=self.device
+                )
+                sign = torch.where(
+                    torch.rand(len(env_ids), device=self.device) < 0.5,
+                    -torch.ones(len(env_ids), device=self.device),
+                    torch.ones(len(env_ids), device=self.device),
+                )
+                roll = torch.deg2rad(level_tensor[indices]) * sign
+                zero_probability = self._curriculum_value(
+                    getattr(
+                        self.cfg.domain_rand,
+                        "initial_roll_zero_probability_initial",
+                        0.70,
+                    ),
+                    getattr(
+                        self.cfg.domain_rand,
+                        "initial_roll_zero_probability",
+                        0.35,
+                    ),
+                    progress,
+                )
+                roll[torch.rand(len(env_ids), device=self.device)
+                     < zero_probability] = 0.0
+                pitch_range = getattr(
+                    self.cfg.domain_rand,
+                    "initial_pitch_range_rad",
+                    [-0.035, 0.035],
+                )
+                pitch = self._sample_range(pitch_range, (len(env_ids),))
+            else:
+                tilt = self.cfg.domain_rand.initial_tilt_range_rad
+                roll = self._sample_range(tilt, (len(env_ids),))
+                pitch = self._sample_range(tilt, (len(env_ids),))
             yaw = torch.zeros_like(roll)
             tilt_quat = quat_from_euler_xyz(roll, pitch, yaw)
             self.root_states[env_ids, 3:7] = quat_mul(
@@ -2339,6 +2573,71 @@ class FanfanRobot(LeggedRobot):
 
     def _reward_policy_filter_gap(self):
         return torch.sum(torch.square(self.policy_filter_gap), dim=1)
+
+    def _recovery_or_settle_gate(self):
+        return (
+            self.recovery_active | (self.post_recovery_steps > 0)
+        ).float()
+
+    def _reward_recovery_upright(self):
+        tilt = torch.sum(torch.square(self.projected_gravity[:, :2]), dim=1)
+        roll_pitch_rate = torch.sum(
+            torch.square(self.base_ang_vel[:, :2]), dim=1
+        )
+        return (tilt + 0.08 * roll_pitch_rate) * self.recovery_active.float()
+
+    def _reward_recovery_command_tracking(self):
+        linear_error = torch.sum(torch.square(
+            self.commands[:, :2] - self.base_lin_vel[:, :2]
+        ), dim=1)
+        yaw_error = torch.square(
+            self.commands[:, 2] - self.base_ang_vel[:, 2]
+        )
+        return (linear_error + 0.15 * yaw_error) * self._recovery_or_settle_gate()
+
+    def _reward_recovery_action_settle(self):
+        action_rate = self.policy_actions - self.last_policy_actions
+        return torch.sum(torch.square(action_rate), dim=1) * (
+            (self.post_recovery_steps > 0).float()
+        )
+
+    def _reward_recovery_diagonal_symmetry(self):
+        error = torch.zeros(self.num_envs, device=self.device)
+        for first, second in (("FL", "RR"), ("FR", "RL")):
+            for joint in ("hip", "thigh", "calf"):
+                first_index = self.leg_dof_indices[first][joint]
+                second_index = self.leg_dof_indices[second][joint]
+                if joint == "hip":
+                    pair_error = (
+                        self.policy_actions[:, first_index]
+                        + self.policy_actions[:, second_index]
+                    )
+                else:
+                    pair_error = (
+                        self.policy_actions[:, first_index]
+                        - self.policy_actions[:, second_index]
+                    )
+                error += torch.square(pair_error)
+        return error * (self.post_recovery_steps > 0).float()
+
+    def _reward_recovery_completion(self):
+        return self.recovery_completion_pulse
+
+    def _reward_post_recovery_stability(self):
+        gate = (self.post_recovery_steps > 0).float()
+        tilt = torch.sum(torch.square(self.projected_gravity[:, :2]), dim=1)
+        velocity_error = torch.sum(torch.square(
+            self.commands[:, :2] - self.base_lin_vel[:, :2]
+        ), dim=1)
+        yaw_error = torch.square(
+            self.commands[:, 2] - self.base_ang_vel[:, 2]
+        )
+        return (
+            torch.exp(-tilt / 0.0025)
+            * torch.exp(-velocity_error / 0.08)
+            * torch.exp(-yaw_error / 0.25)
+            * gate
+        )
 
     def _stand_command_gate(self):
         command_sq = torch.sum(torch.square(self.commands[:, :2]), dim=1)

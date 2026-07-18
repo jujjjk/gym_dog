@@ -50,33 +50,49 @@ HIGH_SPEED_COMMANDS = (
     (0.35, 0.15, 0.00),
 )
 
+RECOVERY_COMMANDS = (
+    (0.12, 0.00, 0.00),
+    (0.20, 0.00, 0.00),
+    (0.35, 0.00, 0.00),
+)
 
-def quat_xyzw_to_yaw(quat):
+
+def quat_xyzw_to_rpy(quat):
     qx = quat[:, 0]
     qy = quat[:, 1]
     qz = quat[:, 2]
     qw = quat[:, 3]
+    roll = torch.atan2(
+        2.0 * (qw * qx + qy * qz),
+        1.0 - 2.0 * (qx * qx + qy * qy)
+    )
+    pitch = torch.asin(torch.clamp(
+        2.0 * (qw * qy - qz * qx), -1.0, 1.0
+    ))
     yaw = torch.atan2(
         2.0 * (qw * qz + qx * qy),
         1.0 - 2.0 * (qy * qy + qz * qz)
     )
-    return yaw
+    return roll, pitch, yaw
 
 
 def play(args):
     env_cfg, train_cfg = task_registry.get_cfgs(args.task)
+    recovery_eval = os.environ.get("FANFAN_PLAY_RECOVERY", "0") == "1"
+    low_speed_eval = os.environ.get("FANFAN_PLAY_LOW_SPEED", "0") == "1"
 
     env_cfg.env.num_envs = args.num_envs or 18
     env_cfg.terrain.num_rows = 3
     env_cfg.terrain.num_cols = 6
     env_cfg.terrain.curriculum = False
-    env_cfg.noise.add_noise = False
-    env_cfg.domain_rand.randomize_friction = False
-    env_cfg.domain_rand.push_robots = False
-    env_cfg.domain_rand.randomize_motor_strength = False
-    env_cfg.domain_rand.randomize_base_mass = False
-    if hasattr(env_cfg.domain_rand, "randomize_base_com"):
-        env_cfg.domain_rand.randomize_base_com = False
+    if not recovery_eval:
+        env_cfg.noise.add_noise = False
+        env_cfg.domain_rand.randomize_friction = False
+        env_cfg.domain_rand.push_robots = False
+        env_cfg.domain_rand.randomize_motor_strength = False
+        env_cfg.domain_rand.randomize_base_mass = False
+        if hasattr(env_cfg.domain_rand, "randomize_base_com"):
+            env_cfg.domain_rand.randomize_base_com = False
     if hasattr(env_cfg.rewards, "terminate_straight_heading_error"):
         # Training-only guard: evaluation must reveal accumulated heading
         # error instead of hiding it behind an automatic environment reset.
@@ -105,12 +121,15 @@ def play(args):
             )
             return 0.5 * (direct + mirrored)
 
-    if any(tag in args.task for tag in (
+    if recovery_eval or low_speed_eval:
+        matrix = RECOVERY_COMMANDS
+    elif any(tag in args.task for tag in (
         "high_speed_transition", "high_authority_transition"
         , "high_authority_direction"
         , "high_authority_closed_loop"
         , "high_cadence"
         , "symmetric_transition"
+        , "tilt_recovery"
     )):
         matrix = HIGH_SPEED_COMMANDS
     elif any(tag in args.task for tag in ("fast", "smooth", "filtered")):
@@ -147,12 +166,13 @@ def play(args):
     log_writer.writerow([
         "step", "time_s", "env_id",
         "cmd_vx", "cmd_vy", "cmd_yaw",
-        "x", "y", "z", "yaw",
+        "x", "y", "z", "roll", "pitch", "yaw",
         "vx_body", "vy_body", "vz_body",
         "roll_rate", "pitch_rate", "yaw_rate",
         "action_abs_mean", "action_abs_max", "action_sat75_ratio",
+        "action_sat95_ratio", "action_cycle_sat95",
         "torque_abs_mean", "torque_abs_max",
-        "gait_phase",
+        "gait_phase", "recovery_active", "post_recovery",
     ] + [f"foot_z_{leg}" for leg in ("FL", "FR", "RL", "RR")]
       + [f"foot_contact_{leg}" for leg in ("FL", "FR", "RL", "RR")]
       + [f"policy_{name}" for name in joint_names]
@@ -179,6 +199,7 @@ def play(args):
                     , "high_authority_closed_loop"
                     , "high_cadence"
                     , "symmetric_transition"
+                    , "tilt_recovery"
                     , "hardware_balance_5530"
                     , "realdata_curriculum"
                     , "realdata_coordinated"
@@ -205,15 +226,18 @@ def play(args):
                 root_states = env.root_states
                 pos = root_states[:, 0:3]
                 quat = root_states[:, 3:7]
-                yaw = quat_xyzw_to_yaw(quat)
+                roll, pitch, yaw = quat_xyzw_to_rpy(quat)
 
                 base_lin_vel = env.base_lin_vel
                 base_ang_vel = env.base_ang_vel
 
-                action_abs = actions.abs()
+                policy_actions = getattr(env, "policy_actions", torch.tanh(actions))
+                action_abs = policy_actions.abs()
                 action_abs_mean = action_abs.mean(dim=1)
                 action_abs_max = action_abs.max(dim=1).values
                 action_sat75_ratio = (action_abs > 0.75).float().mean(dim=1)
+                action_sat95_ratio = (action_abs > 0.95).float().mean(dim=1)
+                action_cycle_sat95 = (action_abs > 0.95).any(dim=1)
 
                 if hasattr(env, "torques"):
                     torque_abs = env.torques.abs()
@@ -223,7 +247,6 @@ def play(args):
                     torque_abs_mean = torch.zeros(env.num_envs, device=env.device)
                     torque_abs_max = torch.zeros(env.num_envs, device=env.device)
 
-                policy_actions = getattr(env, "policy_actions", env.actions)
                 target_delta = (
                     getattr(env, "target_dof_pos_rl", env.dof_pos)
                     - env.default_dof_pos
@@ -252,6 +275,8 @@ def play(args):
                         float(pos[eid, 0].item()),
                         float(pos[eid, 1].item()),
                         float(pos[eid, 2].item()),
+                        float(roll[eid].item()),
+                        float(pitch[eid].item()),
                         float(yaw[eid].item()),
 
                         float(base_lin_vel[eid, 0].item()),
@@ -265,10 +290,18 @@ def play(args):
                         float(action_abs_mean[eid].item()),
                         float(action_abs_max[eid].item()),
                         float(action_sat75_ratio[eid].item()),
+                        float(action_sat95_ratio[eid].item()),
+                        int(action_cycle_sat95[eid].item()),
 
                         float(torque_abs_mean[eid].item()),
                         float(torque_abs_max[eid].item()),
                         float(env.gait_phase[eid].item()),
+                        int(getattr(env, "recovery_active", torch.zeros(
+                            env.num_envs, device=env.device, dtype=torch.bool
+                        ))[eid].item()),
+                        int((getattr(env, "post_recovery_steps", torch.zeros(
+                            env.num_envs, device=env.device, dtype=torch.long
+                        ))[eid] > 0).item()),
                     ] + foot_z[eid].detach().cpu().tolist()
                       + foot_contact[eid].int().detach().cpu().tolist()
                       + policy_actions[eid].detach().cpu().tolist()

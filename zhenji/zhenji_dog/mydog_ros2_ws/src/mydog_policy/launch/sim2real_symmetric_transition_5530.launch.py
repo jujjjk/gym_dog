@@ -38,8 +38,8 @@ def generate_launch_description():
 
     policy = Node(
         package="mydog_policy",
-        executable="mydog_symmetric_transition_node",
-        name="mydog_symmetric_transition_5530_node",
+        executable=LaunchConfiguration("policy_executable"),
+        name=LaunchConfiguration("policy_node_name"),
         output="screen",
         parameters=[{
             "onnx_path": LaunchConfiguration("onnx_path"),
@@ -180,7 +180,9 @@ def generate_launch_description():
             "debug_csv_async": True,
             "debug_csv_queue_size": 256,
             "debug_csv_flush_every_n": 20,
-            "expected_policy_task": MODEL_TASK,
+            "expected_policy_task": LaunchConfiguration(
+                "expected_policy_task"
+            ),
             "expected_policy_sha256": LaunchConfiguration(
                 "expected_policy_sha256"
             ),
@@ -203,6 +205,18 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "expected_policy_sha256",
             default_value=MODEL_SHA256,
+        ),
+        DeclareLaunchArgument(
+            "expected_policy_task",
+            default_value=MODEL_TASK,
+        ),
+        DeclareLaunchArgument(
+            "policy_executable",
+            default_value="mydog_symmetric_transition_node",
+        ),
+        DeclareLaunchArgument(
+            "policy_node_name",
+            default_value="mydog_symmetric_transition_5530_node",
         ),
         DeclareLaunchArgument("enable_send", default_value="false"),
         DeclareLaunchArgument("print_only", default_value="false"),

@@ -24,6 +24,7 @@ setup(
         (
             "share/" + package_name + "/models",
             glob("resource/fanfan_symmetric_transition_5530.*")
+            + glob("resource/fanfan_tilt_recovery_5530_5650.*")
             + glob("resource/fanfan_clearance_robust_5730.*")
             + glob("resource/fanfan_hardware_balance_5530_best.*")
             + glob("resource/fanfan_realdata_best.*"),
@@ -57,6 +58,14 @@ setup(
             "mydog_policy_parity_node = mydog_policy.sim2real_parity_fixed_node:main",
             "mydog_force_coord_node = mydog_policy.sim2real_force_coord_node:main",
             "mydog_symmetric_transition_node = mydog_policy.sim2real_symmetric_transition_node:main",
+            (
+                "mydog_tilt_recovery_node = "
+                "mydog_policy.sim2real_tilt_recovery_node:main"
+            ),
+            (
+                "mydog_validate_tilt_recovery_model = "
+                "mydog_policy.validate_tilt_recovery_model:main"
+            ),
             "mydog_validate_symmetric_transition_model = mydog_policy.validate_symmetric_transition_model:main",
             "mydog_symmetric_transition_command = mydog_policy.symmetric_transition_command:main",
             # Clearance-robust checkpoint 5730 deployment.

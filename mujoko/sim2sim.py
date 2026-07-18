@@ -25,6 +25,7 @@ class Sim:
         self.decimation=int(ctl["decimation"]);self.q=np.array([self.m.jnt_qposadr[mujoco.mj_name2id(self.m,mujoco.mjtObj.mjOBJ_JOINT,x)] for x in self.names]);self.v=np.array([self.m.jnt_dofadr[mujoco.mj_name2id(self.m,mujoco.mjtObj.mjOBJ_JOINT,x)] for x in self.names]);self.aid=np.array([mujoco.mj_name2id(self.m,mujoco.mjtObj.mjOBJ_ACTUATOR,x+"_motor") for x in self.names]);self.bid=mujoco.mj_name2id(self.m,mujoco.mjtObj.mjOBJ_BODY,"Trunk");self.reset()
     def reset(self):
         mujoco.mj_resetData(self.m,self.d);pos=self.cfg["initial_state"]["base_position"];xyzw=self.cfg["initial_state"]["base_quaternion_xyzw"];self.d.qpos[:7]=[*pos,xyzw[3],xyzw[0],xyzw[1],xyzw[2]];self.d.qpos[self.q]=self.default;self.action=np.zeros(len(self.names),np.float32);self.action_velocity=np.zeros(len(self.names),np.float32);self.target=self.default.copy();self.motor_target=self.default.copy();self.target_velocity=np.zeros(len(self.names),np.float32);self.target_history=[self.default.copy() for _ in range(self.command_delay_steps+1)];self.n=0;self.gait_phase=0.0;self.heading_target=0.0;mujoco.mj_forward(self.m,self.d)
+        self.policy_action=self.action.copy()
     def gait_offset(self,phase):
         out=np.zeros(len(self.names),np.float32);r=self.gait["stance_ratio"]
         calf_amplitude=float(self.gait["calf_amplitude"])
@@ -65,6 +66,7 @@ class Sim:
         obs=np.concatenate((linear*o["lin_vel_scale"],angular*o["ang_vel_scale"],gravity(quat),command*np.asarray(o["command_scale"]),(self.d.qpos[self.q]-self.default)*o["dof_pos_scale"],self.d.qvel[self.v]*o["dof_vel_scale"],self.action,[np.sin(2*np.pi*phase),np.cos(2*np.pi*phase)],heading_obs)).astype(np.float32)
         if obs.size!=self.cfg["dimensions"]["observations"]:raise RuntimeError(f"Observation size {obs.size} != export {self.cfg['dimensions']['observations']}")
         raw=self.net.run(["raw_actions"],{"observations":np.clip(obs,-o["clip"],o["clip"])[None]})[0][0];policy_action=np.tanh(raw) if self.cfg["control"]["output_transform"]=="tanh" else raw
+        self.policy_action=np.asarray(policy_action,np.float32).copy()
         if self.filter_actions:
             dt=self.m.opt.timestep*self.decimation;desired=self.action+self.filter_alpha*(policy_action-self.action);desired_velocity=np.clip((desired-self.action)/dt,-self.action_rate_limits,self.action_rate_limits);dv=np.clip(desired_velocity-self.action_velocity,-self.action_accel_limits*dt,self.action_accel_limits*dt);next_velocity=self.action_velocity+dv;next_action=self.action+next_velocity*dt;crossed=(desired-self.action)*(desired-next_action)<0;next_action=np.where(crossed,desired,next_action);self.action_velocity=(next_action-self.action)/dt;self.action=next_action
         else:self.action=policy_action

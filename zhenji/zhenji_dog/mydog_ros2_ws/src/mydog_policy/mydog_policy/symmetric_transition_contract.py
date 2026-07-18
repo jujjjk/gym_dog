@@ -107,13 +107,18 @@ def _require_list_close(
         raise ValueError(f"{name} mismatch at {bad[:4]}")
 
 
-def validate_metadata(contract: dict[str, Any]) -> bool:
-    """Validate every runtime-relevant field exported with checkpoint 5530."""
+def validate_metadata_against(
+    contract: dict[str, Any],
+    *,
+    model_task: str,
+    command_feedback: dict[str, float],
+) -> bool:
+    """Validate the shared 5530 control contract against one policy variant."""
     if contract.get("schema_version") != 1:
         raise ValueError("unsupported deployment schema")
-    if contract.get("task") != MODEL_TASK:
+    if contract.get("task") != model_task:
         raise ValueError(
-            f"task mismatch: expected {MODEL_TASK!r}, got {contract.get('task')!r}"
+            f"task mismatch: expected {model_task!r}, got {contract.get('task')!r}"
         )
     if contract.get("dimensions") != {
         "observations": OBSERVATIONS,
@@ -158,7 +163,7 @@ def validate_metadata(contract: dict[str, Any]) -> bool:
         raise ValueError("output transform must be tanh")
     if control.get("enforce_policy_symmetry") is not True:
         raise ValueError("strict policy symmetry is not enabled in ONNX metadata")
-    for name, expected in COMMAND_FEEDBACK.items():
+    for name, expected in command_feedback.items():
         if not _close(control.get(name, float("nan")), expected, atol=1.0e-7):
             raise ValueError(
                 f"{name} mismatch: expected {expected}, got {control.get(name)!r}"
@@ -216,3 +221,12 @@ def validate_metadata(contract: dict[str, Any]) -> bool:
     }:
         raise ValueError("gait phase offsets mismatch")
     return True
+
+
+def validate_metadata(contract: dict[str, Any]) -> bool:
+    """Validate every runtime-relevant field exported with checkpoint 5530."""
+    return validate_metadata_against(
+        contract,
+        model_task=MODEL_TASK,
+        command_feedback=COMMAND_FEEDBACK,
+    )
