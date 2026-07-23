@@ -3,6 +3,7 @@ from isaacgym import gymtorch
 from isaacgym.torch_utils import (
     quat_from_euler_xyz,
     quat_mul,
+    quat_rotate_inverse,
     torch_rand_float,
 )
 import numpy as np
@@ -129,6 +130,14 @@ class FanfanRobot(LeggedRobot):
                     symmetric[:, a] = mean
                     symmetric[:, b] = mean
 
+        # Lock the gross diagonal phase while leaving a small per-motor
+        # residual for compensation of measured RS01 gain/tau differences.
+        blend = float(getattr(
+            self.cfg.control, "straight_diagonal_projection_blend", 1.0
+        ))
+        blend = min(max(blend, 0.0), 1.0)
+        symmetric = physical + blend * (symmetric - physical)
+
         symmetric[:, self.hip_dof_indices] /= self.cfg.control.hip_action_scale
         symmetric[:, self.front_sagittal_dof_indices] /= (
             self.cfg.control.action_scale
@@ -157,6 +166,16 @@ class FanfanRobot(LeggedRobot):
         self.rigid_body_states_view = self.rigid_body_states.view(self.num_envs, -1, 13)
         self.feet_state = self.rigid_body_states_view[:, self.feet_indices, :]
         self.feet_pos = self.feet_state[:, :, :3]
+        # Continuous contact duration for each physical foot.  This is
+        # separate from ``feet_air_time`` because the locomotion task needs
+        # to reject a foot that remains planted for multiple gait cycles.
+        self.feet_contact_time = torch.zeros_like(self.feet_air_time)
+        self.all_feet_contact_time = torch.zeros(
+            self.num_envs, dtype=torch.float, device=self.device
+        )
+        self.non_diagonal_swing_counter = torch.zeros(
+            self.num_envs, dtype=torch.long, device=self.device
+        )
         body_names = self.gym.get_actor_rigid_body_names(self.envs[0], self.actor_handles[0])
         phase_offsets = []
         self.foot_slot_by_leg = {}
@@ -173,8 +192,21 @@ class FanfanRobot(LeggedRobot):
         self.gait_phase_reset_offset = torch.zeros(
             self.num_envs, dtype=torch.float, device=self.device
         )
+        self.gait_transfer_wait_steps = torch.zeros(
+            self.num_envs, dtype=torch.long, device=self.device
+        )
+        initial_transition_age = (
+            0.0
+            if float(getattr(
+                self.cfg.control, "gait_transition_ramp_s", 0.0
+            )) > 0.0
+            else 10.0
+        )
         self.command_transition_age = torch.full(
-            (self.num_envs,), 10.0, dtype=torch.float, device=self.device
+            (self.num_envs,),
+            initial_transition_age,
+            dtype=torch.float,
+            device=self.device,
         )
         self.command_transition_magnitude = torch.zeros(
             self.num_envs, dtype=torch.float, device=self.device
@@ -349,7 +381,12 @@ class FanfanRobot(LeggedRobot):
             )
 
             self.actuator_tau = torch.full_like(default, 0.060)
+            # Optional identified FOPDT gain. It acts on commanded motion
+            # about the calibrated standing pose, rather than scaling torque
+            # or absolute joint angle. Legacy tasks keep the ideal gain 1.
+            self.actuator_position_gain = torch.ones_like(default)
             self.actuator_backlash = torch.zeros_like(default)
+            self.actuator_coulomb_friction = torch.zeros_like(default)
             self.kp_multiplier = torch.ones_like(default)
             self.kd_multiplier = torch.ones_like(default)
             self.joint_zero_offset = torch.zeros_like(default)
@@ -376,8 +413,13 @@ class FanfanRobot(LeggedRobot):
                 self.cfg.control.final_target_accel_limits_final
             )
 
+            gait_cfg = self.cfg.domain_rand
+            calf_range = gait_cfg.gait_calf_amplitude_max_range
             self.gait_calf_amplitude_max = torch.full(
-                (self.num_envs,), 0.20, dtype=torch.float, device=self.device
+                (self.num_envs,),
+                0.5 * (float(calf_range[0]) + float(calf_range[1])),
+                dtype=torch.float,
+                device=self.device,
             )
             self.gait_stance_ratio = torch.full(
                 (self.num_envs,),
@@ -385,11 +427,19 @@ class FanfanRobot(LeggedRobot):
                 dtype=torch.float,
                 device=self.device,
             )
+            low_period_range = gait_cfg.gait_low_speed_period_range
+            high_period_range = gait_cfg.gait_high_speed_period_range
             self.gait_period_low_speed = torch.full(
-                (self.num_envs,), 0.75, dtype=torch.float, device=self.device
+                (self.num_envs,),
+                0.5 * (float(low_period_range[0]) + float(low_period_range[1])),
+                dtype=torch.float,
+                device=self.device,
             )
             self.gait_period_high_speed = torch.full(
-                (self.num_envs,), 0.54, dtype=torch.float, device=self.device
+                (self.num_envs,),
+                0.5 * (float(high_period_range[0]) + float(high_period_range[1])),
+                dtype=torch.float,
+                device=self.device,
             )
             self.gait_backward_scale = torch.full(
                 (self.num_envs,), 0.82, dtype=torch.float, device=self.device
@@ -471,6 +521,15 @@ class FanfanRobot(LeggedRobot):
                 device=self.device,
             )
 
+        # Apply the identified hardware distribution before the very first
+        # episode as well as after resets.  Without this, playback could run
+        # indefinitely with placeholder tau/gain/friction values and would
+        # not actually represent the measured RS01 motors.
+        if self.use_real_actuator_model or self.use_real_observation_model:
+            self._randomize_real_hardware_episode(
+                torch.arange(self.num_envs, device=self.device)
+            )
+
     def _joint_type_tensor(self, values):
         """Expand a hip/thigh/calf mapping into policy joint order."""
         return torch.tensor(
@@ -484,6 +543,20 @@ class FanfanRobot(LeggedRobot):
 
     def _compute_torques(self, actions):
         target_dof_pos = self._compute_raw_joint_target(actions)
+
+        target_limits = getattr(
+            self.cfg.control, "target_position_limits_by_joint", None
+        )
+        if target_limits is not None:
+            lower = self._joint_type_tensor({
+                key: value[0] for key, value in target_limits.items()
+            }).unsqueeze(0)
+            upper = self._joint_type_tensor({
+                key: value[1] for key, value in target_limits.items()
+            }).unsqueeze(0)
+            target_dof_pos = torch.maximum(
+                torch.minimum(target_dof_pos, upper), lower
+            )
 
         if self.use_real_actuator_model:
             target_dof_pos = self._apply_real_actuator_chain(target_dof_pos)
@@ -504,10 +577,23 @@ class FanfanRobot(LeggedRobot):
         clipped_torques = torch.maximum(
             torch.minimum(raw_torques, torque_limits), -torque_limits
         )
+        torque_clip_error = raw_torques - clipped_torques
+        if self.use_real_actuator_model:
+            # Limit the commanded motor output first. Internal Coulomb
+            # friction then reduces the torque delivered to the joint; it
+            # must not create hidden command headroom above the safety cap.
+            smoothing = max(float(getattr(
+                self.cfg.control,
+                "coulomb_friction_velocity_smoothing_rad_s",
+                0.05,
+            )), 1.0e-4)
+            clipped_torques -= self.actuator_coulomb_friction * torch.tanh(
+                self.dof_vel / smoothing
+            )
 
         self.raw_torques = raw_torques
         self.target_dof_pos_rl = target_dof_pos
-        self.torque_clip_error = raw_torques - clipped_torques
+        self.torque_clip_error = torque_clip_error
         ema_alpha = float(getattr(
             self.cfg.rewards, "torque_ema_alpha", 0.98
         ))
@@ -542,7 +628,51 @@ class FanfanRobot(LeggedRobot):
             stance_ratio = stance_ratio.unsqueeze(1)
         swing_progress = ((phase - stance_ratio) / (1.0 - stance_ratio)).clip(0.0, 1.0)
         smooth_swing = swing_progress * swing_progress * (3.0 - 2.0 * swing_progress)
-        swing_profile = torch.sin(torch.pi * smooth_swing) * (phase >= stance_ratio)
+        if getattr(self.cfg.control, "use_fast_swing_profile", False):
+            shape = getattr(
+                self.cfg.control, "fast_swing_profile_shape", "sine"
+            )
+            if shape == "sine":
+                # Fanfan-rate arch: faster off/on the floor than
+                # sin(pi*smoothstep(s)), without a long airborne plateau.
+                swing_profile = torch.sin(
+                    torch.pi * swing_progress
+                ) * (phase >= stance_ratio)
+            elif shape == "plateau":
+                lift_fraction = float(getattr(
+                    self.cfg.control, "swing_lift_fraction", 0.30
+                ))
+                lower_start = float(getattr(
+                    self.cfg.control, "swing_lower_start_fraction", 0.65
+                ))
+                lift_fraction = min(max(lift_fraction, 0.10), 0.45)
+                lower_start = min(
+                    max(lower_start, lift_fraction + 0.10), 0.90
+                )
+                rise_progress = (
+                    swing_progress / lift_fraction
+                ).clip(0.0, 1.0)
+                rise = rise_progress * rise_progress * (
+                    3.0 - 2.0 * rise_progress
+                )
+                fall_progress = (
+                    (swing_progress - lower_start) / (1.0 - lower_start)
+                ).clip(0.0, 1.0)
+                fall = 1.0 - (
+                    fall_progress * fall_progress
+                    * (3.0 - 2.0 * fall_progress)
+                )
+                swing_profile = torch.minimum(rise, fall) * (
+                    phase >= stance_ratio
+                )
+            else:
+                raise ValueError(
+                    f"Unknown fast_swing_profile_shape: {shape}"
+                )
+        else:
+            swing_profile = torch.sin(torch.pi * smooth_swing) * (
+                phase >= stance_ratio
+            )
         stance_progress = (phase / stance_ratio).clip(0.0, 1.0)
         thigh_profile = torch.where(
             phase < stance_ratio,
@@ -553,6 +683,7 @@ class FanfanRobot(LeggedRobot):
         gait_offset = torch.zeros_like(actions_scaled)
         dynamic_calf_amplitude = None
         dynamic_thigh_amplitude = None
+        dynamic_swing_thigh_lift = 0.0
         gait_amplitude_fraction = None
         if self.use_continuous_gait_scaling:
             dynamic_calf_amplitude = -self._continuous_gait_amplitude()
@@ -574,6 +705,19 @@ class FanfanRobot(LeggedRobot):
                 * amplitude_fraction
                 * sagittal_direction
             )
+            # Flexing this dog's calf also moves the toe forward.  Add the
+            # corresponding positive thigh motion at mid-swing so the toe
+            # rises approximately vertically instead of dragging along the
+            # floor.  The calibrated default pose Jacobian gives about
+            # +0.17 rad thigh for -0.30 rad calf at a 4 cm lift.
+            dynamic_swing_thigh_lift = (
+                float(getattr(
+                    self.cfg.rewards,
+                    "gait_swing_thigh_lift_amplitude",
+                    0.0,
+                ))
+                * amplitude_fraction
+            )
             pure_lateral = (
                 (torch.abs(self.commands[:, 0]) < 0.03)
                 & (torch.abs(self.commands[:, 1]) > 0.02)
@@ -587,7 +731,12 @@ class FanfanRobot(LeggedRobot):
                 torch.ones_like(amplitude_fraction),
             )
         foot_names = ("FL", "FR", "RL", "RR")
-        for foot_slot, leg in enumerate(foot_names):
+        for leg in foot_names:
+            # ``phase`` follows Isaac Gym's rigid-body/foot order, which is
+            # not guaranteed to be FL, FR, RL, RR across assets. Looking it
+            # up by leg name keeps the physical swing reference aligned with
+            # the contact-phase reward.
+            foot_slot = self.foot_slot_by_leg[leg]
             thigh_amplitude = (
                 dynamic_thigh_amplitude
                 if dynamic_thigh_amplitude is not None
@@ -595,6 +744,7 @@ class FanfanRobot(LeggedRobot):
             )
             gait_offset[:, self.leg_dof_indices[leg]["thigh"]] = (
                 thigh_amplitude * thigh_profile[:, foot_slot]
+                + dynamic_swing_thigh_lift * swing_profile[:, foot_slot]
             )
             calf_amplitude = (
                 dynamic_calf_amplitude
@@ -631,6 +781,26 @@ class FanfanRobot(LeggedRobot):
                     * lateral_fraction
                     * thigh_profile[:, foot_slot]
                 )
+        # Robot-specific controllers may replace the generic joint-space
+        # reference while retaining every downstream residual, actuator and
+        # safety guard.  The RS01 dog uses this hook for foot-space CPG + IK.
+        specialized_gait = getattr(
+            self, "_compute_specialized_gait_offset", None
+        )
+        if callable(specialized_gait):
+            replacement = specialized_gait(
+                phase=phase,
+                stance_ratio=stance_ratio,
+                gait_amplitude_fraction=gait_amplitude_fraction,
+            )
+            if replacement is not None:
+                if replacement.shape != gait_offset.shape:
+                    raise ValueError(
+                        "specialized gait offset must have shape "
+                        f"{tuple(gait_offset.shape)}, got "
+                        f"{tuple(replacement.shape)}"
+                    )
+                gait_offset = replacement
         if (
             dynamic_calf_amplitude is None
             and getattr(self.cfg.control, "gate_gait_with_command", False)
@@ -642,6 +812,21 @@ class FanfanRobot(LeggedRobot):
             sigma = self.cfg.control.gait_command_gate_sigma
             gait_gate = 1.0 - torch.exp(-command_energy / sigma)
             gait_offset *= gait_gate.unsqueeze(1)
+        if (
+            self.use_real_actuator_model
+            and getattr(
+                self.cfg.control,
+                "compensate_identified_position_gain_in_gait",
+                False,
+            )
+        ):
+            # Keep the measured FOPDT gain downstream, but pre-scale the
+            # deterministic reference so unequal RS01 gains do not turn one
+            # shared diagonal trajectory into unequal physical toe strides.
+            # Learned residuals are intentionally left unmodified.
+            gait_offset = gait_offset / self.actuator_position_gain.clip(
+                min=0.75, max=1.25
+            )
         target_dof_pos = actions_scaled + gait_offset + self.default_dof_pos
         if getattr(
             self.cfg.control, "enforce_swing_calf_reference", False
@@ -718,7 +903,8 @@ class FanfanRobot(LeggedRobot):
                 extension_gate = torch.ones_like(
                     gait_amplitude_fraction
                 )
-            for foot_slot, leg in enumerate(foot_names):
+            for leg in foot_names:
+                foot_slot = self.foot_slot_by_leg[leg]
                 stance = (
                     (phase[:, foot_slot] < stance_ratio[:, 0])
                     & (extension_gate > 0.5)
@@ -726,21 +912,182 @@ class FanfanRobot(LeggedRobot):
                 calf = self.leg_dof_indices[leg]["calf"]
                 thigh = self.leg_dof_indices[leg]["thigh"]
                 calf_reference = (
-                    self.default_dof_pos[:, calf] + calf_extension
+                    self.default_dof_pos[:, calf]
+                    + (
+                        gait_offset[:, calf]
+                        if getattr(
+                            self.cfg.control,
+                            "stance_guard_preserve_gait_reference",
+                            False,
+                        )
+                        else 0.0
+                    )
+                    + calf_extension
                 )
                 thigh_reference = (
-                    self.default_dof_pos[:, thigh] + thigh_extension
+                    self.default_dof_pos[:, thigh]
+                    + (
+                        gait_offset[:, thigh]
+                        if getattr(
+                            self.cfg.control,
+                            "stance_guard_preserve_gait_reference",
+                            False,
+                        )
+                        else 0.0
+                    )
+                    + thigh_extension
                 )
                 target_dof_pos[:, calf] = torch.where(
                     stance,
                     torch.maximum(target_dof_pos[:, calf], calf_reference),
                     target_dof_pos[:, calf],
                 )
-                target_dof_pos[:, thigh] = torch.where(
-                    stance,
-                    torch.minimum(target_dof_pos[:, thigh], thigh_reference),
-                    target_dof_pos[:, thigh],
+                if getattr(
+                    self.cfg.control,
+                    "enforce_stance_thigh_reference",
+                    True,
+                ):
+                    target_dof_pos[:, thigh] = torch.where(
+                        stance,
+                        torch.minimum(target_dof_pos[:, thigh], thigh_reference),
+                        target_dof_pos[:, thigh],
+                    )
+        if getattr(
+            self.cfg.control, "use_active_diagonal_load_transfer", False
+        ):
+            # During double support, extend only the newly landed diagonal and
+            # only by its measured load deficit. This makes it take over body
+            # weight before the old diagonal is released, without a fixed
+            # high-torque push when it is already sufficiently loaded.
+            overlap = (stance_ratio[:, 0] - 0.5).clip(
+                min=1.0e-4, max=0.49
+            )
+            clock = self.gait_phase
+            fl_rr_window = clock < overlap
+            fr_rl_window = (
+                (clock >= 0.5) & (clock < 0.5 + overlap)
+            )
+            progress = torch.where(
+                fl_rr_window,
+                clock / overlap,
+                (clock - 0.5) / overlap,
+            ).clip(0.0, 1.0)
+            progress = progress * progress * (3.0 - 2.0 * progress)
+
+            force = self.contact_forces[:, self.feet_indices, 2].clip(min=0.0)
+            fl_rr_force = (
+                force[:, self.foot_slot_by_leg["FL"]]
+                + force[:, self.foot_slot_by_leg["RR"]]
+            )
+            fr_rl_force = (
+                force[:, self.foot_slot_by_leg["FR"]]
+                + force[:, self.foot_slot_by_leg["RL"]]
+            )
+            new_pair_force = torch.where(
+                fl_rr_window, fl_rr_force, fr_rl_force
+            )
+            nominal_weight = float(getattr(
+                self.cfg.rewards, "transition_nominal_weight_n", 115.1
+            ))
+            final_fraction = float(getattr(
+                self.cfg.control,
+                "active_transfer_target_weight_fraction",
+                0.55,
+            ))
+            desired_force = progress * final_fraction * nominal_weight
+            deficit = (
+                (desired_force - new_pair_force)
+                / max(final_fraction * nominal_weight, 1.0)
+            ).clip(0.0, 1.0)
+            extension = float(getattr(
+                self.cfg.control,
+                "active_transfer_max_calf_extension_rad",
+                0.035,
+            )) * deficit
+            if gait_amplitude_fraction is not None:
+                extension *= gait_amplitude_fraction
+            for pair, pair_window in (
+                (("FL", "RR"), fl_rr_window),
+                (("FR", "RL"), fr_rl_window),
+            ):
+                for leg in pair:
+                    calf = self.leg_dof_indices[leg]["calf"]
+                    transfer_reference = (
+                        self.default_dof_pos[:, calf] + extension
+                    )
+                    target_dof_pos[:, calf] = torch.where(
+                        pair_window,
+                        torch.maximum(
+                            target_dof_pos[:, calf], transfer_reference
+                        ),
+                        target_dof_pos[:, calf],
+                    )
+        if getattr(
+            self.cfg.control,
+            "gate_swing_on_opposite_diagonal_support",
+            False,
+        ):
+            # Joint-target symmetry does not by itself guarantee a walking
+            # contact sequence: a landing impulse can unload both rear (or
+            # both front) feet. Do not flex a scheduled swing diagonal until
+            # the opposite physical diagonal is carrying a useful load.
+            fl_rr_support, fr_rl_support = self._get_diagonal_support_scores()
+            support_floor = float(getattr(
+                self.cfg.control,
+                "opposite_diagonal_support_floor_score",
+                0.25,
+            ))
+            support_full = max(float(getattr(
+                self.cfg.control,
+                "opposite_diagonal_support_full_score",
+                0.75,
+            )), support_floor + 1.0e-4)
+            locomotion = self._stand_command_gate() < 0.5
+            hold_thigh = bool(getattr(
+                self.cfg.control,
+                "hold_blocked_swing_thigh",
+                True,
+            ))
+            for swing_pair, support_score in (
+                (("FL", "RR"), fr_rl_support),
+                (("FR", "RL"), fl_rr_support),
+            ):
+                support_gate = (
+                    (support_score - support_floor)
+                    / (support_full - support_floor)
+                ).clip(0.0, 1.0)
+                support_gate = support_gate * support_gate * (
+                    3.0 - 2.0 * support_gate
                 )
+                for leg in swing_pair:
+                    foot_slot = self.foot_slot_by_leg[leg]
+                    scheduled_swing = phase[:, foot_slot] >= stance_ratio[:, 0]
+                    gated = scheduled_swing & locomotion
+                    calf = self.leg_dof_indices[leg]["calf"]
+                    calf_guard = torch.maximum(
+                        target_dof_pos[:, calf],
+                        self.default_dof_pos[:, calf],
+                    )
+                    target_dof_pos[:, calf] = torch.where(
+                        gated,
+                        calf_guard + support_gate * (
+                            target_dof_pos[:, calf] - calf_guard
+                        ),
+                        target_dof_pos[:, calf],
+                    )
+                    if hold_thigh:
+                        thigh = self.leg_dof_indices[leg]["thigh"]
+                        thigh_guard = torch.minimum(
+                            target_dof_pos[:, thigh],
+                            self.default_dof_pos[:, thigh],
+                        )
+                        target_dof_pos[:, thigh] = torch.where(
+                            gated,
+                            thigh_guard + support_gate * (
+                                target_dof_pos[:, thigh] - thigh_guard
+                            ),
+                            target_dof_pos[:, thigh],
+                        )
         backward_rear_calf_target_min = getattr(
             self.cfg.control, "backward_rear_calf_target_min", None
         )
@@ -796,6 +1143,13 @@ class FanfanRobot(LeggedRobot):
             amplitude * self.gait_backward_scale,
             amplitude,
         )
+        ramp_duration = float(getattr(
+            self.cfg.control, "gait_transition_ramp_s", 0.0
+        ))
+        if ramp_duration > 0.0:
+            ramp = (self.command_transition_age / ramp_duration).clip(0.0, 1.0)
+            ramp = ramp * ramp * (3.0 - 2.0 * ramp)
+            amplitude *= ramp
         return amplitude
 
     def _target_limit_progress(self):
@@ -878,7 +1232,11 @@ class FanfanRobot(LeggedRobot):
             write_index + 1
         ) % self.target_delay_history_len
 
-        target_error = delayed_target - self.motor_target_dof_pos
+        identified_target = self.default_dof_pos + (
+            self.actuator_position_gain
+            * (delayed_target - self.default_dof_pos)
+        )
+        target_error = identified_target - self.motor_target_dof_pos
         effective_error = torch.sign(target_error) * (
             torch.abs(target_error) - self.actuator_backlash
         ).clip(min=0.0)
@@ -958,6 +1316,9 @@ class FanfanRobot(LeggedRobot):
         self.filtered_actions[env_ids] = 0.0
         self.filtered_action_velocity[env_ids] = 0.0
         self.policy_filter_gap[env_ids] = 0.0
+        self.feet_contact_time[env_ids] = 0.0
+        self.all_feet_contact_time[env_ids] = 0.0
+        self.non_diagonal_swing_counter[env_ids] = 0
         self.max_abs_raw_torque[env_ids] = 0.0
         self.torque_metric_count[env_ids] = 0.0
         for values in self.torque_metric_sums.values():
@@ -966,6 +1327,7 @@ class FanfanRobot(LeggedRobot):
         self.command_transition_magnitude[env_ids] = 0.0
         self.gait_phase[env_ids] = 0.0
         self.gait_phase_reset_offset[env_ids] = 0.0
+        self.gait_transfer_wait_steps[env_ids] = 0
         self.recovery_active[env_ids] = False
         self.recovery_upright_steps[env_ids] = 0
         self.recovery_completion_pulse[env_ids] = 0.0
@@ -1030,6 +1392,23 @@ class FanfanRobot(LeggedRobot):
             result[:, dof_index] = self._sample_range(selected, (count,))
         return result
 
+    def _sample_joint_name_ranges(self, ranges, count):
+        """Sample ranges keyed by the exact URDF joint name."""
+        missing = [name for name in self.dof_names if name not in ranges]
+        if missing:
+            raise ValueError(
+                "Missing identified actuator ranges for joints: "
+                + ", ".join(missing)
+            )
+        result = torch.empty(
+            count, self.num_dof, dtype=torch.float, device=self.device
+        )
+        for dof_index, name in enumerate(self.dof_names):
+            result[:, dof_index] = self._sample_range(
+                ranges[name], (count,)
+            )
+        return result
+
     def _randomize_real_hardware_episode(self, env_ids):
         count = len(env_ids)
         if count == 0:
@@ -1058,9 +1437,50 @@ class FanfanRobot(LeggedRobot):
             self.actuator_tau[env_ids] = self._sample_joint_type_ranges(
                 control.actuator_time_constant_ranges, count
             )
-            self.actuator_backlash[env_ids] = self._sample_joint_type_ranges(
-                domain.joint_backlash_ranges, count
+            per_joint_tau = getattr(
+                control, "actuator_time_constant_ranges_by_joint", None
             )
+            if per_joint_tau is not None:
+                self.actuator_tau[env_ids] = self._sample_joint_name_ranges(
+                    per_joint_tau, count
+                )
+
+            per_joint_gain = getattr(
+                control, "actuator_position_gain_ranges_by_joint", None
+            )
+            if per_joint_gain is not None:
+                self.actuator_position_gain[env_ids] = (
+                    self._sample_joint_name_ranges(per_joint_gain, count)
+                )
+            else:
+                self.actuator_position_gain[env_ids] = 1.0
+
+            reversal_ranges = getattr(
+                domain, "effective_reversal_gap_ranges_by_joint", None
+            )
+            if reversal_ranges is not None:
+                # The bench test cannot separate backlash, compliance,
+                # filtering and friction. Model it only as an effective
+                # reversal deadband, not as a claimed gear-lash value.
+                self.actuator_backlash[env_ids] = (
+                    self._sample_joint_name_ranges(reversal_ranges, count)
+                )
+            else:
+                self.actuator_backlash[env_ids] = (
+                    self._sample_joint_type_ranges(
+                        domain.joint_backlash_ranges, count
+                    )
+                )
+
+            friction_ranges = getattr(
+                domain, "coulomb_friction_ranges_by_joint", None
+            )
+            if friction_ranges is not None:
+                self.actuator_coulomb_friction[env_ids] = (
+                    self._sample_joint_name_ranges(friction_ranges, count)
+                )
+            else:
+                self.actuator_coulomb_friction[env_ids] = 0.0
             self.joint_zero_offset[env_ids] = self._sample_joint_type_ranges(
                 domain.joint_zero_offset_ranges, count
             )
@@ -1263,6 +1683,23 @@ class FanfanRobot(LeggedRobot):
         self.gym.refresh_rigid_body_state_tensor(self.sim)
         self.feet_state = self.rigid_body_states_view[:, self.feet_indices, :]
         self.feet_pos = self.feet_state[:, :, :3]
+        contact_threshold = float(getattr(
+            self.cfg.rewards, "foot_contact_force_threshold", 1.0
+        ))
+        foot_contact = (
+            self.contact_forces[:, self.feet_indices, 2] > contact_threshold
+        )
+        self.feet_contact_time[:] = torch.where(
+            foot_contact,
+            self.feet_contact_time + self.dt,
+            torch.zeros_like(self.feet_contact_time),
+        )
+        all_contact = torch.all(foot_contact, dim=1)
+        self.all_feet_contact_time[:] = torch.where(
+            all_contact,
+            self.all_feet_contact_time + self.dt,
+            torch.zeros_like(self.all_feet_contact_time),
+        )
 
         if self.use_continuous_gait_scaling:
             speed = self._command_equivalent_speed()
@@ -1270,9 +1707,10 @@ class FanfanRobot(LeggedRobot):
             period = self.gait_period_low_speed + blend * (
                 self.gait_period_high_speed - self.gait_period_low_speed
             )
-            self.gait_phase = (
+            proposed_phase = (
                 self.gait_phase + self.dt / period.clip(min=0.20)
             ) % 1.0
+            self.gait_phase = self._contact_aware_gait_phase(proposed_phase)
         else:
             period = self.cfg.rewards.gait_period
             self.gait_phase = (
@@ -1280,6 +1718,117 @@ class FanfanRobot(LeggedRobot):
                 + self.gait_phase_reset_offset
             ) % 1.0
         self._update_recovery_state()
+
+    def _contact_aware_gait_phase(self, proposed_phase):
+        """Hold each diagonal transfer until the landing pair takes load.
+
+        The oscillator is allowed to wait only at the end of the double-
+        support window. This preserves the commanded period everywhere else
+        while enforcing the walking order: touchdown, load acceptance, then
+        release of the previous diagonal. A bounded wait prevents permanent
+        deadlock during early exploration.
+        """
+        if not getattr(
+            self.cfg.control, "use_contact_aware_phase_transfer", False
+        ):
+            return proposed_phase
+
+        stance_ratio = getattr(
+            self, "gait_stance_ratio", self.cfg.rewards.gait_stance_ratio
+        )
+        if not torch.is_tensor(stance_ratio):
+            stance_ratio = torch.full(
+                (self.num_envs,), float(stance_ratio), device=self.device
+            )
+        overlap = (stance_ratio - 0.5).clip(min=0.0, max=0.49)
+        force = self.contact_forces[:, self.feet_indices, 2].clip(min=0.0)
+        fl_rr_force = (
+            force[:, self.foot_slot_by_leg["FL"]]
+            + force[:, self.foot_slot_by_leg["RR"]]
+        )
+        fr_rl_force = (
+            force[:, self.foot_slot_by_leg["FR"]]
+            + force[:, self.foot_slot_by_leg["RL"]]
+        )
+        total_force = (fl_rr_force + fr_rl_force).clip(min=1.0)
+        nominal_weight = float(getattr(
+            self.cfg.rewards, "transition_nominal_weight_n", 115.1
+        ))
+        min_weight_fraction = float(getattr(
+            self.cfg.control,
+            "phase_transfer_min_pair_weight_fraction",
+            0.42,
+        ))
+        min_load_fraction = float(getattr(
+            self.cfg.control,
+            "phase_transfer_min_load_fraction",
+            0.58,
+        ))
+        fl_rr_ready = (
+            (fl_rr_force >= min_weight_fraction * nominal_weight)
+            & (fl_rr_force / total_force >= min_load_fraction)
+        )
+        fr_rl_ready = (
+            (fr_rl_force >= min_weight_fraction * nominal_weight)
+            & (fr_rl_force / total_force >= min_load_fraction)
+        )
+        # A large impulse on one toe must not release the previous diagonal.
+        # Require both toes of the arriving physical diagonal to be in
+        # contact and the pair to carry a useful minimum load.
+        fl_rr_support, fr_rl_support = self._get_diagonal_support_scores()
+        fl_rr_ready &= fl_rr_support >= 1.0
+        fr_rl_ready &= fr_rl_support >= 1.0
+        max_wait = int(getattr(
+            self.cfg.control, "phase_transfer_max_wait_steps", 10
+        ))
+        locomotion = self._stand_command_gate() < 0.5
+
+        # The joint target is intentionally advanced to compensate the
+        # identified actuator delay.  Therefore the *commanded* release of
+        # the old support pair happens ``phase_lead`` before the nominal
+        # contact boundary.  Holding at the unshifted boundary is too late:
+        # the old pair has already received a swing command.  Work on the
+        # unit circle so this also handles a release boundary near phase 1.
+        phase_lead = float(getattr(
+            self.cfg.control, "gait_target_phase_lead", 0.0
+        )) % 1.0
+        first_boundary = torch.remainder(overlap - phase_lead, 1.0)
+        second_boundary = torch.remainder(
+            0.5 + overlap - phase_lead, 1.0
+        )
+        phase_increment = torch.remainder(
+            proposed_phase - self.gait_phase, 1.0
+        )
+        first_distance = torch.remainder(
+            first_boundary - self.gait_phase, 1.0
+        )
+        second_distance = torch.remainder(
+            second_boundary - self.gait_phase, 1.0
+        )
+        crossing_first = (
+            (phase_increment > 1.0e-7)
+            & (first_distance <= phase_increment + 1.0e-7)
+        )
+        crossing_second = (
+            (phase_increment > 1.0e-7)
+            & (second_distance <= phase_increment + 1.0e-7)
+        )
+        waiting = locomotion & (
+            (crossing_first & ~fl_rr_ready)
+            | (crossing_second & ~fr_rl_ready)
+        )
+        force_release = self.gait_transfer_wait_steps >= max_wait
+        hold = waiting & ~force_release
+        held_phase = torch.where(
+            crossing_first, first_boundary, second_boundary
+        )
+        proposed_phase = torch.where(hold, held_phase, proposed_phase)
+        self.gait_transfer_wait_steps = torch.where(
+            hold,
+            self.gait_transfer_wait_steps + 1,
+            torch.zeros_like(self.gait_transfer_wait_steps),
+        )
+        return proposed_phase
 
     def _update_recovery_state(self):
         """Track a disturbance until level, low-rate walking is restored."""
@@ -1905,6 +2454,61 @@ class FanfanRobot(LeggedRobot):
 
     def check_termination(self):
         super().check_termination()
+        if getattr(
+            self.cfg.rewards,
+            "enable_flight_termination",
+            False,
+        ):
+            locomotion = self._stand_command_gate() < 0.5
+            grace = self.episode_length_buf >= int(getattr(
+                self.cfg.rewards,
+                "flight_termination_grace_steps",
+                0,
+            ))
+            # Unlike other invalid multi-foot patterns, complete flight has
+            # no contact ambiguity worth tolerating: one 50 Hz sample is
+            # enough to reject a hopping cycle.
+            self.reset_buf |= grace & locomotion & self._get_flight_mask()
+        if getattr(
+            self.cfg.rewards,
+            "enable_non_diagonal_swing_termination",
+            False,
+        ):
+            locomotion = self._stand_command_gate() < 0.5
+            invalid_swing = self._get_non_diagonal_swing_mask() & locomotion
+            self.non_diagonal_swing_counter = torch.where(
+                invalid_swing,
+                self.non_diagonal_swing_counter + 1,
+                torch.zeros_like(self.non_diagonal_swing_counter),
+            )
+            grace = self.episode_length_buf >= int(getattr(
+                self.cfg.rewards,
+                "non_diagonal_swing_grace_steps",
+                0,
+            ))
+            termination_steps = int(getattr(
+                self.cfg.rewards,
+                "non_diagonal_swing_termination_steps",
+                3,
+            ))
+            curriculum = getattr(
+                self.cfg.rewards,
+                "non_diagonal_termination_curriculum",
+                None,
+            )
+            # Evaluation remains strict. During PPO continuation, first allow
+            # enough contact samples to observe a complete gait cycle, then
+            # tighten to the same one-frame contract used by play/deployment.
+            if curriculum and not getattr(self.cfg.env, "test", False):
+                iteration = self._get_torque_curriculum_iteration()
+                for stage in curriculum:
+                    if iteration < float(stage["until_iteration"]):
+                        termination_steps = int(stage["steps"])
+                        break
+            sustained_invalid_swing = (
+                self.non_diagonal_swing_counter >= termination_steps
+            )
+            self.reset_buf |= grace & sustained_invalid_swing
         max_straight_heading_error = getattr(
             self.cfg.rewards, "terminate_straight_heading_error", None
         )
@@ -2378,6 +2982,94 @@ class FanfanRobot(LeggedRobot):
             error += 0.01 * torch.square(velocity_error)
         return error
 
+    def _get_diagonal_stride_sync_score(self):
+        """Measure actual foot-trajectory agreement inside each diagonal.
+
+        Equal joint targets are insufficient with the independently measured
+        RS01 motor gains and delays. Compare body-frame toe displacement and
+        velocity instead, so PPO can use its small per-motor residual to make
+        the *physical* FL+RR and FR+RL strides agree.
+        """
+        foot_count = len(self.feet_indices)
+        base_quat = self.base_quat[:, None, :].expand(
+            -1, foot_count, -1
+        ).reshape(-1, 4)
+        relative_position = (
+            self.feet_pos - self.root_states[:, None, :3]
+        )
+        relative_velocity = (
+            self.feet_state[:, :, 7:10] - self.root_states[:, None, 7:10]
+        )
+        body_position = quat_rotate_inverse(
+            base_quat, relative_position.reshape(-1, 3)
+        ).reshape(self.num_envs, foot_count, 3)
+        body_velocity = quat_rotate_inverse(
+            base_quat, relative_velocity.reshape(-1, 3)
+        ).reshape(self.num_envs, foot_count, 3)
+
+        nominal_x = getattr(
+            self.cfg.rewards,
+            "nominal_foot_x_by_leg_m",
+            {"FL": 0.216, "FR": 0.216, "RL": -0.216, "RR": -0.216},
+        )
+        x_sigma = max(float(getattr(
+            self.cfg.rewards, "diagonal_stride_position_sigma_m", 0.018
+        )), 1.0e-4)
+        z_sigma = max(float(getattr(
+            self.cfg.rewards, "diagonal_stride_height_sigma_m", 0.012
+        )), 1.0e-4)
+        vx_sigma = max(float(getattr(
+            self.cfg.rewards, "diagonal_stride_velocity_sigma_m_s", 0.30
+        )), 1.0e-4)
+        vz_sigma = max(float(getattr(
+            self.cfg.rewards, "diagonal_vertical_velocity_sigma_m_s", 0.25
+        )), 1.0e-4)
+
+        score = torch.zeros(self.num_envs, device=self.device)
+        for first, second in (("FL", "RR"), ("FR", "RL")):
+            first_slot = self.foot_slot_by_leg[first]
+            second_slot = self.foot_slot_by_leg[second]
+            expected_x_separation = float(
+                nominal_x[first] - nominal_x[second]
+            )
+            x_error = (
+                body_position[:, first_slot, 0]
+                - body_position[:, second_slot, 0]
+                - expected_x_separation
+            )
+            z_error = (
+                body_position[:, first_slot, 2]
+                - body_position[:, second_slot, 2]
+            )
+            vx_error = (
+                body_velocity[:, first_slot, 0]
+                - body_velocity[:, second_slot, 0]
+            )
+            vz_error = (
+                body_velocity[:, first_slot, 2]
+                - body_velocity[:, second_slot, 2]
+            )
+            normalized_error = (
+                torch.square(x_error / x_sigma)
+                + torch.square(z_error / z_sigma)
+                + 0.25 * torch.square(vx_error / vx_sigma)
+                + 0.25 * torch.square(vz_error / vz_sigma)
+            )
+            score += torch.exp(-normalized_error)
+        return 0.5 * score
+
+    def _reward_diagonal_stride_sync_all(self):
+        return (
+            self._get_diagonal_stride_sync_score()
+            * (1.0 - self._stand_command_gate())
+        )
+
+    def _reward_diagonal_stride_sync_shortfall(self):
+        return (
+            (1.0 - self._get_diagonal_stride_sync_score())
+            * (1.0 - self._stand_command_gate())
+        )
+
     def _reward_translation_roll(self):
         """Keep the trunk level during forward, backward and lateral motion."""
         planar_activity = 1.0 - torch.exp(
@@ -2691,20 +3383,35 @@ class FanfanRobot(LeggedRobot):
         return torch.square(excess) * self._torque_curriculum_multiplier("peak_torque")
 
     def _reward_sustained_torque(self):
-        ema_ratio = self.torque_ema / self._active_episode_torque_limits()
-        excess = (
-            ema_ratio - self.cfg.rewards.sustained_torque_ratio
-        ).clip(min=0.0)
+        continuous_limits = getattr(
+            self.cfg.rewards, "continuous_torque_limits_by_joint", None
+        )
+        if continuous_limits is None:
+            ema_ratio = self.torque_ema / self._active_episode_torque_limits()
+            excess = (
+                ema_ratio - self.cfg.rewards.sustained_torque_ratio
+            ).clip(min=0.0)
+        else:
+            rated = self._joint_type_tensor(continuous_limits).unsqueeze(0)
+            excess = (self.torque_ema / rated - 1.0).clip(min=0.0)
         return torch.mean(torch.square(excess), dim=1) * self._torque_curriculum_multiplier(
             "sustained_torque"
         )
 
     def _reward_sustained_torque_max(self):
-        ema_ratio = self.torque_ema / self._active_episode_torque_limits()
-        peak_ratio = torch.max(ema_ratio, dim=1).values
-        excess = (
-            peak_ratio - self.cfg.rewards.sustained_torque_ratio
-        ).clip(min=0.0)
+        continuous_limits = getattr(
+            self.cfg.rewards, "continuous_torque_limits_by_joint", None
+        )
+        if continuous_limits is None:
+            ema_ratio = self.torque_ema / self._active_episode_torque_limits()
+            peak_ratio = torch.max(ema_ratio, dim=1).values
+            excess = (
+                peak_ratio - self.cfg.rewards.sustained_torque_ratio
+            ).clip(min=0.0)
+        else:
+            rated = self._joint_type_tensor(continuous_limits).unsqueeze(0)
+            peak_ratio = torch.max(self.torque_ema / rated, dim=1).values
+            excess = (peak_ratio - 1.0).clip(min=0.0)
         return torch.square(excess)
 
     def _reward_mechanical_power(self):
@@ -2821,11 +3528,463 @@ class FanfanRobot(LeggedRobot):
         ) < stance_ratio
         return desired
 
+    def _get_diagonal_swing_masks(self):
+        """Return airborne feet and the two legal exact diagonal patterns."""
+        threshold = float(getattr(
+            self.cfg.rewards, "foot_contact_force_threshold", 1.0
+        ))
+        air = self.contact_forces[:, self.feet_indices, 2] <= threshold
+        fl = air[:, self.foot_slot_by_leg["FL"]]
+        fr = air[:, self.foot_slot_by_leg["FR"]]
+        rl = air[:, self.foot_slot_by_leg["RL"]]
+        rr = air[:, self.foot_slot_by_leg["RR"]]
+        fl_rr = fl & rr & ~fr & ~rl
+        fr_rl = fr & rl & ~fl & ~rr
+        return air, fl_rr, fr_rl
+
+    def _get_non_diagonal_swing_mask(self):
+        """Flag pace, bound, triple-leg and full-flight patterns.
+
+        Zero or one airborne foot is intentionally tolerated because real
+        diagonal partners need not cross the force threshold on the same
+        controller sample.  Once at least two feet are airborne, only one of
+        the two exact physical diagonals is legal.
+        """
+        air, fl_rr, fr_rl = self._get_diagonal_swing_masks()
+        multiple_air = torch.sum(air, dim=1) >= 2
+        return multiple_air & ~(fl_rr | fr_rl)
+
+    def _get_flight_mask(self):
+        threshold = float(getattr(
+            self.cfg.rewards, "foot_contact_force_threshold", 1.0
+        ))
+        contact = self.contact_forces[:, self.feet_indices, 2] > threshold
+        return torch.all(~contact, dim=1)
+
+    def _get_diagonal_support_scores(self):
+        """Return load-bearing scores for FL+RR and FR+RL.
+
+        Both toes must carry load; one heavily loaded front or rear toe cannot
+        masquerade as a valid diagonal support pair.
+        """
+        force = self.contact_forces[:, self.feet_indices, 2].clip(min=0.0)
+        nominal_weight = float(getattr(
+            self.cfg.rewards, "transition_nominal_weight_n", 115.1
+        ))
+        min_foot_force = max(float(getattr(
+            self.cfg.rewards,
+            "diagonal_support_min_foot_force_n",
+            5.0,
+        )), 1.0)
+        min_pair_force = max(
+            float(getattr(
+                self.cfg.rewards,
+                "diagonal_support_min_pair_weight_fraction",
+                0.30,
+            )) * nominal_weight,
+            2.0 * min_foot_force,
+        )
+
+        def pair_score(first, second):
+            first_force = force[:, self.foot_slot_by_leg[first]]
+            second_force = force[:, self.foot_slot_by_leg[second]]
+            foot_score = torch.minimum(
+                first_force / min_foot_force,
+                second_force / min_foot_force,
+            )
+            pair_force_score = (
+                (first_force + second_force) / min_pair_force
+            )
+            return torch.minimum(foot_score, pair_force_score).clip(0.0, 1.0)
+
+        return pair_score("FL", "RR"), pair_score("FR", "RL")
+
     def _reward_diagonal_gait(self):
         contact = self.contact_forces[:, self.feet_indices, 2] > 1.0
         desired_contact = self._get_desired_foot_contacts()
         mismatch_count = torch.sum(contact != desired_contact, dim=1)
-        return torch.exp(-1.5 * mismatch_count.float())
+        trot_score = torch.exp(-1.5 * mismatch_count.float())
+        if not getattr(
+            self.cfg.rewards, "gate_phase_rewards_with_command", False
+        ):
+            return trot_score
+        command_energy = (
+            torch.sum(torch.square(self.commands[:, :2]), dim=1)
+            + 0.04 * torch.square(self.commands[:, 2])
+        )
+        sigma = float(getattr(
+            self.cfg.rewards, "phase_command_gate_sigma", 0.0004
+        ))
+        gait_gate = 1.0 - torch.exp(-command_energy / sigma)
+        stand_score = torch.exp(
+            -1.5 * torch.sum(~contact, dim=1).float()
+        )
+        return gait_gate * trot_score + (1.0 - gait_gate) * stand_score
+
+    def _reward_exact_diagonal_swing(self):
+        """Reward only the phase-scheduled, exact two-foot diagonal swing."""
+        _, actual_fl_rr, actual_fr_rl = self._get_diagonal_swing_masks()
+        desired_air = ~self._get_desired_foot_contacts()
+        fl = desired_air[:, self.foot_slot_by_leg["FL"]]
+        fr = desired_air[:, self.foot_slot_by_leg["FR"]]
+        rl = desired_air[:, self.foot_slot_by_leg["RL"]]
+        rr = desired_air[:, self.foot_slot_by_leg["RR"]]
+        desired_fl_rr = fl & rr & ~fr & ~rl
+        desired_fr_rl = fr & rl & ~fl & ~rr
+        correct = (
+            (actual_fl_rr & desired_fl_rr)
+            | (actual_fr_rl & desired_fr_rl)
+        )
+        return correct.float() * (1.0 - self._stand_command_gate())
+
+    def _reward_scheduled_diagonal_pair_lift(self):
+        """Reward the weaker member of the scheduled diagonal pair.
+
+        Averaging four independent foot rewards lets a policy collect reward
+        by lifting only one foot.  Here the pair score is limited by the lower
+        toe and the more heavily loaded toe, so FL+RR or FR+RL must unload and
+        rise together.  The exact-contact reward remains the final binary
+        confirmation after both toes have actually left the floor.
+        """
+        desired_air = ~self._get_desired_foot_contacts()
+        fl = self.foot_slot_by_leg["FL"]
+        fr = self.foot_slot_by_leg["FR"]
+        rl = self.foot_slot_by_leg["RL"]
+        rr = self.foot_slot_by_leg["RR"]
+        desired_fl_rr = desired_air[:, fl] & desired_air[:, rr]
+        desired_fr_rl = desired_air[:, fr] & desired_air[:, rl]
+
+        lift_start = float(getattr(
+            self.cfg.rewards, "diagonal_pair_lift_start_height", 0.018
+        ))
+        lift_target = max(float(getattr(
+            self.cfg.rewards,
+            "diagonal_pair_lift_target_height",
+            self.cfg.rewards.swing_height_target,
+        )), lift_start + 1.0e-4)
+        lift = ((self.feet_pos[:, :, 2] - lift_start)
+                / (lift_target - lift_start)).clip(0.0, 1.0)
+        fl_rr_lift = torch.minimum(lift[:, fl], lift[:, rr])
+        fr_rl_lift = torch.minimum(lift[:, fr], lift[:, rl])
+
+        vertical_force = self.contact_forces[:, self.feet_indices, 2].clip(
+            min=0.0
+        )
+        total_force = torch.sum(vertical_force, dim=1, keepdim=True)
+        load_fraction = torch.where(
+            total_force > 1.0,
+            vertical_force / total_force.clip(min=1.0),
+            torch.zeros_like(vertical_force),
+        )
+        fl_rr_load = torch.maximum(load_fraction[:, fl], load_fraction[:, rr])
+        fr_rl_load = torch.maximum(load_fraction[:, fr], load_fraction[:, rl])
+        fl_rr_unload = (1.0 - fl_rr_load / 0.25).clip(0.0, 1.0)
+        fr_rl_unload = (1.0 - fr_rl_load / 0.25).clip(0.0, 1.0)
+
+        fl_rr_score = 0.5 * (fl_rr_lift + fl_rr_unload)
+        fr_rl_score = 0.5 * (fr_rl_lift + fr_rl_unload)
+        score = torch.where(
+            desired_fl_rr,
+            fl_rr_score,
+            torch.where(desired_fr_rl, fr_rl_score, torch.zeros_like(fl_rr_score)),
+        )
+        return score * (1.0 - self._stand_command_gate())
+
+    def _get_touchdown_pair_support(self):
+        """Measure load transfer to the newly landed diagonal.
+
+        With diagonal phase offsets 0 and 0.5, a duty factor above 0.5
+        creates two overlap windows. FL+RR is the newly landed pair around
+        phase zero; FR+RL is newly landed around phase 0.5. Its required load
+        ramps through the overlap so contact occurs before the old support
+        pair is allowed to leave at the end of that window.
+        """
+        stance_ratio = getattr(
+            self, "gait_stance_ratio", self.cfg.rewards.gait_stance_ratio
+        )
+        if not torch.is_tensor(stance_ratio):
+            stance_ratio = torch.full(
+                (self.num_envs,), float(stance_ratio), device=self.device
+            )
+        overlap = (stance_ratio - 0.5).clip(min=0.0, max=0.49)
+        phase = self.gait_phase
+        fl_rr_window = phase < overlap
+        fr_rl_window = (phase >= 0.5) & (phase < 0.5 + overlap)
+        active = fl_rr_window | fr_rl_window
+        safe_overlap = overlap.clip(min=1.0e-4)
+        progress = torch.where(
+            fl_rr_window,
+            phase / safe_overlap,
+            (phase - 0.5) / safe_overlap,
+        ).clip(0.0, 1.0)
+
+        force = self.contact_forces[:, self.feet_indices, 2].clip(min=0.0)
+        fl_rr_force = (
+            force[:, self.foot_slot_by_leg["FL"]]
+            + force[:, self.foot_slot_by_leg["RR"]]
+        )
+        fr_rl_force = (
+            force[:, self.foot_slot_by_leg["FR"]]
+            + force[:, self.foot_slot_by_leg["RL"]]
+        )
+        new_pair_force = torch.where(
+            fl_rr_window, fl_rr_force, fr_rl_force
+        )
+        total_force = torch.sum(force, dim=1)
+
+        nominal_weight = float(getattr(
+            self.cfg.rewards, "transition_nominal_weight_n", 115.1
+        ))
+        end_pair_fraction = float(getattr(
+            self.cfg.rewards,
+            "transition_new_pair_weight_fraction",
+            0.45,
+        ))
+        total_fraction = float(getattr(
+            self.cfg.rewards,
+            "transition_total_weight_fraction",
+            0.70,
+        ))
+        desired_pair_force = (
+            progress * end_pair_fraction * nominal_weight
+        )
+        pair_score = torch.where(
+            desired_pair_force > 1.0,
+            (new_pair_force / desired_pair_force.clip(min=1.0)).clip(0.0, 1.0),
+            torch.ones_like(new_pair_force),
+        )
+        total_score = (
+            total_force / max(total_fraction * nominal_weight, 1.0)
+        ).clip(0.0, 1.0)
+        return active, torch.minimum(pair_score, total_score)
+
+    def _reward_touchdown_pair_support(self):
+        active, score = self._get_touchdown_pair_support()
+        return (
+            active.float() * score * (1.0 - self._stand_command_gate())
+        )
+
+    def _reward_touchdown_pair_support_shortfall(self):
+        active, score = self._get_touchdown_pair_support()
+        return (
+            active.float() * (1.0 - score)
+            * (1.0 - self._stand_command_gate())
+        )
+
+    def _get_diagonal_load_transfer(self):
+        """Track a complete old-pair to new-pair load handoff.
+
+        Touchdown force alone allowed both diagonals to remain planted. This
+        target ramps the newly landed pair from zero to full normalized load
+        through double support, then keeps it as the sole load-bearing pair
+        until the next transfer window.
+        """
+        stance_ratio = getattr(
+            self, "gait_stance_ratio", self.cfg.rewards.gait_stance_ratio
+        )
+        if not torch.is_tensor(stance_ratio):
+            stance_ratio = torch.full(
+                (self.num_envs,), float(stance_ratio), device=self.device
+            )
+        overlap = (stance_ratio - 0.5).clip(min=1.0e-4, max=0.49)
+        phase = self.gait_phase
+        first_progress = (phase / overlap).clip(0.0, 1.0)
+        second_progress = ((phase - 0.5) / overlap).clip(0.0, 1.0)
+        first_progress = first_progress * first_progress * (
+            3.0 - 2.0 * first_progress
+        )
+        second_progress = second_progress * second_progress * (
+            3.0 - 2.0 * second_progress
+        )
+        desired_fl_rr_fraction = torch.where(
+            phase < overlap,
+            first_progress,
+            torch.where(
+                phase < 0.5,
+                torch.ones_like(phase),
+                torch.where(
+                    phase < 0.5 + overlap,
+                    1.0 - second_progress,
+                    torch.zeros_like(phase),
+                ),
+            ),
+        )
+
+        force = self.contact_forces[:, self.feet_indices, 2].clip(min=0.0)
+        fl_rr_force = (
+            force[:, self.foot_slot_by_leg["FL"]]
+            + force[:, self.foot_slot_by_leg["RR"]]
+        )
+        fr_rl_force = (
+            force[:, self.foot_slot_by_leg["FR"]]
+            + force[:, self.foot_slot_by_leg["RL"]]
+        )
+        total_force = fl_rr_force + fr_rl_force
+        measured_fl_rr_fraction = torch.where(
+            total_force > 1.0,
+            fl_rr_force / total_force.clip(min=1.0),
+            torch.full_like(total_force, 0.5),
+        )
+        load_error = torch.abs(
+            measured_fl_rr_fraction - desired_fl_rr_fraction
+        )
+        sigma = max(float(getattr(
+            self.cfg.rewards, "diagonal_load_transfer_sigma", 0.12
+        )), 1.0e-4)
+        nominal_weight = float(getattr(
+            self.cfg.rewards, "transition_nominal_weight_n", 115.1
+        ))
+        total_support = (
+            total_force / max(0.70 * nominal_weight, 1.0)
+        ).clip(0.0, 1.0)
+        score = torch.exp(-torch.square(load_error / sigma)) * total_support
+        return score, load_error
+
+    def _reward_diagonal_load_transfer(self):
+        score, _ = self._get_diagonal_load_transfer()
+        return score * (1.0 - self._stand_command_gate())
+
+    def _reward_diagonal_load_transfer_error(self):
+        _, error = self._get_diagonal_load_transfer()
+        return error * (1.0 - self._stand_command_gate())
+
+    def _reward_diagonal_support(self):
+        """Reward having at least one genuinely load-bearing diagonal."""
+        fl_rr_score, fr_rl_score = self._get_diagonal_support_scores()
+        return (
+            torch.maximum(fl_rr_score, fr_rl_score)
+            * (1.0 - self._stand_command_gate())
+        )
+
+    def _reward_diagonal_support_shortfall(self):
+        """Penalize front/rear bounds, pace patterns and unsupported hops."""
+        fl_rr_score, fr_rl_score = self._get_diagonal_support_scores()
+        return (
+            (1.0 - torch.maximum(fl_rr_score, fr_rl_score))
+            * (1.0 - self._stand_command_gate())
+        )
+
+    def _reward_non_diagonal_swing(self):
+        """Penalize every multi-foot swing that is not a physical diagonal."""
+        return (
+            self._get_non_diagonal_swing_mask().float()
+            * (1.0 - self._stand_command_gate())
+        )
+
+    def _reward_single_foot_swing(self):
+        """Reject tentative one-toe stepping during a scheduled pair swing."""
+        threshold = float(getattr(
+            self.cfg.rewards, "foot_contact_force_threshold", 1.0
+        ))
+        actual_air = (
+            self.contact_forces[:, self.feet_indices, 2] <= threshold
+        )
+        desired_air = ~self._get_desired_foot_contacts()
+        tentative = (
+            (torch.sum(desired_air, dim=1) == 2)
+            & (torch.sum(actual_air, dim=1) == 1)
+        )
+        return tentative.float() * (1.0 - self._stand_command_gate())
+
+    def _reward_phase_contact_mismatch(self):
+        """Penalize every foot whose contact disagrees with the trot clock.
+
+        Pair-synchrony terms alone cannot distinguish a diagonal trot from a
+        four-leg hop: all four feet are still perfectly pair-synchronized in
+        flight.  This term compares each physical foot with the Fanfan phase
+        schedule, while stand commands explicitly ask for all four contacts.
+        """
+        contact = self.contact_forces[:, self.feet_indices, 2] > 1.0
+        desired_contact = self._get_desired_foot_contacts()
+        gait_error = torch.mean(
+            (contact != desired_contact).float(), dim=1
+        )
+        stand_error = torch.mean((~contact).float(), dim=1)
+        stand_gate = self._stand_command_gate()
+        return (1.0 - stand_gate) * gait_error + stand_gate * stand_error
+
+    def _reward_phase_foot_force_tracking(self):
+        """Track the phase-scheduled vertical load distribution.
+
+        Binary contact changes only after lift-off, so it gives a stationary
+        four-foot policy no useful intermediate signal.  Normalized vertical
+        force already changes while the swing diagonal is unloading.  This
+        mass-independent error therefore guides load transfer without asking
+        for more motor torque or rewarding flight.
+        """
+        vertical_force = self.contact_forces[:, self.feet_indices, 2].clip(
+            min=0.0
+        )
+        total_force = torch.sum(vertical_force, dim=1, keepdim=True)
+        measured_load = torch.where(
+            total_force > 1.0,
+            vertical_force / total_force.clip(min=1.0),
+            torch.zeros_like(vertical_force),
+        )
+
+        desired_contact = self._get_desired_foot_contacts().float()
+        desired_load = desired_contact / torch.sum(
+            desired_contact, dim=1, keepdim=True
+        ).clip(min=1.0)
+        gait_error = torch.mean(
+            torch.square(measured_load - desired_load), dim=1
+        )
+
+        stand_load = torch.full_like(measured_load, 0.25)
+        stand_error = torch.mean(
+            torch.square(measured_load - stand_load), dim=1
+        )
+        stand_gate = self._stand_command_gate()
+        return (1.0 - stand_gate) * gait_error + stand_gate * stand_error
+
+    def _reward_phase_foot_velocity_tracking(self):
+        """Give the phase clock an explicit forward stride direction.
+
+        Contact timing alone also rewards stepping in place.  In a forward
+        trot, a stance toe moves backward relative to the trunk while a swing
+        toe advances.  Tracking those body-frame velocities supplies a dense,
+        phase-resolved learning signal before the base has begun to translate.
+        """
+        foot_world_velocity = self.feet_state[:, :, 7:10]
+        relative_world_velocity = (
+            foot_world_velocity - self.root_states[:, None, 7:10]
+        )
+        foot_count = len(self.feet_indices)
+        base_quat = self.base_quat[:, None, :].expand(
+            -1, foot_count, -1
+        ).reshape(-1, 4)
+        relative_body_velocity = quat_rotate_inverse(
+            base_quat, relative_world_velocity.reshape(-1, 3)
+        ).reshape(self.num_envs, foot_count, 3)
+
+        desired_contact = self._get_desired_foot_contacts()
+        stance_ratio = getattr(
+            self, "gait_stance_ratio", self.cfg.rewards.gait_stance_ratio
+        )
+        if not torch.is_tensor(stance_ratio):
+            stance_ratio = torch.full(
+                (self.num_envs,), float(stance_ratio),
+                device=self.device,
+            )
+        swing_to_stance = (
+            stance_ratio / (1.0 - stance_ratio).clip(min=0.20)
+        ).clip(max=2.0)
+        command_x = self.commands[:, 0]
+        stance_velocity = -command_x[:, None]
+        swing_velocity = (
+            command_x * swing_to_stance
+        )[:, None]
+        desired_velocity = torch.where(
+            desired_contact, stance_velocity, swing_velocity
+        )
+        error = torch.square(
+            relative_body_velocity[:, :, 0] - desired_velocity
+        )
+        sigma = max(float(getattr(
+            self.cfg.rewards, "phase_foot_velocity_sigma", 0.04
+        )), 1.0e-6)
+        score = torch.mean(torch.exp(-error / sigma), dim=1)
+        return score * (1.0 - self._stand_command_gate())
 
     def _reward_swing_height(self):
         desired_swing = ~self._get_desired_foot_contacts()
@@ -2833,9 +3992,21 @@ class FanfanRobot(LeggedRobot):
             self.feet_pos[:, :, 2] - self.cfg.rewards.swing_height_target
         )
         swing_score = torch.exp(-height_error / self.cfg.rewards.swing_height_sigma)
-        return torch.sum(swing_score * desired_swing.float(), dim=1) / (
+        reward = torch.sum(swing_score * desired_swing.float(), dim=1) / (
             torch.sum(desired_swing.float(), dim=1) + 1.0e-6
         )
+        if getattr(
+            self.cfg.rewards, "gate_phase_rewards_with_command", False
+        ):
+            command_energy = (
+                torch.sum(torch.square(self.commands[:, :2]), dim=1)
+                + 0.04 * torch.square(self.commands[:, 2])
+            )
+            sigma = float(getattr(
+                self.cfg.rewards, "phase_command_gate_sigma", 0.0004
+            ))
+            reward *= 1.0 - torch.exp(-command_energy / sigma)
+        return reward
 
     def _reward_swing_clearance_shortfall(self):
         """Penalize toe drag in the useful middle portion of swing.
@@ -2886,6 +4057,38 @@ class FanfanRobot(LeggedRobot):
         ) / (torch.sum(desired_swing.float(), dim=1) + 1.0e-6)
         return swing_contact_ratio * command_active.float()
 
+    def _reward_all_feet_contact(self):
+        """Penalize prolonged four-foot support during locomotion."""
+        allowed = float(getattr(
+            self.cfg.rewards, "max_all_feet_contact_time_s", 0.08
+        ))
+        saturation = max(float(getattr(
+            self.cfg.rewards,
+            "all_feet_contact_penalty_saturation_s",
+            0.12,
+        )), 1.0e-6)
+        excess = (
+            (self.all_feet_contact_time - allowed) / saturation
+        ).clip(min=0.0, max=1.0)
+        locomotion_gate = 1.0 - self._stand_command_gate()
+        return excess * locomotion_gate
+
+    def _reward_excessive_foot_contact_time(self):
+        """Penalize each foot that stays planted longer than one stance."""
+        allowed = float(getattr(
+            self.cfg.rewards, "max_foot_contact_time_s", 0.40
+        ))
+        saturation = max(float(getattr(
+            self.cfg.rewards, "foot_contact_time_penalty_saturation_s", 0.20
+        )), 1.0e-6)
+        excess = ((self.feet_contact_time - allowed) / saturation).clip(
+            min=0.0, max=1.0
+        )
+        locomotion_gate = 1.0 - self._stand_command_gate()
+        # Sum rather than average so one stuck foot is penalized and four
+        # continuously planted feet receive four times the cost.
+        return torch.sum(excess, dim=1) * locomotion_gate
+
     def _reward_command_velocity_progress(self):
         """Dense signed progress toward every commanded planar/yaw velocity."""
         floors = self.commands.new_tensor((0.10, 0.055, 0.30))
@@ -2923,8 +4126,7 @@ class FanfanRobot(LeggedRobot):
         )
 
     def _reward_flight(self):
-        contact = self.contact_forces[:, self.feet_indices, 2] > 1.0
-        return torch.sum(contact, dim=1) == 0
+        return self._get_flight_mask()
 
     def _reward_low_base_height(self):
         min_base_height_soft = getattr(self.cfg.rewards, "min_base_height_soft", None)
@@ -2944,7 +4146,12 @@ class FanfanRobot(LeggedRobot):
         if stand_posture_sigma is None:
             return torch.zeros(self.num_envs, device=self.device)
         posture_error = torch.mean(torch.square(self.dof_pos - self.default_dof_pos), dim=1)
-        return torch.exp(-posture_error / stand_posture_sigma)
+        reward = torch.exp(-posture_error / stand_posture_sigma)
+        if getattr(
+            self.cfg.rewards, "gate_stand_posture_with_command", False
+        ):
+            reward *= self._stand_command_gate()
+        return reward
 
     def _reward_front_feet_contact(self):
         front_feet_contact_height = getattr(self.cfg.rewards, "front_feet_contact_height", None)

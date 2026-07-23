@@ -1,6 +1,11 @@
 from legged_gym import LEGGED_GYM_ROOT_DIR, LEGGED_GYM_ENVS_DIR
 
 from legged_gym.envs.go2.go2_config import GO2RoughCfg, GO2RoughCfgPPO
+from legged_gym.envs.dog import (
+    DogRs01Robot,
+    DogRs01TrotCfg,
+    DogRs01TrotCfgPPO,
+)
 from legged_gym.envs.fanfan.fanfan_config import FanfanRoughCfg, FanfanRoughCfgPPO
 from legged_gym.envs.fanfan.fanfan_env import FanfanRobot
 from legged_gym.envs.fanfan.fanfan_omni_safe_config import (
@@ -66,6 +71,12 @@ from .base.legged_robot import LeggedRobot
 from legged_gym.utils.task_registry import task_registry
 
 task_registry.register( "go2", LeggedRobot, GO2RoughCfg(), GO2RoughCfgPPO())
+task_registry.register(
+    "dog_rs01_trot",
+    DogRs01Robot,
+    DogRs01TrotCfg(),
+    DogRs01TrotCfgPPO(),
+)
 task_registry.register( "fanfan", FanfanRobot, FanfanRoughCfg(), FanfanRoughCfgPPO())
 task_registry.register(
     "fanfan_omni_safe", FanfanRobot,

@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import datetime
 from typing import Tuple
 import torch
@@ -122,6 +123,22 @@ class TaskRegistry():
             else OnPolicyRunner
         )
         runner = runner_class(env, train_cfg_dict, log_dir, device=args.rl_device)
+        # Residual-control tasks can request a near-zero initial actor mean so
+        # training begins from their calibrated reference controller instead
+        # of PyTorch's comparatively large default output-layer bias.  Resume
+        # loading happens below and therefore correctly replaces this init.
+        actor_output_init_scale = train_cfg_dict["runner"].get(
+            "actor_output_init_scale", None
+        )
+        if actor_output_init_scale is not None:
+            output_layer = runner.alg.actor_critic.actor[-1]
+            if not isinstance(output_layer, torch.nn.Linear):
+                raise TypeError(
+                    "actor_output_init_scale requires a linear actor output layer"
+                )
+            scale = float(actor_output_init_scale)
+            torch.nn.init.uniform_(output_layer.weight, -scale, scale)
+            torch.nn.init.zeros_(output_layer.bias)
         #save resume path before creating a new log_dir
         resume = train_cfg.runner.resume
         if resume:
@@ -134,6 +151,21 @@ class TaskRegistry():
                     train_cfg.runner, "load_optimizer", True
                 ),
             )
+            # Legacy intermediate checkpoints contain the loop-start value
+            # (often zero) in ``iter``. Recover the real value from the file
+            # name so continuation does not silently restart at model_0.
+            checkpoint_match = re.fullmatch(
+                r"model_(\d+)\.pt", os.path.basename(resume_path)
+            )
+            if checkpoint_match is not None:
+                filename_iteration = int(checkpoint_match.group(1))
+                if filename_iteration > runner.current_learning_iteration:
+                    print(
+                        "Correcting checkpoint iteration metadata: "
+                        f"{runner.current_learning_iteration} -> "
+                        f"{filename_iteration}"
+                    )
+                    runner.current_learning_iteration = filename_iteration
         return runner, train_cfg
 
 # make global task registry

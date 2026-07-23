@@ -23,6 +23,20 @@ def play(args):
     env_cfg.domain_rand.randomize_friction = False
     env_cfg.domain_rand.push_robots = False
 
+    # Use one deterministic forward command for the RS01 dog demo.  The
+    # training distribution intentionally contains stand commands and very
+    # low random speeds; sampling those in a viewer can make a valid walking
+    # policy look as if it only knows how to stand.
+    if args.task == "dog_rs01_trot":
+        env_cfg.env.num_envs = 1
+        env_cfg.commands.ranges.lin_vel_x = [0.15, 0.15]
+        env_cfg.commands.ranges.lin_vel_y = [0.0, 0.0]
+        env_cfg.commands.ranges.ang_vel_yaw = [0.0, 0.0]
+        env_cfg.commands.stand_probability = 0.0
+        env_cfg.commands.pure_sagittal_probability = 1.0
+        env_cfg.commands.resampling_time = 1000.0
+        env_cfg.domain_rand.randomize_gait_phase_on_reset = False
+
     env_cfg.env.test = True
 
     # prepare environment
