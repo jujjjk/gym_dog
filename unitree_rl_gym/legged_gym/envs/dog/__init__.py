@@ -28,6 +28,10 @@ from .dog_straight_guarded_config import (
     DogRs01StraightGuardedCfg,
     DogRs01StraightGuardedCfgPPO,
 )
+from .dog_torque_straight_v5_config import (
+    DogRs01TorqueStraightV5Cfg,
+    DogRs01TorqueStraightV5CfgPPO,
+)
 from .dog_env import DogRs01Robot
 
 __all__ = [
@@ -56,4 +60,6 @@ __all__ = [
     "DogRs01SmoothStraightV2CfgPPO",
     "DogRs01StraightGuardedCfg",
     "DogRs01StraightGuardedCfgPPO",
+    "DogRs01TorqueStraightV5Cfg",
+    "DogRs01TorqueStraightV5CfgPPO",
 ]

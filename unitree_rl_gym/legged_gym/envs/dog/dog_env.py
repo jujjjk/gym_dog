@@ -46,17 +46,12 @@ class DogRs01Robot(FanfanRobot):
                     self.cpg_leg_z_feedback[env_ids] = 0.0
 
     def check_termination(self):
+        # The overridden non-diagonal mask below already folds rear/front
+        # pair flight and overlapping diagonal swing into Fanfan's debounced
+        # counter. Do not add a second one-frame termination path here:
+        # measured 39--55 ms actuator delay can produce one transient contact
+        # threshold mismatch during an otherwise valid load handoff.
         super().check_termination()
-        locomotion = self._stand_command_gate() < 0.5
-        grace = self.episode_length_buf >= int(
-            getattr(self.cfg.rewards, "diagonal_sequence_grace_steps", 10)
-        )
-        if getattr(self.cfg.rewards, "enable_rear_pair_air_termination", True):
-            self.reset_buf |= grace & locomotion & self._get_rear_pair_air_mask()
-        if getattr(self.cfg.rewards, "enable_overlapping_diagonal_termination", True):
-            self.reset_buf |= (
-                grace & locomotion & self._get_overlapping_diagonal_air_mask()
-            )
 
     def _get_foot_air_mask(self):
         threshold = float(

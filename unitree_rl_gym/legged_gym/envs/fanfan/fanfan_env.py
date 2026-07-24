@@ -269,6 +269,7 @@ class FanfanRobot(LeggedRobot):
             device=self.device,
         )
         self.raw_torques = torch.zeros_like(self.torques)
+        self.last_raw_torques = torch.zeros_like(self.torques)
         self.motor_torques = torch.zeros_like(self.torques)
         # Actual per-step motor command ceiling after peak clipping and
         # continuous-torque thermal derating.  Keep this separate from the
@@ -541,6 +542,11 @@ class FanfanRobot(LeggedRobot):
             dtype=torch.float,
             device=self.device,
         )
+
+    def post_physics_step(self):
+        """Retain the previous 50 Hz raw motor request for rate penalties."""
+        super().post_physics_step()
+        self.last_raw_torques[:] = self.raw_torques
 
     def _compute_torques(self, actions):
         target_dof_pos = self._compute_raw_joint_target(actions)
@@ -1495,6 +1501,7 @@ class FanfanRobot(LeggedRobot):
         ))
         self.torque_clip_error[env_ids] = 0.0
         self.raw_torques[env_ids] = 0.0
+        self.last_raw_torques[env_ids] = 0.0
         self.motor_torques[env_ids] = 0.0
         self.active_motor_torque_limits[env_ids] = (
             self._active_episode_torque_limits()[env_ids]
@@ -2402,6 +2409,29 @@ class FanfanRobot(LeggedRobot):
         observed_commands[:, 2].clip_(
             ranges.ang_vel_yaw[0], ranges.ang_vel_yaw[1]
         )
+        if getattr(
+            self.cfg.commands,
+            "inject_straight_path_recovery_velocity",
+            False,
+        ):
+            # Keep the observation width/checkpoint contract unchanged. For a
+            # pure-straight command, reuse the existing observed vy command as
+            # a bounded closed-loop return-to-path request. The physical
+            # command remains vy=0; only the policy input receives this target.
+            lateral_displacement, _, _ = self._straight_path_state()
+            recovery_gain = float(getattr(
+                self.cfg.commands,
+                "straight_path_observation_gain_s",
+                1.25,
+            ))
+            recovery_limit = float(getattr(
+                self.cfg.commands,
+                "straight_path_observation_max_velocity_m_s",
+                0.08,
+            ))
+            observed_commands[:, 1] = (
+                -recovery_gain * lateral_displacement
+            ).clip(-recovery_limit, recovery_limit)
         self.obs_buf = torch.cat((
             observed_lin_vel * self.obs_scales.lin_vel,
             observed_ang_vel * self.obs_scales.ang_vel,
@@ -3617,6 +3647,20 @@ class FanfanRobot(LeggedRobot):
         return torch.mean(torch.square(ratio), dim=1) * self._torque_curriculum_multiplier(
             "torque_clip"
         )
+
+    def _reward_raw_torque_rate(self):
+        """Penalize rapid changes in the unclipped 50 Hz PD request.
+
+        Action-rate cost alone misses torque chatter caused by delayed motor
+        state error. Normalize by each joint's active peak limit so hips,
+        thighs and calves contribute on the same scale.
+        """
+        normalized_delta = (
+            (self.raw_torques - self.last_raw_torques)
+            / self._active_episode_torque_limits()
+        ).clip(-3.0, 3.0)
+        valid = (self.episode_length_buf > 1).float()
+        return torch.mean(torch.square(normalized_delta), dim=1) * valid
 
     def _reward_torque_near_limit(self):
         ratio = (
