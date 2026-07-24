@@ -544,6 +544,47 @@ class DogRs01Robot(FanfanRobot):
             * self._continuous_torque_penalty_blend()
         )
 
+    def _reward_raw_continuous_torque_usage(self):
+        """Penalize the unclipped PD request against the 6 Nm rating.
+
+        Peak clipping alone hides whether the actor requested 18 Nm or 80 Nm.
+        A logarithmic cost retains useful separation between both cases
+        without letting a single delayed-state spike dominate the rollout.
+        """
+        ratio = torch.abs(self.raw_torques) / self._continuous_torque_ratings()
+        excess = (ratio - 0.75).clip(min=0.0)
+        return (
+            torch.mean(torch.square(torch.log1p(excess)), dim=1)
+            * (1.0 - self._stand_command_gate())
+            * self._continuous_torque_penalty_blend()
+        )
+
+    def _reward_raw_continuous_torque_peak(self):
+        """Keep one loaded thigh/calf from hiding in an all-motor mean."""
+        ratio = torch.abs(self.raw_torques) / self._continuous_torque_ratings()
+        peak_excess = (
+            torch.max(ratio, dim=1).values - 1.0
+        ).clip(min=0.0)
+        return (
+            torch.square(torch.log1p(peak_excess))
+            * (1.0 - self._stand_command_gate())
+            * self._continuous_torque_penalty_blend()
+        )
+
+    def _reward_low_request_straight_progress(self):
+        """Pay for forward motion only while the direct PD request is sane."""
+        ratio = torch.abs(self.raw_torques) / self._continuous_torque_ratings()
+        request_cost = torch.mean(
+            torch.square(torch.log1p(ratio)), dim=1
+        )
+        request_headroom = torch.exp(-0.70 * request_cost)
+        return (
+            self._forward_progress_gate()
+            * request_headroom
+            * self._body_angular_headroom()
+            * (~self._get_non_diagonal_swing_mask()).float()
+        )
+
     def _reward_motor_thermal_overload(self):
         """Penalize sustained RMS heating before thermal derating is complete."""
         thermal_ratio = torch.sqrt(self.thermal_torque_sq_ema.clip(min=0.0))

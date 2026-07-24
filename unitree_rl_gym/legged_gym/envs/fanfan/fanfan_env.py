@@ -176,6 +176,9 @@ class FanfanRobot(LeggedRobot):
         self.non_diagonal_swing_counter = torch.zeros(
             self.num_envs, dtype=torch.long, device=self.device
         )
+        self.flight_counter = torch.zeros(
+            self.num_envs, dtype=torch.long, device=self.device
+        )
         body_names = self.gym.get_actor_rigid_body_names(self.envs[0], self.actor_handles[0])
         phase_offsets = []
         self.foot_slot_by_leg = {}
@@ -281,7 +284,14 @@ class FanfanRobot(LeggedRobot):
         self.torque_clip_error = torch.zeros_like(self.torques)
         self.torque_ema = torch.zeros_like(self.torques)
         self.motor_torque_ema = torch.zeros_like(self.torques)
-        self.thermal_torque_sq_ema = torch.zeros_like(self.torques)
+        initial_thermal_ratio = float(getattr(
+            self.cfg.control,
+            "continuous_torque_initial_thermal_ratio",
+            0.0,
+        ))
+        self.thermal_torque_sq_ema = torch.full_like(
+            self.torques, initial_thermal_ratio * initial_thermal_ratio
+        )
         initial_motor_temperature = float(getattr(
             self.cfg.control, "motor_temperature_initial_c", 30.0
         ))
@@ -302,6 +312,12 @@ class FanfanRobot(LeggedRobot):
                 self.num_envs, dtype=torch.float, device=self.device
             ),
             "motor_over_continuous_ratio": torch.zeros(
+                self.num_envs, dtype=torch.float, device=self.device
+            ),
+            "raw_over_continuous_ratio": torch.zeros(
+                self.num_envs, dtype=torch.float, device=self.device
+            ),
+            "mean_active_torque_limit": torch.zeros(
                 self.num_envs, dtype=torch.float, device=self.device
             ),
             "torque_over_13_ratio": torch.zeros(
@@ -1409,6 +1425,12 @@ class FanfanRobot(LeggedRobot):
         self.torque_metric_sums["motor_over_continuous_ratio"] += torch.mean(
             (abs_motor > continuous_ratings).float(), dim=1
         )
+        self.torque_metric_sums["raw_over_continuous_ratio"] += torch.mean(
+            (abs_raw > continuous_ratings).float(), dim=1
+        )
+        self.torque_metric_sums["mean_active_torque_limit"] += torch.mean(
+            self.active_motor_torque_limits, dim=1
+        )
         self.torque_metric_sums["torque_over_13_ratio"] += torch.mean(
             (abs_raw > 13.0).float(), dim=1
         )
@@ -1493,12 +1515,35 @@ class FanfanRobot(LeggedRobot):
             "continuous_torque_initial_thermal_ratio",
             0.0,
         ))
-        self.thermal_torque_sq_ema[env_ids] = (
-            initial_thermal_ratio * initial_thermal_ratio
-        )
-        self.motor_temperature_c[env_ids] = float(getattr(
+        initial_thermal_sq = initial_thermal_ratio * initial_thermal_ratio
+        initial_motor_temperature = float(getattr(
             self.cfg.control, "motor_temperature_initial_c", 30.0
         ))
+        if getattr(
+            self.cfg.control,
+            "preserve_thermal_state_across_resets",
+            False,
+        ):
+            # A gait reset does not cool a real RS01. Keeping the accumulated
+            # I^2 state prevents a short-episode policy from repeatedly
+            # recovering the 17 Nm cold-motor allowance.
+            self.thermal_torque_sq_ema[env_ids] = torch.maximum(
+                self.thermal_torque_sq_ema[env_ids],
+                torch.full_like(
+                    self.thermal_torque_sq_ema[env_ids],
+                    initial_thermal_sq,
+                ),
+            )
+            self.motor_temperature_c[env_ids] = torch.maximum(
+                self.motor_temperature_c[env_ids],
+                torch.full_like(
+                    self.motor_temperature_c[env_ids],
+                    initial_motor_temperature,
+                ),
+            )
+        else:
+            self.thermal_torque_sq_ema[env_ids] = initial_thermal_sq
+            self.motor_temperature_c[env_ids] = initial_motor_temperature
         self.torque_clip_error[env_ids] = 0.0
         self.raw_torques[env_ids] = 0.0
         self.last_raw_torques[env_ids] = 0.0
@@ -1517,8 +1562,14 @@ class FanfanRobot(LeggedRobot):
         self.feet_contact_time[env_ids] = 0.0
         self.all_feet_contact_time[env_ids] = 0.0
         self.non_diagonal_swing_counter[env_ids] = 0
+        self.flight_counter[env_ids] = 0
         self.max_abs_raw_torque[env_ids] = 0.0
-        self.max_thermal_torque_ratio[env_ids] = initial_thermal_ratio
+        self.max_thermal_torque_ratio[env_ids] = torch.max(
+            torch.sqrt(
+                self.thermal_torque_sq_ema[env_ids].clip(min=0.0)
+            ),
+            dim=1,
+        ).values
         self.torque_metric_count[env_ids] = 0.0
         for values in self.torque_metric_sums.values():
             values[env_ids] = 0.0
@@ -2748,10 +2799,23 @@ class FanfanRobot(LeggedRobot):
                 "flight_termination_grace_steps",
                 0,
             ))
-            # Unlike other invalid multi-foot patterns, complete flight has
-            # no contact ambiguity worth tolerating: one 50 Hz sample is
-            # enough to reject a hopping cycle.
-            self.reset_buf |= grace & locomotion & self._get_flight_mask()
+            flight = locomotion & self._get_flight_mask()
+            self.flight_counter = torch.where(
+                flight,
+                self.flight_counter + 1,
+                torch.zeros_like(self.flight_counter),
+            )
+            flight_steps = max(int(getattr(
+                self.cfg.rewards,
+                "flight_termination_steps",
+                1,
+            )), 1)
+            # Contact force can cross the threshold briefly during a delayed
+            # diagonal handoff. Require a configurable sustained flight while
+            # keeping the historical one-frame behavior as the default.
+            self.reset_buf |= grace & (
+                self.flight_counter >= flight_steps
+            )
         if getattr(
             self.cfg.rewards,
             "enable_non_diagonal_swing_termination",
