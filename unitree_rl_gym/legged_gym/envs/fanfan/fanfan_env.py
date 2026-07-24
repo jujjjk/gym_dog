@@ -269,10 +269,24 @@ class FanfanRobot(LeggedRobot):
             device=self.device,
         )
         self.raw_torques = torch.zeros_like(self.torques)
+        self.motor_torques = torch.zeros_like(self.torques)
+        # Actual per-step motor command ceiling after peak clipping and
+        # continuous-torque thermal derating.  Keep this separate from the
+        # episode peak limit so the policy can observe the headroom it really
+        # has on the current control step.
+        self.active_motor_torque_limits = torch.zeros_like(self.torques)
         self.motor_strength = torch.ones_like(self.torques)
         self.target_dof_pos_rl = self.default_dof_pos.repeat(self.num_envs, 1)
         self.torque_clip_error = torch.zeros_like(self.torques)
         self.torque_ema = torch.zeros_like(self.torques)
+        self.motor_torque_ema = torch.zeros_like(self.torques)
+        self.thermal_torque_sq_ema = torch.zeros_like(self.torques)
+        initial_motor_temperature = float(getattr(
+            self.cfg.control, "motor_temperature_initial_c", 30.0
+        ))
+        self.motor_temperature_c = torch.full_like(
+            self.torques, initial_motor_temperature
+        )
         self.torque_metric_count = torch.zeros(
             self.num_envs, dtype=torch.float, device=self.device
         )
@@ -281,6 +295,12 @@ class FanfanRobot(LeggedRobot):
                 self.num_envs, dtype=torch.float, device=self.device
             ),
             "torque_saturation_ratio": torch.zeros(
+                self.num_envs, dtype=torch.float, device=self.device
+            ),
+            "mean_abs_motor_torque": torch.zeros(
+                self.num_envs, dtype=torch.float, device=self.device
+            ),
+            "motor_over_continuous_ratio": torch.zeros(
                 self.num_envs, dtype=torch.float, device=self.device
             ),
             "torque_over_13_ratio": torch.zeros(
@@ -294,6 +314,9 @@ class FanfanRobot(LeggedRobot):
             ),
         }
         self.max_abs_raw_torque = torch.zeros(
+            self.num_envs, dtype=torch.float, device=self.device
+        )
+        self.max_thermal_torque_ratio = torch.zeros(
             self.num_envs, dtype=torch.float, device=self.device
         )
         self.policy_actions = torch.zeros_like(self.actions)
@@ -413,38 +436,6 @@ class FanfanRobot(LeggedRobot):
                 self.cfg.control.final_target_accel_limits_final
             )
 
-            gait_cfg = self.cfg.domain_rand
-            calf_range = gait_cfg.gait_calf_amplitude_max_range
-            self.gait_calf_amplitude_max = torch.full(
-                (self.num_envs,),
-                0.5 * (float(calf_range[0]) + float(calf_range[1])),
-                dtype=torch.float,
-                device=self.device,
-            )
-            self.gait_stance_ratio = torch.full(
-                (self.num_envs,),
-                float(self.cfg.rewards.gait_stance_ratio),
-                dtype=torch.float,
-                device=self.device,
-            )
-            low_period_range = gait_cfg.gait_low_speed_period_range
-            high_period_range = gait_cfg.gait_high_speed_period_range
-            self.gait_period_low_speed = torch.full(
-                (self.num_envs,),
-                0.5 * (float(low_period_range[0]) + float(low_period_range[1])),
-                dtype=torch.float,
-                device=self.device,
-            )
-            self.gait_period_high_speed = torch.full(
-                (self.num_envs,),
-                0.5 * (float(high_period_range[0]) + float(high_period_range[1])),
-                dtype=torch.float,
-                device=self.device,
-            )
-            self.gait_backward_scale = torch.full(
-                (self.num_envs,), 0.82, dtype=torch.float, device=self.device
-            )
-
             self.raw_torque_over_counter = torch.zeros(
                 self.num_envs, dtype=torch.long, device=self.device
             )
@@ -521,14 +512,24 @@ class FanfanRobot(LeggedRobot):
                 device=self.device,
             )
 
+        if self._needs_continuous_gait_buffers():
+            self._init_continuous_gait_buffers()
+
         # Apply the identified hardware distribution before the very first
         # episode as well as after resets.  Without this, playback could run
         # indefinitely with placeholder tau/gain/friction values and would
         # not actually represent the measured RS01 motors.
-        if self.use_real_actuator_model or self.use_real_observation_model:
+        if (
+            self.use_real_actuator_model
+            or self.use_real_observation_model
+            or self._needs_continuous_gait_buffers()
+        ):
             self._randomize_real_hardware_episode(
                 torch.arange(self.num_envs, device=self.device)
             )
+        self.active_motor_torque_limits[:] = (
+            self._active_episode_torque_limits()
+        )
 
     def _joint_type_tensor(self, values):
         """Expand a hip/thigh/calf mapping into policy joint order."""
@@ -574,10 +575,126 @@ class FanfanRobot(LeggedRobot):
         raw_torques = self.motor_strength * (
             kp * (target_dof_pos - measured_dof_pos) - kd * self.dof_vel
         )
-        clipped_torques = torch.maximum(
+        peak_clipped_torques = torch.maximum(
             torch.minimum(raw_torques, torque_limits), -torque_limits
         )
-        torque_clip_error = raw_torques - clipped_torques
+        motor_torques = peak_clipped_torques
+        active_limits = torque_limits
+        if getattr(
+            self.cfg.control, "apply_continuous_torque_derating", False
+        ):
+            rated = self._continuous_torque_ratings()
+            thermal_ratio = torch.sqrt(
+                self.thermal_torque_sq_ema.clip(min=0.0)
+            )
+            start_ratio = float(getattr(
+                self.cfg.control,
+                "continuous_derating_start_ratio",
+                0.80,
+            ))
+            full_ratio = max(float(getattr(
+                self.cfg.control,
+                "continuous_derating_full_ratio",
+                1.05,
+            )), start_ratio + 1.0e-4)
+            thermal_headroom = (
+                1.0
+                - (thermal_ratio - start_ratio)
+                / (full_ratio - start_ratio)
+            ).clip(0.0, 1.0)
+            derated_limits = (
+                rated + thermal_headroom * (torque_limits - rated)
+            )
+
+            # Let a resumed policy adapt before applying full thermal
+            # derating. Deployment/test always uses the complete contract.
+            curriculum_iterations = float(getattr(
+                self.cfg.control,
+                "continuous_derating_curriculum_iterations",
+                0.0,
+            ))
+            if getattr(self.cfg.env, "test", False):
+                derating_blend = 1.0
+            elif curriculum_iterations > 0.0:
+                steps_per_iteration = float(getattr(
+                    self.cfg.rewards,
+                    "torque_curriculum_steps_per_iteration",
+                    24.0,
+                ))
+                current_iteration = (
+                    float(self.common_step_counter)
+                    / max(steps_per_iteration, 1.0)
+                )
+                derating_blend = min(
+                    max(current_iteration / curriculum_iterations, 0.0),
+                    1.0,
+                )
+            else:
+                derating_blend = 1.0
+            active_limits = (
+                torque_limits
+                + derating_blend * (derated_limits - torque_limits)
+            )
+            motor_torques = torch.maximum(
+                torch.minimum(raw_torques, active_limits), -active_limits
+            )
+
+        torque_clip_error = raw_torques - motor_torques
+        self.motor_torques = motor_torques
+        self.active_motor_torque_limits[:] = active_limits
+
+        rated = self._continuous_torque_ratings()
+        thermal_time_constant = max(float(getattr(
+            self.cfg.control,
+            "continuous_torque_thermal_time_constant_s",
+            2.0,
+        )), self.sim_params.dt)
+        thermal_alpha = float(np.exp(
+            -self.sim_params.dt / thermal_time_constant
+        ))
+        normalized_motor_sq = torch.square(
+            torch.abs(motor_torques) / rated
+        )
+        self.thermal_torque_sq_ema = (
+            thermal_alpha * self.thermal_torque_sq_ema
+            + (1.0 - thermal_alpha) * normalized_motor_sq
+        )
+        # RS01 feedback type 2 reports motor temperature directly. Isaac Gym
+        # has no winding-temperature state, so use a slow first-order I^2
+        # thermal plant for the corresponding simulated feedback channel.
+        # This state is observation-only; the conservative fast RMS model
+        # above remains the authoritative continuous-torque safety limiter.
+        ambient_temperature = float(getattr(
+            self.cfg.control, "motor_temperature_ambient_c", 25.0
+        ))
+        temperature_rise_at_rated = float(getattr(
+            self.cfg.control, "motor_temperature_rise_at_rated_c", 55.0
+        ))
+        temperature_time_constant = max(float(getattr(
+            self.cfg.control, "motor_temperature_time_constant_s", 180.0
+        )), self.sim_params.dt)
+        temperature_alpha = float(np.exp(
+            -self.sim_params.dt / temperature_time_constant
+        ))
+        temperature_target = (
+            ambient_temperature
+            + temperature_rise_at_rated * normalized_motor_sq
+        ).clip(max=float(getattr(
+            self.cfg.control, "motor_temperature_protection_c", 103.0
+        )))
+        self.motor_temperature_c = (
+            temperature_alpha * self.motor_temperature_c
+            + (1.0 - temperature_alpha) * temperature_target
+        )
+        motor_ema_alpha = float(getattr(
+            self.cfg.rewards, "motor_torque_ema_alpha", 0.99
+        ))
+        self.motor_torque_ema = (
+            motor_ema_alpha * self.motor_torque_ema
+            + (1.0 - motor_ema_alpha) * torch.abs(motor_torques)
+        )
+
+        clipped_torques = motor_torques
         if self.use_real_actuator_model:
             # Limit the commanded motor output first. Internal Coulomb
             # friction then reduces the torque delivered to the joint; it
@@ -614,6 +731,28 @@ class FanfanRobot(LeggedRobot):
         actions_scaled[:, self.hip_dof_indices] = (
             actions[:, self.hip_dof_indices] * self.cfg.control.hip_action_scale
         )
+        # Optional per-joint-type authority is useful when a direct policy
+        # saturates only the sagittal motors. It remains a pure 12-output
+        # mapping; no trajectory or cross-joint compensation is introduced.
+        thigh_action_scale = getattr(
+            self.cfg.control, "thigh_action_scale", None
+        )
+        if thigh_action_scale is not None:
+            thigh_indices = [
+                self.leg_dof_indices[leg]["thigh"]
+                for leg in ("FL", "FR", "RL", "RR")
+            ]
+            actions_scaled[:, thigh_indices] = (
+                actions[:, thigh_indices] * float(thigh_action_scale)
+            )
+        calf_action_scale = getattr(
+            self.cfg.control, "calf_action_scale", None
+        )
+        if calf_action_scale is not None:
+            calf_indices = self._get_calf_indices()
+            actions_scaled[:, calf_indices] = (
+                actions[:, calf_indices] * float(calf_action_scale)
+            )
         phase = (
             self.gait_phase.unsqueeze(1)
             + float(getattr(
@@ -1246,7 +1385,9 @@ class FanfanRobot(LeggedRobot):
 
     def _update_torque_metrics(self, raw_torques):
         abs_raw = torch.abs(raw_torques)
+        abs_motor = torch.abs(self.motor_torques)
         torque_limits = self._active_episode_torque_limits()
+        continuous_ratings = self._continuous_torque_ratings()
 
         self.torque_metric_count += 1.0
         self.max_abs_raw_torque = torch.maximum(
@@ -1255,6 +1396,12 @@ class FanfanRobot(LeggedRobot):
         self.torque_metric_sums["mean_abs_raw_torque"] += torch.mean(abs_raw, dim=1)
         self.torque_metric_sums["torque_saturation_ratio"] += torch.mean(
             (abs_raw >= torque_limits).float(), dim=1
+        )
+        self.torque_metric_sums["mean_abs_motor_torque"] += torch.mean(
+            abs_motor, dim=1
+        )
+        self.torque_metric_sums["motor_over_continuous_ratio"] += torch.mean(
+            (abs_motor > continuous_ratings).float(), dim=1
         )
         self.torque_metric_sums["torque_over_13_ratio"] += torch.mean(
             (abs_raw > 13.0).float(), dim=1
@@ -1265,11 +1412,30 @@ class FanfanRobot(LeggedRobot):
         self.torque_metric_sums["torque_over_17_ratio"] += torch.mean(
             (abs_raw > 17.0).float(), dim=1
         )
+        self.max_thermal_torque_ratio = torch.maximum(
+            self.max_thermal_torque_ratio,
+            torch.max(
+                torch.sqrt(self.thermal_torque_sq_ema.clip(min=0.0)),
+                dim=1,
+            ).values,
+        )
 
     def _active_episode_torque_limits(self):
         if self.use_real_actuator_model:
             return self.episode_torque_limits
         return self.torque_limits.unsqueeze(0)
+
+    def _continuous_torque_ratings(self):
+        ratings = getattr(
+            self.cfg.control, "continuous_torque_limits_by_joint", None
+        )
+        if ratings is None:
+            ratings = getattr(
+                self.cfg.rewards, "continuous_torque_limits_by_joint", None
+            )
+        if ratings is None:
+            return self._active_episode_torque_limits()
+        return self._joint_type_tensor(ratings).unsqueeze(0)
 
     def reset_idx(self, env_ids):
         if len(env_ids) == 0:
@@ -1292,11 +1458,18 @@ class FanfanRobot(LeggedRobot):
                         strength[:, a] = mean
                         strength[:, b] = mean
             self.motor_strength[env_ids] = strength
-        if self.use_real_actuator_model or self.use_real_observation_model:
+        if (
+            self.use_real_actuator_model
+            or self.use_real_observation_model
+            or self._needs_continuous_gait_buffers()
+        ):
             self._randomize_real_hardware_episode(env_ids)
         metric_count = self.torque_metric_count[env_ids].clip(min=1.0)
         self.extras["episode"]["max_abs_raw_torque"] = torch.mean(
             self.max_abs_raw_torque[env_ids]
+        )
+        self.extras["episode"]["max_thermal_torque_ratio"] = torch.mean(
+            self.max_thermal_torque_ratio[env_ids]
         )
         for name, values in self.torque_metric_sums.items():
             self.extras["episode"][name] = torch.mean(values[env_ids] / metric_count)
@@ -1308,8 +1481,26 @@ class FanfanRobot(LeggedRobot):
         )
 
         self.torque_ema[env_ids] = 0.0
+        self.motor_torque_ema[env_ids] = 0.0
+        initial_thermal_ratio = float(getattr(
+            self.cfg.control,
+            "continuous_torque_initial_thermal_ratio",
+            0.0,
+        ))
+        self.thermal_torque_sq_ema[env_ids] = (
+            initial_thermal_ratio * initial_thermal_ratio
+        )
+        self.motor_temperature_c[env_ids] = float(getattr(
+            self.cfg.control, "motor_temperature_initial_c", 30.0
+        ))
         self.torque_clip_error[env_ids] = 0.0
         self.raw_torques[env_ids] = 0.0
+        self.motor_torques[env_ids] = 0.0
+        self.active_motor_torque_limits[env_ids] = (
+            self._active_episode_torque_limits()[env_ids]
+            if self.use_real_actuator_model
+            else self._active_episode_torque_limits()
+        )
         self.target_dof_pos_rl[env_ids] = self.default_dof_pos
         self.policy_actions[env_ids] = 0.0
         self.last_policy_actions[env_ids] = 0.0
@@ -1320,6 +1511,7 @@ class FanfanRobot(LeggedRobot):
         self.all_feet_contact_time[env_ids] = 0.0
         self.non_diagonal_swing_counter[env_ids] = 0
         self.max_abs_raw_torque[env_ids] = 0.0
+        self.max_thermal_torque_ratio[env_ids] = initial_thermal_ratio
         self.torque_metric_count[env_ids] = 0.0
         for values in self.torque_metric_sums.values():
             values[env_ids] = 0.0
@@ -1408,6 +1600,66 @@ class FanfanRobot(LeggedRobot):
                 ranges[name], (count,)
             )
         return result
+
+    def _needs_continuous_gait_buffers(self):
+        return bool(
+            self.use_continuous_gait_scaling
+            or getattr(self.cfg.control, "use_rs01_diagonal_cpg", False)
+        )
+
+    def _init_continuous_gait_buffers(self):
+        gait_cfg = self.cfg.domain_rand
+        calf_range = gait_cfg.gait_calf_amplitude_max_range
+        self.gait_calf_amplitude_max = torch.full(
+            (self.num_envs,),
+            0.5 * (float(calf_range[0]) + float(calf_range[1])),
+            dtype=torch.float,
+            device=self.device,
+        )
+        self.gait_stance_ratio = torch.full(
+            (self.num_envs,),
+            float(self.cfg.rewards.gait_stance_ratio),
+            dtype=torch.float,
+            device=self.device,
+        )
+        low_period_range = gait_cfg.gait_low_speed_period_range
+        high_period_range = gait_cfg.gait_high_speed_period_range
+        self.gait_period_low_speed = torch.full(
+            (self.num_envs,),
+            0.5 * (float(low_period_range[0]) + float(low_period_range[1])),
+            dtype=torch.float,
+            device=self.device,
+        )
+        self.gait_period_high_speed = torch.full(
+            (self.num_envs,),
+            0.5 * (float(high_period_range[0]) + float(high_period_range[1])),
+            dtype=torch.float,
+            device=self.device,
+        )
+        self.gait_backward_scale = torch.full(
+            (self.num_envs,), 0.82, dtype=torch.float, device=self.device
+        )
+
+    def _randomize_gait_episode(self, env_ids):
+        count = len(env_ids)
+        if count == 0 or not self._needs_continuous_gait_buffers():
+            return
+        gait = self.cfg.domain_rand
+        self.gait_calf_amplitude_max[env_ids] = self._sample_range(
+            gait.gait_calf_amplitude_max_range, (count,)
+        )
+        self.gait_stance_ratio[env_ids] = self._sample_range(
+            gait.gait_stance_ratio_range, (count,)
+        )
+        self.gait_period_low_speed[env_ids] = self._sample_range(
+            gait.gait_low_speed_period_range, (count,)
+        )
+        self.gait_period_high_speed[env_ids] = self._sample_range(
+            gait.gait_high_speed_period_range, (count,)
+        )
+        self.gait_backward_scale[env_ids] = self._sample_range(
+            gait.gait_backward_scale_range, (count,)
+        )
 
     def _randomize_real_hardware_episode(self, env_ids):
         count = len(env_ids)
@@ -1511,23 +1763,6 @@ class FanfanRobot(LeggedRobot):
                 delay / self.sim_params.dt
             ).long().clip(0, self.target_delay_history_len - 2)
 
-            gait = self.cfg.domain_rand
-            self.gait_calf_amplitude_max[env_ids] = self._sample_range(
-                gait.gait_calf_amplitude_max_range, (count,)
-            )
-            self.gait_stance_ratio[env_ids] = self._sample_range(
-                gait.gait_stance_ratio_range, (count,)
-            )
-            self.gait_period_low_speed[env_ids] = self._sample_range(
-                gait.gait_low_speed_period_range, (count,)
-            )
-            self.gait_period_high_speed[env_ids] = self._sample_range(
-                gait.gait_high_speed_period_range, (count,)
-            )
-            self.gait_backward_scale[env_ids] = self._sample_range(
-                gait.gait_backward_scale_range, (count,)
-            )
-
             default = self.default_dof_pos.repeat(count, 1)
             self.raw_target_dof_pos[env_ids] = default
             self.limited_target_dof_pos[env_ids] = default
@@ -1540,6 +1775,8 @@ class FanfanRobot(LeggedRobot):
             self.raw_torque_over_counter[env_ids] = 0
             self.calf_error_over_counter[env_ids] = 0
             self.torque_saturation_history[env_ids] = 0.0
+
+        self._randomize_gait_episode(env_ids)
 
         if self.use_real_observation_model:
             noise = self.cfg.noise
@@ -2176,6 +2413,22 @@ class FanfanRobot(LeggedRobot):
             phase_obs,
             heading_obs,
         ), dim=-1)
+        if getattr(self.cfg.env, "observe_actuator_state", False):
+            continuous = self._continuous_torque_ratings()
+            motor_torque_obs = (
+                self.motor_torques / continuous
+            ).clip(-2.5, 2.5)
+            # Match the two fields available in the real RS01 type-2 feedback
+            # packet: reported torque and motor temperature. Thermal RMS and
+            # active derating limits remain internal safety-controller state.
+            motor_temperature_obs = (
+                self.motor_temperature_c / 100.0
+            ).clip(-0.5, 1.5)
+            self.obs_buf = torch.cat((
+                self.obs_buf,
+                motor_torque_obs,
+                motor_temperature_obs,
+            ), dim=-1)
         if self.add_noise:
             self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
 
@@ -2491,6 +2744,12 @@ class FanfanRobot(LeggedRobot):
                 "non_diagonal_swing_termination_steps",
                 3,
             ))
+            if getattr(self.cfg.env, "test", False):
+                termination_steps = int(getattr(
+                    self.cfg.rewards,
+                    "non_diagonal_swing_termination_steps_test",
+                    termination_steps,
+                ))
             curriculum = getattr(
                 self.cfg.rewards,
                 "non_diagonal_termination_curriculum",

@@ -1,41 +1,83 @@
 from legged_gym import LEGGED_GYM_ROOT_DIR, LEGGED_GYM_ENVS_DIR
-
 from legged_gym.envs.go2.go2_config import GO2RoughCfg, GO2RoughCfgPPO
 from legged_gym.envs.dog import (
     DogRs01Robot,
     DogRs01TrotCfg,
     DogRs01TrotCfgPPO,
+    DogRs01BalanceCfg,
+    DogRs01BalanceCfgPPO,
+    DogRs01BodyStableCfg,
+    DogRs01BodyStableCfgPPO,
+    DogRs01LowTwistCfg,
+    DogRs01LowTwistCfgPPO,
+    DogRs01HipTorqueCfg,
+    DogRs01HipTorqueCfgPPO,
+    DogRs01StraightBalanceCfg,
+    DogRs01StraightBalanceCfgPPO,
+    DogRs01CompactHipCfg,
+    DogRs01CompactHipCfgPPO,
+    DogRs01SafeTorquePathCfg,
+    DogRs01SafeTorquePathCfgPPO,
+    DogRs01SafeTorquePathV2Cfg,
+    DogRs01SafeTorquePathV2CfgPPO,
+    DogRs01SmoothStraightCfg,
+    DogRs01SmoothStraightCfgPPO,
+    DogRs01SmoothStraightV2Cfg,
+    DogRs01SmoothStraightV2CfgPPO,
+    DogRs01StraightGuardedCfg,
+    DogRs01StraightGuardedCfgPPO,
 )
 from legged_gym.envs.fanfan.fanfan_config import FanfanRoughCfg, FanfanRoughCfgPPO
 from legged_gym.envs.fanfan.fanfan_env import FanfanRobot
 from legged_gym.envs.fanfan.fanfan_omni_safe_config import (
-    FanfanOmniSafeCfg, FanfanOmniSafeCfgPPO,
-    FanfanOmniFastCfg, FanfanOmniFastCfgPPO,
-    FanfanOmniSmoothRealCfg, FanfanOmniSmoothRealCfgPPO,
-    FanfanOmniFilteredCfg, FanfanOmniFilteredCfgPPO,
-    FanfanOmniVelTrackV3Cfg, FanfanOmniVelTrackV3CfgPPO,
-    FanfanOmniLateralFixCfg, FanfanOmniLateralFixCfgPPO,
-    FanfanOmniLateralSpeedCleanCfg, FanfanOmniLateralSpeedCleanCfgPPO,
-    FanfanOmniDesatTorqueCfg, FanfanOmniDesatTorqueCfgPPO,
-    FanfanOmniYawDriftCleanCfg, FanfanOmniYawDriftCleanCfgPPO,
-    FanfanOmniYawSymmetryCfg, FanfanOmniYawSymmetryCfgPPO,
-    FanfanOmniYawPathFixCfg, FanfanOmniYawPathFixCfgPPO,
-    FanfanOmniDiagonalCoordCfg, FanfanOmniDiagonalCoordCfgPPO,
-    FanfanOmniCoordinatedStraightCfg, FanfanOmniCoordinatedStraightCfgPPO,
-    FanfanOmniProjectedCoordCfg, FanfanOmniProjectedCoordCfgPPO,
-    FanfanOmniStrongSymmetryCfg, FanfanOmniStrongSymmetryCfgPPO,
-    FanfanOmniNoCompSymmetryCfg, FanfanOmniNoCompSymmetryCfgPPO,
-    FanfanOmniHeadingBoundSymmetryCfg, FanfanOmniHeadingBoundSymmetryCfgPPO,
-    FanfanOmniForceCoordCfg, FanfanOmniForceCoordCfgPPO,
-    FanfanOmniForceDesatCfg, FanfanOmniForceDesatCfgPPO,
-    FanfanOmniHighSpeedTransitionCfg, FanfanOmniHighSpeedTransitionCfgPPO,
+    FanfanOmniSafeCfg,
+    FanfanOmniSafeCfgPPO,
+    FanfanOmniFastCfg,
+    FanfanOmniFastCfgPPO,
+    FanfanOmniSmoothRealCfg,
+    FanfanOmniSmoothRealCfgPPO,
+    FanfanOmniFilteredCfg,
+    FanfanOmniFilteredCfgPPO,
+    FanfanOmniVelTrackV3Cfg,
+    FanfanOmniVelTrackV3CfgPPO,
+    FanfanOmniLateralFixCfg,
+    FanfanOmniLateralFixCfgPPO,
+    FanfanOmniLateralSpeedCleanCfg,
+    FanfanOmniLateralSpeedCleanCfgPPO,
+    FanfanOmniDesatTorqueCfg,
+    FanfanOmniDesatTorqueCfgPPO,
+    FanfanOmniYawDriftCleanCfg,
+    FanfanOmniYawDriftCleanCfgPPO,
+    FanfanOmniYawSymmetryCfg,
+    FanfanOmniYawSymmetryCfgPPO,
+    FanfanOmniYawPathFixCfg,
+    FanfanOmniYawPathFixCfgPPO,
+    FanfanOmniDiagonalCoordCfg,
+    FanfanOmniDiagonalCoordCfgPPO,
+    FanfanOmniCoordinatedStraightCfg,
+    FanfanOmniCoordinatedStraightCfgPPO,
+    FanfanOmniProjectedCoordCfg,
+    FanfanOmniProjectedCoordCfgPPO,
+    FanfanOmniStrongSymmetryCfg,
+    FanfanOmniStrongSymmetryCfgPPO,
+    FanfanOmniNoCompSymmetryCfg,
+    FanfanOmniNoCompSymmetryCfgPPO,
+    FanfanOmniHeadingBoundSymmetryCfg,
+    FanfanOmniHeadingBoundSymmetryCfgPPO,
+    FanfanOmniForceCoordCfg,
+    FanfanOmniForceCoordCfgPPO,
+    FanfanOmniForceDesatCfg,
+    FanfanOmniForceDesatCfgPPO,
+    FanfanOmniHighSpeedTransitionCfg,
+    FanfanOmniHighSpeedTransitionCfgPPO,
     FanfanOmniHighAuthorityTransitionCfg,
     FanfanOmniHighAuthorityTransitionCfgPPO,
     FanfanOmniHighAuthorityDirectionCfg,
     FanfanOmniHighAuthorityDirectionCfgPPO,
     FanfanOmniHighAuthorityClosedLoopCfg,
     FanfanOmniHighAuthorityClosedLoopCfgPPO,
-    FanfanOmniHighCadenceCfg, FanfanOmniHighCadenceCfgPPO,
+    FanfanOmniHighCadenceCfg,
+    FanfanOmniHighCadenceCfgPPO,
     FanfanOmniSymmetricTransitionCfg,
     FanfanOmniSymmetricTransitionCfgPPO,
     FanfanOmniTiltRecovery5530Cfg,
@@ -56,9 +98,13 @@ from legged_gym.envs.fanfan.fanfan_omni_safe_config import (
     FanfanOmniRealDataDirectionalPolishCfgPPO,
     FanfanOmniRealDataPerformanceRecoveryCfg,
     FanfanOmniRealDataPerformanceRecoveryCfgPPO,
-    FanfanOmniCalibratedSymmetryCfg, FanfanOmniCalibratedSymmetryCfgPPO,
+    FanfanOmniCalibratedSymmetryCfg,
+    FanfanOmniCalibratedSymmetryCfgPPO,
 )
-from legged_gym.envs.fanfan_rouhe.fanfan_config import FanfanRouheRoughCfg, FanfanRouheRoughCfgPPO
+from legged_gym.envs.fanfan_rouhe.fanfan_config import (
+    FanfanRouheRoughCfg,
+    FanfanRouheRoughCfgPPO,
+)
 from legged_gym.envs.fanfan_rouhe.fanfan_env import FanfanRouheRobot
 from legged_gym.envs.h1.h1_config import H1RoughCfg, H1RoughCfgPPO
 from legged_gym.envs.h1.h1_env import H1Robot
@@ -66,54 +112,119 @@ from legged_gym.envs.h1_2.h1_2_config import H1_2RoughCfg, H1_2RoughCfgPPO
 from legged_gym.envs.h1_2.h1_2_env import H1_2Robot
 from legged_gym.envs.g1.g1_config import G1RoughCfg, G1RoughCfgPPO
 from legged_gym.envs.g1.g1_env import G1Robot
-from .base.legged_robot import LeggedRobot
+from base.legged_robot import LeggedRobot
+from legged_gym.utils.task_registry import task_registry as task_registry
 
-from legged_gym.utils.task_registry import task_registry
-
-task_registry.register( "go2", LeggedRobot, GO2RoughCfg(), GO2RoughCfgPPO())
+task_registry.register("go2", LeggedRobot, GO2RoughCfg(), GO2RoughCfgPPO())
 task_registry.register(
-    "dog_rs01_trot",
+    "dog_rs01_trot", DogRs01Robot, DogRs01TrotCfg(), DogRs01TrotCfgPPO()
+)
+task_registry.register(
+    "dog_rs01_balance", DogRs01Robot, DogRs01BalanceCfg(), DogRs01BalanceCfgPPO()
+)
+task_registry.register(
+    "dog_rs01_body_stable",
     DogRs01Robot,
-    DogRs01TrotCfg(),
-    DogRs01TrotCfgPPO(),
-)
-task_registry.register( "fanfan", FanfanRobot, FanfanRoughCfg(), FanfanRoughCfgPPO())
-task_registry.register(
-    "fanfan_omni_safe", FanfanRobot,
-    FanfanOmniSafeCfg(), FanfanOmniSafeCfgPPO(),
+    DogRs01BodyStableCfg(),
+    DogRs01BodyStableCfgPPO(),
 )
 task_registry.register(
-    "fanfan_omni_fast", FanfanRobot,
-    FanfanOmniFastCfg(), FanfanOmniFastCfgPPO(),
+    "dog_rs01_low_twist", DogRs01Robot, DogRs01LowTwistCfg(), DogRs01LowTwistCfgPPO()
 )
 task_registry.register(
-    "fanfan_omni_smooth_real", FanfanRobot,
-    FanfanOmniSmoothRealCfg(), FanfanOmniSmoothRealCfgPPO(),
+    "dog_rs01_hip_torque", DogRs01Robot, DogRs01HipTorqueCfg(), DogRs01HipTorqueCfgPPO()
 )
 task_registry.register(
-    "fanfan_omni_filtered", FanfanRobot,
-    FanfanOmniFilteredCfg(), FanfanOmniFilteredCfgPPO(),
+    "dog_rs01_straight_balance",
+    DogRs01Robot,
+    DogRs01StraightBalanceCfg(),
+    DogRs01StraightBalanceCfgPPO(),
 )
 task_registry.register(
-    "fanfan_omni_veltrack_v3", FanfanRobot,
-    FanfanOmniVelTrackV3Cfg(), FanfanOmniVelTrackV3CfgPPO(),
+    "dog_rs01_compact_hip",
+    DogRs01Robot,
+    DogRs01CompactHipCfg(),
+    DogRs01CompactHipCfgPPO(),
 )
 task_registry.register(
-    "fanfan_omni_lateral_fix", FanfanRobot,
-    FanfanOmniLateralFixCfg(), FanfanOmniLateralFixCfgPPO(),
+    "dog_rs01_safe6nm",
+    DogRs01Robot,
+    DogRs01SafeTorquePathCfg(),
+    DogRs01SafeTorquePathCfgPPO(),
 )
 task_registry.register(
-    "fanfan_omni_lateral_speed_clean", FanfanRobot,
-    FanfanOmniLateralSpeedCleanCfg(), FanfanOmniLateralSpeedCleanCfgPPO(),
+    "dog_rs01_safe6nm_v2",
+    DogRs01Robot,
+    DogRs01SafeTorquePathV2Cfg(),
+    DogRs01SafeTorquePathV2CfgPPO(),
 )
 task_registry.register(
-    "fanfan_omni_desat_torque", FanfanRobot,
-    FanfanOmniDesatTorqueCfg(), FanfanOmniDesatTorqueCfgPPO(),
+    "dog_rs01_smooth_straight",
+    DogRs01Robot,
+    DogRs01SmoothStraightCfg(),
+    DogRs01SmoothStraightCfgPPO(),
 )
-task_registry.register( "fanfan_rouhe", FanfanRouheRobot, FanfanRouheRoughCfg(), FanfanRouheRoughCfgPPO())
-task_registry.register( "h1", H1Robot, H1RoughCfg(), H1RoughCfgPPO())
-task_registry.register( "h1_2", H1_2Robot, H1_2RoughCfg(), H1_2RoughCfgPPO())
-task_registry.register( "g1", G1Robot, G1RoughCfg(), G1RoughCfgPPO())
+task_registry.register(
+    "dog_rs01_smooth_straight_v2",
+    DogRs01Robot,
+    DogRs01SmoothStraightV2Cfg(),
+    DogRs01SmoothStraightV2CfgPPO(),
+)
+task_registry.register(
+    "dog_rs01_straight_guarded",
+    DogRs01Robot,
+    DogRs01StraightGuardedCfg(),
+    DogRs01StraightGuardedCfgPPO(),
+)
+task_registry.register("fanfan", FanfanRobot, FanfanRoughCfg(), FanfanRoughCfgPPO())
+task_registry.register(
+    "fanfan_omni_safe", FanfanRobot, FanfanOmniSafeCfg(), FanfanOmniSafeCfgPPO()
+)
+task_registry.register(
+    "fanfan_omni_fast", FanfanRobot, FanfanOmniFastCfg(), FanfanOmniFastCfgPPO()
+)
+task_registry.register(
+    "fanfan_omni_smooth_real",
+    FanfanRobot,
+    FanfanOmniSmoothRealCfg(),
+    FanfanOmniSmoothRealCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_filtered",
+    FanfanRobot,
+    FanfanOmniFilteredCfg(),
+    FanfanOmniFilteredCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_veltrack_v3",
+    FanfanRobot,
+    FanfanOmniVelTrackV3Cfg(),
+    FanfanOmniVelTrackV3CfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_lateral_fix",
+    FanfanRobot,
+    FanfanOmniLateralFixCfg(),
+    FanfanOmniLateralFixCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_lateral_speed_clean",
+    FanfanRobot,
+    FanfanOmniLateralSpeedCleanCfg(),
+    FanfanOmniLateralSpeedCleanCfgPPO(),
+)
+task_registry.register(
+    "fanfan_omni_desat_torque",
+    FanfanRobot,
+    FanfanOmniDesatTorqueCfg(),
+    FanfanOmniDesatTorqueCfgPPO(),
+)
+task_registry.register(
+    "fanfan_rouhe", FanfanRouheRobot, FanfanRouheRoughCfg(), FanfanRouheRoughCfgPPO()
+)
+task_registry.register("h1", H1Robot, H1RoughCfg(), H1RoughCfgPPO())
+task_registry.register("h1_2", H1_2Robot, H1_2RoughCfg(), H1_2RoughCfgPPO())
+task_registry.register("g1", G1Robot, G1RoughCfg(), G1RoughCfgPPO())
 task_registry.register(
     "fanfan_omni_yaw_drift_clean",
     FanfanRobot,
