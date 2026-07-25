@@ -36,6 +36,10 @@ from .dog_torque_straight_v6_config import (
     DogRs01TorqueStraightV6Cfg,
     DogRs01TorqueStraightV6CfgPPO,
 )
+from .dog_torque_straight_v7_config import (
+    DogRs01TorqueStraightV7Cfg,
+    DogRs01TorqueStraightV7CfgPPO,
+)
 from .dog_env import DogRs01Robot
 
 __all__ = [
@@ -68,4 +72,6 @@ __all__ = [
     "DogRs01TorqueStraightV5CfgPPO",
     "DogRs01TorqueStraightV6Cfg",
     "DogRs01TorqueStraightV6CfgPPO",
+    "DogRs01TorqueStraightV7Cfg",
+    "DogRs01TorqueStraightV7CfgPPO",
 ]
