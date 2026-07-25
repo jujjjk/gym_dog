@@ -32,6 +32,12 @@ from .dog_torque_straight_v5_config import (
     DogRs01TorqueStraightV5Cfg,
     DogRs01TorqueStraightV5CfgPPO,
 )
+from .dog_stage2_actuator_config import (
+    DogRs01Stage2ActuatorACfg,
+    DogRs01Stage2ActuatorACfgPPO,
+    DogRs01Stage2ActuatorBCfg,
+    DogRs01Stage2ActuatorBCfgPPO,
+)
 from .dog_env import DogRs01Robot
 
 __all__ = [
@@ -62,4 +68,8 @@ __all__ = [
     "DogRs01StraightGuardedCfgPPO",
     "DogRs01TorqueStraightV5Cfg",
     "DogRs01TorqueStraightV5CfgPPO",
+    "DogRs01Stage2ActuatorACfg",
+    "DogRs01Stage2ActuatorACfgPPO",
+    "DogRs01Stage2ActuatorBCfg",
+    "DogRs01Stage2ActuatorBCfgPPO",
 ]

@@ -40,7 +40,10 @@ def tensor_row(tensor):
 def play_and_record(args):
     env_cfg, train_cfg = task_registry.get_cfgs(name=args.task)
     env_cfg.env.num_envs = 1
-    env_cfg.env.test = True
+    env_cfg.env.test = (
+        os.environ.get("DOG_RECORD_ENV_TEST", "1").strip().lower()
+        not in ("0", "false", "no")
+    )
     env_cfg.terrain.num_rows = 1
     env_cfg.terrain.num_cols = 1
     env_cfg.terrain.curriculum = False
@@ -94,7 +97,16 @@ def play_and_record(args):
 
     joint_names = list(env.dof_names)
     foot_slots = [env.foot_slot_by_leg[leg] for leg in LEGS]
-    headers = build_headers(joint_names, LEGS)
+    reward_names = list(env.reward_names)
+    if "termination" in env.reward_scales:
+        reward_names.append("termination")
+    headers = build_headers(joint_names, LEGS, reward_names)
+    torque_over_duration = {
+        threshold: torch.zeros_like(env.torques)
+        for threshold in (6.0, 12.0, 15.0)
+    }
+    previous_contact = None
+    previous_was_reset = True
 
     max_steps = max(1, int(round(duration_s / float(env.dt))))
     episode = 0
@@ -115,6 +127,7 @@ def play_and_record(args):
                 ].clip(min=0.0)
                 foot_contact = env.get_foot_contact_mask()[:, foot_slots]
                 desired_contact = env._get_desired_foot_contacts()[:, foot_slots]
+                contact_duration = env.feet_contact_time[:, foot_slots]
                 terminal = getattr(env, "terminal_snapshot", None)
                 terminal_frame = bool(
                     dones[0].item()
@@ -124,6 +137,7 @@ def play_and_record(args):
                 if terminal_frame:
                     foot_contact = terminal.contact_mask[:, foot_slots]
                     desired_contact = terminal.desired_contact_mask[:, foot_slots]
+                    contact_duration = terminal.contact_duration_s[:, foot_slots]
                     roll = terminal.rpy[:, 0]
                     pitch = terminal.rpy[:, 1]
                     gait_phase = terminal.phase
@@ -189,6 +203,20 @@ def play_and_record(args):
                 peak_saturation = torch.abs(raw_torque) >= peak_limit
                 active_saturation = torch.abs(raw_torque) >= active_limit
                 motor_abs = torch.abs(motor_torque)
+                for threshold, duration in torque_over_duration.items():
+                    duration.copy_(torch.where(
+                        motor_abs > threshold,
+                        duration + float(env.dt),
+                        torch.zeros_like(duration),
+                    ))
+                if previous_contact is None or previous_was_reset:
+                    touchdown = torch.zeros_like(foot_contact)
+                    takeoff = torch.zeros_like(foot_contact)
+                else:
+                    touchdown = foot_contact & ~previous_contact
+                    takeoff = ~foot_contact & previous_contact
+                previous_contact = foot_contact.clone()
+                previous_was_reset = bool(dones[0].item())
                 terminal_raw_values = (
                     tensor_row(terminal.raw_pd_torques)
                     if terminal_frame else [""] * len(joint_names)
@@ -232,6 +260,9 @@ def play_and_record(args):
                     *tensor_row(foot_force_z),
                     *foot_contact[0].int().detach().cpu().tolist(),
                     *tensor_row(env.feet_pos[:, foot_slots, 2]),
+                    *tensor_row(contact_duration),
+                    *tensor_row(touchdown.int()),
+                    *tensor_row(takeoff.int()),
                     *tensor_row(policy_actions),
                     *tensor_row(env.dof_pos),
                     *tensor_row(env.dof_vel),
@@ -247,10 +278,17 @@ def play_and_record(args):
                     *tensor_row((motor_abs > 6.0).int()),
                     *tensor_row((motor_abs > 12.0).int()),
                     *tensor_row((motor_abs > 15.0).int()),
+                    *tensor_row(torque_over_duration[6.0]),
+                    *tensor_row(torque_over_duration[12.0]),
+                    *tensor_row(torque_over_duration[15.0]),
                     *tensor_row(thermal_rms),
                     *tensor_row(motor_temperature),
                     *terminal_raw_values,
                     *terminal_motor_values,
+                    *[
+                        float(env.reward_term_values[name][0].item())
+                        for name in reward_names
+                    ],
                 ]
                 if len(row) != len(headers):
                     raise RuntimeError(

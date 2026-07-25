@@ -16,6 +16,9 @@ JOINT_SIGNALS = (
     "motor_over_6nm",
     "motor_over_12nm",
     "motor_over_15nm",
+    "motor_over_6_duration_s",
+    "motor_over_12_duration_s",
+    "motor_over_15_duration_s",
     "thermal_rms_ratio",
     "motor_temperature_c",
     "terminal_raw_pd_torque_nm",
@@ -30,7 +33,11 @@ def mask_to_bits(mask):
     return result
 
 
-def build_headers(joint_names, legs=("FL", "FR", "RL", "RR")):
+def build_headers(
+    joint_names,
+    legs=("FL", "FR", "RL", "RR"),
+    reward_names=(),
+):
     headers = [
         "step", "time_s", "episode", "reset", "reset_reason", "reward",
         "cmd_vx_m_s", "cmd_vy_m_s", "cmd_yaw_rad_s",
@@ -47,6 +54,10 @@ def build_headers(joint_names, legs=("FL", "FR", "RL", "RR")):
     headers += [f"foot_force_z_{leg}_n" for leg in legs]
     headers += [f"foot_contact_{leg}" for leg in legs]
     headers += [f"foot_z_{leg}_m" for leg in legs]
+    headers += [f"foot_contact_duration_s_{leg}" for leg in legs]
+    headers += [f"touchdown_event_{leg}" for leg in legs]
+    headers += [f"takeoff_event_{leg}" for leg in legs]
     for signal in JOINT_SIGNALS:
         headers += [f"{signal}_{name}" for name in joint_names]
+    headers += [f"reward_scaled_{name}_per_step" for name in reward_names]
     return headers

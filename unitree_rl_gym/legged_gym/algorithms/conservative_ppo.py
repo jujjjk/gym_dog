@@ -9,6 +9,11 @@ from rsl_rl.algorithms import PPO
 from rsl_rl.runners import OnPolicyRunner
 
 
+def executed_action_delta(policy_mean, reference_mean):
+    """Difference in the normalized action space executed by the environment."""
+    return torch.tanh(policy_mean) - torch.tanh(reference_mean)
+
+
 class ConservativePPO(PPO):
     """Standard PPO with a fixed-reference deterministic-action trust region."""
 
@@ -105,7 +110,9 @@ class ConservativePPO(PPO):
 
             with torch.no_grad():
                 reference_mu = self.reference_actor(obs_batch)
-            reference_delta = mu_batch - reference_mu
+            reference_delta = executed_action_delta(
+                mu_batch, reference_mu
+            )
             reference_loss = torch.mean(torch.square(reference_delta))
             reference_hinge_loss = torch.mean(torch.square(
                 (

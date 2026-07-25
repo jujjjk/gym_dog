@@ -46,6 +46,9 @@ class TerminalSnapshot:
         self.desired_contact_mask = torch.zeros(
             num_envs, num_feet, dtype=torch.bool, device=device
         )
+        self.contact_duration_s = torch.zeros(
+            num_envs, num_feet, device=device
+        )
         self.phase = torch.zeros(num_envs, device=device)
         self.rpy = torch.zeros(num_envs, 3, device=device)
         self.yaw_rate = torch.zeros(num_envs, device=device)
@@ -70,6 +73,7 @@ class TerminalSnapshot:
         illegal_contact_count,
         contact_mask,
         desired_contact_mask,
+        contact_duration_s,
         phase,
         rpy,
         yaw_rate,
@@ -88,6 +92,7 @@ class TerminalSnapshot:
             (self.illegal_contact_count, illegal_contact_count),
             (self.contact_mask, contact_mask),
             (self.desired_contact_mask, desired_contact_mask),
+            (self.contact_duration_s, contact_duration_s),
             (self.phase, phase),
             (self.rpy, rpy),
             (self.yaw_rate, yaw_rate),

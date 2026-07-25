@@ -16,6 +16,7 @@ from legged_gym.envs.dog.telemetry_schema import build_headers
 from legged_gym.utils.checkpoint_adapter import (
     adapt_observation_input_state,
 )
+from legged_gym.algorithms.conservative_ppo import executed_action_delta
 
 
 class ContactStateTests(unittest.TestCase):
@@ -75,6 +76,16 @@ class TorqueDomainTests(unittest.TestCase):
         self.assertTrue(
             torch.all(friction_effect * velocity <= 1.0e-7)
         )
+
+    def test_reference_delta_uses_executed_tanh_space(self):
+        policy = torch.tensor([[4.0, 0.5]])
+        reference = torch.tensor([[3.0, -0.5]])
+        delta = executed_action_delta(policy, reference)
+        self.assertTrue(torch.allclose(
+            delta,
+            torch.tanh(policy) - torch.tanh(reference),
+        ))
+        self.assertLess(float(delta[0, 0]), 0.01)
 
 
 class CheckpointAdapterTests(unittest.TestCase):
@@ -144,6 +155,7 @@ class TerminalAndCsvTests(unittest.TestCase):
             torch.tensor([3], dtype=torch.long),
             torch.tensor([[True, False, False, True]]),
             torch.tensor([[False, True, True, False]]),
+            torch.tensor([[0.20, 0.0, 0.0, 0.18]]),
             torch.tensor([0.75]),
             torch.tensor([[0.1, -0.2, 0.3]]),
             torch.tensor([1.2]),

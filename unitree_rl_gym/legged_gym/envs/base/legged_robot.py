@@ -200,9 +200,12 @@ class LeggedRobot(BaseTask):
             adds each terms to the episode sums and to the total reward
         """
         self.rew_buf[:] = 0.
+        if not hasattr(self, "reward_term_values"):
+            self.reward_term_values = {}
         for i in range(len(self.reward_functions)):
             name = self.reward_names[i]
             rew = self.reward_functions[i]() * self.reward_scales[name]
+            self.reward_term_values[name] = rew
             self.rew_buf += rew
             self.episode_sums[name] += rew
         if self.cfg.rewards.only_positive_rewards:
@@ -210,6 +213,7 @@ class LeggedRobot(BaseTask):
         # add termination reward after clipping
         if "termination" in self.reward_scales:
             rew = self._reward_termination() * self.reward_scales["termination"]
+            self.reward_term_values["termination"] = rew
             self.rew_buf += rew
             self.episode_sums["termination"] += rew
     

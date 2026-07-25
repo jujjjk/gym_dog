@@ -20,6 +20,18 @@ import torch
 
 
 class FanfanRobot(LeggedRobot):
+    def _preserve_thermal_state_on_reset(self):
+        preserve = bool(getattr(
+            self.cfg.control, "preserve_thermal_state_on_reset", False
+        ))
+        if getattr(self.cfg.env, "test", False):
+            preserve |= bool(getattr(
+                self.cfg.control,
+                "preserve_thermal_state_in_test",
+                False,
+            ))
+        return preserve
+
     def _recovery_curriculum_progress(self):
         end = float(getattr(
             self.cfg.domain_rand, "recovery_curriculum_end_iteration", 0.0
@@ -300,7 +312,25 @@ class FanfanRobot(LeggedRobot):
         self.torque_clip_error = torch.zeros_like(self.torques)
         self.torque_ema = torch.zeros_like(self.torques)
         self.motor_torque_ema = torch.zeros_like(self.torques)
-        self.thermal_torque_sq_ema = torch.zeros_like(self.torques)
+        initial_thermal_ratio = float(getattr(
+            self.cfg.control,
+            "continuous_torque_initial_thermal_ratio",
+            0.0,
+        ))
+        thermal_reset_range = getattr(
+            self.cfg.control, "thermal_reset_ratio_range", None
+        )
+        if not self._preserve_thermal_state_on_reset():
+            if thermal_reset_range is not None:
+                initial_thermal_ratio = 0.5 * (
+                    float(thermal_reset_range[0])
+                    + float(thermal_reset_range[1])
+                )
+            else:
+                initial_thermal_ratio = 0.0
+        self.thermal_torque_sq_ema = torch.full_like(
+            self.torques, initial_thermal_ratio * initial_thermal_ratio
+        )
         initial_motor_temperature = float(getattr(
             self.cfg.control, "motor_temperature_initial_c", 30.0
         ))
@@ -580,6 +610,7 @@ class FanfanRobot(LeggedRobot):
             self.non_diagonal_swing_counter,
             self.get_foot_contact_mask(),
             self._get_desired_foot_contacts(),
+            self.feet_contact_time,
             self.gait_phase,
             self.rpy,
             self.base_ang_vel[:, 2],
@@ -1545,12 +1576,39 @@ class FanfanRobot(LeggedRobot):
             "continuous_torque_initial_thermal_ratio",
             0.0,
         ))
-        self.thermal_torque_sq_ema[env_ids] = (
-            initial_thermal_ratio * initial_thermal_ratio
-        )
-        self.motor_temperature_c[env_ids] = float(getattr(
-            self.cfg.control, "motor_temperature_initial_c", 30.0
-        ))
+        if not self._preserve_thermal_state_on_reset():
+            thermal_reset_range = getattr(
+                self.cfg.control, "thermal_reset_ratio_range", None
+            )
+            if thermal_reset_range is None:
+                reset_ratio = torch.full(
+                    (len(env_ids), self.num_actions),
+                    initial_thermal_ratio,
+                    dtype=torch.float,
+                    device=self.device,
+                )
+            else:
+                reset_ratio = torch_rand_float(
+                    float(thermal_reset_range[0]),
+                    float(thermal_reset_range[1]),
+                    (len(env_ids), self.num_actions),
+                    device=self.device,
+                )
+            self.thermal_torque_sq_ema[env_ids] = torch.square(reset_ratio)
+            temperature_range = getattr(
+                self.cfg.control, "motor_temperature_reset_range_c", None
+            )
+            if temperature_range is None:
+                self.motor_temperature_c[env_ids] = float(getattr(
+                    self.cfg.control, "motor_temperature_initial_c", 30.0
+                ))
+            else:
+                self.motor_temperature_c[env_ids] = torch_rand_float(
+                    float(temperature_range[0]),
+                    float(temperature_range[1]),
+                    (len(env_ids), self.num_actions),
+                    device=self.device,
+                )
         self.torque_clip_error[env_ids] = 0.0
         self.raw_pd_torques[env_ids] = 0.0
         self.last_raw_pd_torques[env_ids] = 0.0
