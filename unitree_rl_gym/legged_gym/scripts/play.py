@@ -31,8 +31,6 @@ def play(args):
         "dog_rs01_smooth_straight_v2",
         "dog_rs01_straight_guarded",
         "dog_rs01_torque_straight_v5",
-        "dog_rs01_rated_torque_v6",
-        "dog_rs01_torque_from9200_v7",
     ):
         env_cfg.env.num_envs = 1
         env_cfg.commands.ranges.lin_vel_x = [0.15, 0.15]
@@ -49,8 +47,6 @@ def play(args):
             "dog_rs01_smooth_straight_v2",
             "dog_rs01_straight_guarded",
             "dog_rs01_torque_straight_v5",
-            "dog_rs01_rated_torque_v6",
-            "dog_rs01_torque_from9200_v7",
         ):
             env_cfg.commands.ranges.lin_vel_x = [0.16, 0.16]
         env_cfg.env.test = True
