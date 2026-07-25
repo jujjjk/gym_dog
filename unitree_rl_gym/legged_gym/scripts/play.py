@@ -31,6 +31,8 @@ def play(args):
         "dog_rs01_smooth_straight_v2",
         "dog_rs01_straight_guarded",
         "dog_rs01_torque_straight_v5",
+        "dog_rs01_stage2_actuator_a",
+        "dog_rs01_stage2_actuator_b",
     ):
         env_cfg.env.num_envs = 1
         env_cfg.commands.ranges.lin_vel_x = [0.15, 0.15]
@@ -42,6 +44,11 @@ def play(args):
         env_cfg.domain_rand.randomize_gait_phase_on_reset = False
         if args.task in ("dog_rs01_safe6nm", "dog_rs01_safe6nm_v2"):
             env_cfg.commands.ranges.lin_vel_x = [0.12, 0.12]
+        elif args.task in (
+            "dog_rs01_stage2_actuator_a",
+            "dog_rs01_stage2_actuator_b",
+        ):
+            env_cfg.commands.ranges.lin_vel_x = [0.10, 0.10]
         elif args.task in (
             "dog_rs01_smooth_straight",
             "dog_rs01_smooth_straight_v2",
