@@ -9,6 +9,8 @@ import torch
 
 from legged_gym import LEGGED_GYM_ROOT_DIR
 from legged_gym.envs import *  # noqa: F401,F403 - registers tasks
+from legged_gym.envs.base.terminal_snapshot import format_reset_reason
+from legged_gym.envs.dog.telemetry_schema import build_headers, mask_to_bits
 from legged_gym.utils import get_args, task_registry
 
 
@@ -92,47 +94,7 @@ def play_and_record(args):
 
     joint_names = list(env.dof_names)
     foot_slots = [env.foot_slot_by_leg[leg] for leg in LEGS]
-    headers = [
-        "step",
-        "time_s",
-        "episode",
-        "reset",
-        "reward",
-        "cmd_vx_m_s",
-        "cmd_vy_m_s",
-        "cmd_yaw_rad_s",
-        "base_x_m",
-        "base_y_m",
-        "base_z_m",
-        "base_roll_rad",
-        "base_pitch_rad",
-        "base_yaw_rad",
-        "body_vx_m_s",
-        "body_vy_m_s",
-        "body_vz_m_s",
-        "body_roll_rate_rad_s",
-        "body_pitch_rate_rad_s",
-        "body_yaw_rate_rad_s",
-        "gait_phase",
-        "flight",
-        "all_feet_contact",
-    ]
-    headers += [f"foot_force_z_{leg}_n" for leg in LEGS]
-    headers += [f"foot_contact_{leg}" for leg in LEGS]
-    headers += [f"foot_z_{leg}_m" for leg in LEGS]
-    for signal in (
-        "policy_action",
-        "dof_pos_rad",
-        "dof_vel_rad_s",
-        "target_pos_rad",
-        "raw_torque_nm",
-        "motor_torque_nm",
-        "applied_torque_nm",
-        "thermal_rms_ratio",
-        "motor_temperature_c",
-        "active_torque_limit_nm",
-    ):
-        headers += [f"{signal}_{name}" for name in joint_names]
+    headers = build_headers(joint_names, LEGS)
 
     max_steps = max(1, int(round(duration_s / float(env.dt))))
     episode = 0
@@ -151,14 +113,65 @@ def play_and_record(args):
                 foot_force_z = env.contact_forces[
                     :, env.feet_indices[foot_slots], 2
                 ].clip(min=0.0)
-                foot_contact = foot_force_z > float(
-                    getattr(env.cfg.rewards, "contact_force_threshold", 1.0)
+                foot_contact = env.get_foot_contact_mask()[:, foot_slots]
+                desired_contact = env._get_desired_foot_contacts()[:, foot_slots]
+                terminal = getattr(env, "terminal_snapshot", None)
+                terminal_frame = bool(
+                    dones[0].item()
+                    and terminal is not None
+                    and terminal.valid[0].item()
                 )
+                if terminal_frame:
+                    foot_contact = terminal.contact_mask[:, foot_slots]
+                    desired_contact = terminal.desired_contact_mask[:, foot_slots]
+                    roll = terminal.rpy[:, 0]
+                    pitch = terminal.rpy[:, 1]
+                    gait_phase = terminal.phase
+                    raw_torque = terminal.raw_pd_torques
+                    motor_torque = (
+                        terminal.motor_electromagnetic_torques
+                    )
+                    applied_torque = terminal.applied_joint_torques
+                    peak_limit = terminal.peak_torque_limits
+                    active_limit = terminal.active_torque_limits
+                    illegal_contact_count = int(
+                        terminal.illegal_contact_count[0].item()
+                    )
+                    reset_reason = format_reset_reason(
+                        terminal.reset_reason_bits[0].item()
+                    )
+                    terminal_contact_mask = mask_to_bits(
+                        tensor_row(terminal.contact_mask[:, foot_slots])
+                    )
+                    terminal_phase = float(terminal.phase[0].item())
+                    terminal_roll = float(terminal.rpy[0, 0].item())
+                    terminal_pitch = float(terminal.rpy[0, 1].item())
+                    terminal_yaw_rate = float(
+                        terminal.yaw_rate[0].item()
+                    )
+                else:
+                    gait_phase = getattr(
+                        env,
+                        "gait_phase",
+                        torch.zeros(env.num_envs, device=env.device),
+                    )
+                    raw_torque = env.raw_pd_torques
+                    motor_torque = env.motor_electromagnetic_torques
+                    applied_torque = env.applied_joint_torques
+                    peak_limit = env._active_episode_torque_limits()
+                    active_limit = env.active_motor_torque_limits
+                    illegal_contact_count = int(
+                        env.non_diagonal_swing_counter[0].item()
+                    )
+                    reset_reason = "none"
+                    terminal_contact_mask = ""
+                    terminal_phase = ""
+                    terminal_roll = ""
+                    terminal_pitch = ""
+                    terminal_yaw_rate = ""
                 flight = ~torch.any(foot_contact, dim=1)
                 all_contact = torch.all(foot_contact, dim=1)
                 target_pos = getattr(env, "target_dof_pos_rl", env.dof_pos)
-                raw_torque = getattr(env, "raw_torques", env.torques)
-                motor_torque = getattr(env, "motor_torques", env.torques)
                 thermal_rms = torch.sqrt(
                     getattr(
                         env,
@@ -171,16 +184,20 @@ def play_and_record(args):
                     "motor_temperature_c",
                     torch.zeros_like(env.torques),
                 )
-                active_limit = getattr(
-                    env,
-                    "active_motor_torque_limits",
-                    env.torque_limits.unsqueeze(0),
-                )
                 policy_actions = getattr(env, "policy_actions", actions)
-                gait_phase = getattr(
-                    env,
-                    "gait_phase",
-                    torch.zeros(env.num_envs, device=env.device),
+                raw_over_17 = torch.abs(raw_torque) > 17.0
+                peak_saturation = torch.abs(raw_torque) >= peak_limit
+                active_saturation = torch.abs(raw_torque) >= active_limit
+                motor_abs = torch.abs(motor_torque)
+                terminal_raw_values = (
+                    tensor_row(terminal.raw_pd_torques)
+                    if terminal_frame else [""] * len(joint_names)
+                )
+                terminal_motor_values = (
+                    tensor_row(
+                        terminal.motor_electromagnetic_torques
+                    )
+                    if terminal_frame else [""] * len(joint_names)
                 )
 
                 row = [
@@ -188,6 +205,7 @@ def play_and_record(args):
                     step * float(env.dt),
                     episode,
                     int(dones[0].item()),
+                    reset_reason,
                     float(rewards[0].item()),
                     float(env.commands[0, 0].item()),
                     float(env.commands[0, 1].item()),
@@ -203,6 +221,14 @@ def play_and_record(args):
                     float(gait_phase[0].item()),
                     int(flight[0].item()),
                     int(all_contact[0].item()),
+                    mask_to_bits(tensor_row(foot_contact)),
+                    mask_to_bits(tensor_row(desired_contact)),
+                    illegal_contact_count,
+                    terminal_contact_mask,
+                    terminal_phase,
+                    terminal_roll,
+                    terminal_pitch,
+                    terminal_yaw_rate,
                     *tensor_row(foot_force_z),
                     *foot_contact[0].int().detach().cpu().tolist(),
                     *tensor_row(env.feet_pos[:, foot_slots, 2]),
@@ -212,11 +238,25 @@ def play_and_record(args):
                     *tensor_row(target_pos),
                     *tensor_row(raw_torque),
                     *tensor_row(motor_torque),
-                    *tensor_row(env.torques),
+                    *tensor_row(applied_torque),
+                    *tensor_row(peak_limit),
+                    *tensor_row(active_limit),
+                    *tensor_row(raw_over_17.int()),
+                    *tensor_row(peak_saturation.int()),
+                    *tensor_row(active_saturation.int()),
+                    *tensor_row((motor_abs > 6.0).int()),
+                    *tensor_row((motor_abs > 12.0).int()),
+                    *tensor_row((motor_abs > 15.0).int()),
                     *tensor_row(thermal_rms),
                     *tensor_row(motor_temperature),
-                    *tensor_row(active_limit),
+                    *terminal_raw_values,
+                    *terminal_motor_values,
                 ]
+                if len(row) != len(headers):
+                    raise RuntimeError(
+                        f"CSV schema mismatch: {len(row)} values for "
+                        f"{len(headers)} headers"
+                    )
                 writer.writerow(row)
                 if bool(dones[0].item()):
                     episode += 1

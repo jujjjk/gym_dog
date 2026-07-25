@@ -54,10 +54,7 @@ class DogRs01Robot(FanfanRobot):
         super().check_termination()
 
     def _get_foot_air_mask(self):
-        threshold = float(
-            getattr(self.cfg.rewards, "foot_contact_force_threshold", 1.0)
-        )
-        return self.contact_forces[:, self.feet_indices, 2] <= threshold
+        return super().get_foot_air_mask()
 
     def _get_rear_pair_air_mask(self):
         air = self._get_foot_air_mask()
@@ -252,7 +249,7 @@ class DogRs01Robot(FanfanRobot):
             )
 
         ratio = (
-            torch.abs(self.raw_torques[:, indices])
+            torch.abs(self.raw_pd_torques[:, indices])
             / self._active_episode_torque_limits()[:, indices]
         )
         usage = ((ratio - 0.55) / 0.8).clip(0.0, 1.0)
@@ -379,7 +376,7 @@ class DogRs01Robot(FanfanRobot):
             )
 
         ratio = (
-            torch.abs(self.raw_torques[:, indices])
+            torch.abs(self.raw_pd_torques[:, indices])
             / self._active_episode_torque_limits()[:, indices]
         )
         excess = (ratio - 0.7).clip(min=0.0, max=1.5)
@@ -445,7 +442,10 @@ class DogRs01Robot(FanfanRobot):
         term begins at 35% of each episode's real RS01 limit and therefore
         teaches the policy to unload thigh/calf motors before clipping.
         """
-        ratio = torch.abs(self.raw_torques) / self._active_episode_torque_limits()
+        ratio = (
+            torch.abs(self.raw_pd_torques)
+            / self._active_episode_torque_limits()
+        )
         excess = (ratio - 0.35).clip(min=0.0, max=1.5)
         return torch.mean((torch.square(excess)), dim=1) * (
             1.0 - self._stand_command_gate()
@@ -526,7 +526,10 @@ class DogRs01Robot(FanfanRobot):
 
     def _reward_motor_continuous_usage(self):
         """Dense motor-output cost referenced to the 6 Nm continuous rating."""
-        ratio = torch.abs(self.motor_torques) / self._continuous_torque_ratings()
+        ratio = (
+            torch.abs(self.motor_electromagnetic_torques)
+            / self._continuous_torque_ratings()
+        )
         excess = (ratio - 0.65).clip(min=0.0, max=1.5)
         return (
             torch.mean((torch.square(excess)), dim=1)
@@ -536,7 +539,10 @@ class DogRs01Robot(FanfanRobot):
 
     def _reward_motor_continuous_overload(self):
         """Penalize instantaneous use above the continuous motor rating."""
-        ratio = torch.abs(self.motor_torques) / self._continuous_torque_ratings()
+        ratio = (
+            torch.abs(self.motor_electromagnetic_torques)
+            / self._continuous_torque_ratings()
+        )
         excess = (ratio - 1.0).clip(min=0.0, max=1.5)
         return (
             torch.mean((torch.square(excess)), dim=1)

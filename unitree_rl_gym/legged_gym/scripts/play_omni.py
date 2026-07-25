@@ -251,16 +251,15 @@ def play(args):
                     getattr(env, "target_dof_pos_rl", env.dof_pos)
                     - env.default_dof_pos
                 )
-                raw_torques = getattr(env, "raw_torques", env.torques)
+                raw_torques = getattr(
+                    env, "raw_pd_torques", env.torques
+                )
                 foot_slots = [
                     env.foot_slot_by_leg[leg]
                     for leg in ("FL", "FR", "RL", "RR")
                 ]
                 foot_z = env.feet_pos[:, foot_slots, 2]
-                foot_contact = (
-                    env.contact_forces[:, env.feet_indices[foot_slots], 2]
-                    > 1.0
-                )
+                foot_contact = env.get_foot_contact_mask()[:, foot_slots]
 
                 for eid in range(env.num_envs):
                     log_writer.writerow([

@@ -16,6 +16,10 @@ from legged_gym.envs.base.base_task import BaseTask
 from legged_gym.utils.math import wrap_to_pi
 from legged_gym.utils.isaacgym_utils import get_euler_xyz as get_euler_xyz_in_tensor
 from legged_gym.utils.helpers import class_to_dict
+from legged_gym.envs.base.contact_state import (
+    update_contact_mask,
+    validate_contact_thresholds,
+)
 from .legged_robot_config import LeggedRobotCfg
 
 class LeggedRobot(BaseTask):
@@ -98,10 +102,12 @@ class LeggedRobot(BaseTask):
         self.base_ang_vel[:] = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
         self.projected_gravity[:] = quat_rotate_inverse(self.base_quat, self.gravity_vec)
 
+        self._update_foot_contact_state()
         self._post_physics_step_callback()
 
         # compute observations, rewards, resets, ...
         self.check_termination()
+        self._capture_terminal_snapshot()
         self.compute_reward()
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         self.reset_idx(env_ids)
@@ -118,10 +124,36 @@ class LeggedRobot(BaseTask):
     def check_termination(self):
         """ Check if environments need to be reset
         """
-        self.reset_buf = torch.any(torch.norm(self.contact_forces[:, self.termination_contact_indices, :], dim=-1) > 1., dim=1)
+        self.reset_buf = torch.any(
+            torch.norm(
+                self.contact_forces[:, self.termination_contact_indices, :],
+                dim=-1,
+            ) >= self.foot_contact_enter_force_n,
+            dim=1,
+        )
         self.reset_buf |= torch.logical_or(torch.abs(self.rpy[:,1])>1.0, torch.abs(self.rpy[:,0])>0.8)
         self.time_out_buf = self.episode_length_buf > self.max_episode_length # no terminal reward for time-outs
         self.reset_buf |= self.time_out_buf
+
+    def _capture_terminal_snapshot(self):
+        """Hook for tasks that preserve terminal telemetry across reset."""
+        return
+
+    def _update_foot_contact_state(self):
+        vertical_force_n = self.contact_forces[:, self.feet_indices, 2]
+        self.foot_contact_mask.copy_(update_contact_mask(
+            vertical_force_n,
+            self.foot_contact_mask,
+            self.foot_contact_enter_force_n,
+            self.foot_contact_release_force_n,
+        ))
+
+    def get_foot_contact_mask(self):
+        """The sole public foot-contact decision used by task logic."""
+        return self.foot_contact_mask
+
+    def get_foot_air_mask(self):
+        return ~self.get_foot_contact_mask()
 
     def reset_idx(self, env_ids):
         """ Reset some environments.
@@ -147,6 +179,8 @@ class LeggedRobot(BaseTask):
         self.last_actions[env_ids] = 0.
         self.last_dof_vel[env_ids] = 0.
         self.feet_air_time[env_ids] = 0.
+        self.foot_contact_mask[env_ids] = False
+        self.last_contacts[env_ids] = False
         self.episode_length_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
         # fill extras
@@ -458,6 +492,25 @@ class LeggedRobot(BaseTask):
         self.commands_scale = torch.tensor([self.obs_scales.lin_vel, self.obs_scales.lin_vel, self.obs_scales.ang_vel], device=self.device, requires_grad=False,) # TODO change this
         self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
         self.last_contacts = torch.zeros(self.num_envs, len(self.feet_indices), dtype=torch.bool, device=self.device, requires_grad=False)
+        enter_force_n = float(getattr(
+            self.cfg.rewards, "foot_contact_force_threshold", 2.0
+        ))
+        release_force_n = float(getattr(
+            self.cfg.rewards,
+            "foot_contact_release_force_threshold",
+            enter_force_n,
+        ))
+        (
+            self.foot_contact_enter_force_n,
+            self.foot_contact_release_force_n,
+        ) = validate_contact_thresholds(enter_force_n, release_force_n)
+        self.foot_contact_mask = torch.zeros(
+            self.num_envs,
+            len(self.feet_indices),
+            dtype=torch.bool,
+            device=self.device,
+            requires_grad=False,
+        )
         self.base_lin_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
         self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
         self.projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)
@@ -703,7 +756,7 @@ class LeggedRobot(BaseTask):
     def _reward_feet_air_time(self):
         # Reward long steps
         # Need to filter the contacts because the contact reporting of PhysX is unreliable on meshes
-        contact = self.contact_forces[:, self.feet_indices, 2] > 1.
+        contact = self.get_foot_contact_mask()
         contact_filt = torch.logical_or(contact, self.last_contacts) 
         self.last_contacts = contact
         first_contact = (self.feet_air_time > 0.) * contact_filt

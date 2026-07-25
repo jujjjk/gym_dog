@@ -87,6 +87,9 @@ class DogRs01TrotCfg(_Direct12Cfg):
         diagonal_pair_lift_target_height = 0.025
         swing_clearance_minimum = 0.018
         foot_contact_force_threshold = 2.0
+        # Centralized contact hysteresis. Equal thresholds preserve the
+        # audited 2 N behavior while keeping the interface debounce-ready.
+        foot_contact_release_force_threshold = 2.0
         max_foot_contact_time_s = 0.43
         foot_contact_time_penalty_saturation_s = 0.18
         max_all_feet_contact_time_s = 0.1

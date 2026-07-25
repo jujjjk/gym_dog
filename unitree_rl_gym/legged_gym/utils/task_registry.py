@@ -4,6 +4,9 @@ from typing import Tuple
 import torch, numpy as np, sys
 from rsl_rl.env import VecEnv
 from rsl_rl.runners import OnPolicyRunner
+from legged_gym.utils.checkpoint_adapter import (
+    adapt_observation_input_state,
+)
 from legged_gym.algorithms import (
     ConservativeOnPolicyRunner,
     PhaseResidualOnPolicyRunner,
@@ -164,33 +167,22 @@ class TaskRegistry:
                 loaded = torch.load(resume_path, map_location=(args.rl_device))
                 loaded_state = loaded["model_state_dict"]
                 current_state = runner.alg.actor_critic.state_dict()
-                adapted = []
-                for key in ("actor.0.weight", "critic.0.weight"):
-                    old_weight = loaded_state[key]
-                    new_weight = current_state[key]
-                    if old_weight.shape == new_weight.shape:
-                        pass
-                    else:
-                        if (
-                            old_weight.ndim != 2
-                            or new_weight.ndim != 2
-                            or new_weight.ndim != 2
-                            or old_weight.shape[1] > new_weight.shape[1]
-                        ):
-                            raise ValueError(
-                                f"Observation adapter only supports widening the first input layer, got {key}: {tuple(old_weight.shape)} -> {tuple(new_weight.shape)}"
-                            )
-                        widened = torch.zeros_like(new_weight)
-                        widened[:, : old_weight.shape[1]] = old_weight
-                        loaded_state[key] = widened
-                        adapted.append(
-                            f"{key} {old_weight.shape[1]}->{new_weight.shape[1]}"
-                        )
-                    runner.alg.actor_critic.load_state_dict(loaded_state)
+                loaded_state, adapted = adapt_observation_input_state(
+                    loaded_state, current_state
+                )
+                # Strict loading is deliberately performed once, only after
+                # both actor and critic input layers have been adapted.
+                runner.alg.actor_critic.load_state_dict(
+                    loaded_state, strict=True
+                )
 
-                if load_optimizer:
+                if load_optimizer and adapted:
                     raise ValueError(
                         "Optimizer state cannot be loaded after widening the observation input"
+                    )
+                if load_optimizer:
+                    runner.alg.optimizer.load_state_dict(
+                        loaded["optimizer_state_dict"]
                     )
                 runner.current_learning_iteration = loaded.get("iter", 0)
                 print(

@@ -1,4 +1,13 @@
 from legged_gym.envs.base.legged_robot import LeggedRobot
+from legged_gym.envs.base.actuator_torque import (
+    apply_coulomb_friction,
+    limit_electromagnetic_torque,
+)
+from legged_gym.envs.base.contact_state import update_consecutive_true_count
+from legged_gym.envs.base.terminal_snapshot import (
+    RESET_REASON_BITS,
+    TerminalSnapshot,
+)
 from isaacgym import gymtorch
 from isaacgym.torch_utils import (
     quat_from_euler_xyz,
@@ -268,14 +277,24 @@ class FanfanRobot(LeggedRobot):
             dtype=torch.long,
             device=self.device,
         )
-        self.raw_torques = torch.zeros_like(self.torques)
-        self.last_raw_torques = torch.zeros_like(self.torques)
-        self.motor_torques = torch.zeros_like(self.torques)
+        self.raw_pd_torques = torch.zeros_like(self.torques)
+        self.last_raw_pd_torques = torch.zeros_like(self.torques)
+        self.motor_electromagnetic_torques = torch.zeros_like(self.torques)
+        self.applied_joint_torques = torch.zeros_like(self.torques)
         # Actual per-step motor command ceiling after peak clipping and
         # continuous-torque thermal derating.  Keep this separate from the
         # episode peak limit so the policy can observe the headroom it really
         # has on the current control step.
         self.active_motor_torque_limits = torch.zeros_like(self.torques)
+        self.reset_reason_bits = torch.zeros(
+            self.num_envs, dtype=torch.long, device=self.device
+        )
+        self.terminal_snapshot = TerminalSnapshot(
+            self.num_envs,
+            len(self.feet_indices),
+            self.num_actions,
+            self.device,
+        )
         self.motor_strength = torch.ones_like(self.torques)
         self.target_dof_pos_rl = self.default_dof_pos.repeat(self.num_envs, 1)
         self.torque_clip_error = torch.zeros_like(self.torques)
@@ -546,7 +565,30 @@ class FanfanRobot(LeggedRobot):
     def post_physics_step(self):
         """Retain the previous 50 Hz raw motor request for rate penalties."""
         super().post_physics_step()
-        self.last_raw_torques[:] = self.raw_torques
+        self.last_raw_pd_torques[:] = self.raw_pd_torques
+
+    def _add_reset_reason(self, condition, name):
+        self.reset_reason_bits |= (
+            condition.to(torch.long) * RESET_REASON_BITS[name]
+        )
+
+    def _capture_terminal_snapshot(self):
+        peak_limits = self._active_episode_torque_limits()
+        self.terminal_snapshot.capture(
+            self.reset_buf,
+            self.reset_reason_bits,
+            self.non_diagonal_swing_counter,
+            self.get_foot_contact_mask(),
+            self._get_desired_foot_contacts(),
+            self.gait_phase,
+            self.rpy,
+            self.base_ang_vel[:, 2],
+            self.raw_pd_torques,
+            self.motor_electromagnetic_torques,
+            self.applied_joint_torques,
+            peak_limits,
+            self.active_motor_torque_limits,
+        )
 
     def _compute_torques(self, actions):
         target_dof_pos = self._compute_raw_joint_target(actions)
@@ -581,10 +623,6 @@ class FanfanRobot(LeggedRobot):
         raw_torques = self.motor_strength * (
             kp * (target_dof_pos - measured_dof_pos) - kd * self.dof_vel
         )
-        peak_clipped_torques = torch.maximum(
-            torch.minimum(raw_torques, torque_limits), -torque_limits
-        )
-        motor_torques = peak_clipped_torques
         active_limits = torque_limits
         if getattr(
             self.cfg.control, "apply_continuous_torque_derating", False
@@ -641,14 +679,23 @@ class FanfanRobot(LeggedRobot):
                 torque_limits
                 + derating_blend * (derated_limits - torque_limits)
             )
-            motor_torques = torch.maximum(
-                torch.minimum(raw_torques, active_limits), -active_limits
-            )
+        # The electromagnetic output is the current-proportional motor
+        # torque after both the peak ceiling and the active thermal derating.
+        # It is intentionally independent from the net joint torque below.
+        active_limits = torch.minimum(active_limits, torque_limits)
+        motor_electromagnetic_torques = limit_electromagnetic_torque(
+            raw_torques, active_limits
+        )
 
-        torque_clip_error = raw_torques - motor_torques
-        self.motor_torques = motor_torques
+        torque_clip_error = raw_torques - motor_electromagnetic_torques
+        self.motor_electromagnetic_torques.copy_(
+            motor_electromagnetic_torques
+        )
         self.active_motor_torque_limits[:] = active_limits
 
+        # Thermal load is driven by electromagnetic torque: winding copper
+        # loss scales with motor current squared. Coulomb friction is a
+        # mechanical output loss and therefore must not enter this I^2 state.
         rated = self._continuous_torque_ratings()
         thermal_time_constant = max(float(getattr(
             self.cfg.control,
@@ -659,7 +706,7 @@ class FanfanRobot(LeggedRobot):
             -self.sim_params.dt / thermal_time_constant
         ))
         normalized_motor_sq = torch.square(
-            torch.abs(motor_torques) / rated
+            torch.abs(motor_electromagnetic_torques) / rated
         )
         self.thermal_torque_sq_ema = (
             thermal_alpha * self.thermal_torque_sq_ema
@@ -697,24 +744,29 @@ class FanfanRobot(LeggedRobot):
         ))
         self.motor_torque_ema = (
             motor_ema_alpha * self.motor_torque_ema
-            + (1.0 - motor_ema_alpha) * torch.abs(motor_torques)
+            + (1.0 - motor_ema_alpha)
+            * torch.abs(motor_electromagnetic_torques)
         )
 
-        clipped_torques = motor_torques
+        applied_joint_torques = motor_electromagnetic_torques.clone()
         if self.use_real_actuator_model:
             # Limit the commanded motor output first. Internal Coulomb
             # friction then reduces the torque delivered to the joint; it
             # must not create hidden command headroom above the safety cap.
-            smoothing = max(float(getattr(
+            smoothing = float(getattr(
                 self.cfg.control,
                 "coulomb_friction_velocity_smoothing_rad_s",
                 0.05,
-            )), 1.0e-4)
-            clipped_torques -= self.actuator_coulomb_friction * torch.tanh(
-                self.dof_vel / smoothing
+            ))
+            applied_joint_torques = apply_coulomb_friction(
+                motor_electromagnetic_torques,
+                self.dof_vel,
+                self.actuator_coulomb_friction,
+                smoothing,
             )
 
-        self.raw_torques = raw_torques
+        self.raw_pd_torques.copy_(raw_torques)
+        self.applied_joint_torques.copy_(applied_joint_torques)
         self.target_dof_pos_rl = target_dof_pos
         self.torque_clip_error = torque_clip_error
         ema_alpha = float(getattr(
@@ -725,7 +777,7 @@ class FanfanRobot(LeggedRobot):
             + (1.0 - ema_alpha) * torch.abs(raw_torques)
         )
         self._update_torque_metrics(raw_torques)
-        return clipped_torques
+        return applied_joint_torques
 
     def _compute_raw_joint_target(self, actions):
         """Build default + policy + continuously-scaled reference gait."""
@@ -1391,7 +1443,7 @@ class FanfanRobot(LeggedRobot):
 
     def _update_torque_metrics(self, raw_torques):
         abs_raw = torch.abs(raw_torques)
-        abs_motor = torch.abs(self.motor_torques)
+        abs_motor = torch.abs(self.motor_electromagnetic_torques)
         torque_limits = self._active_episode_torque_limits()
         continuous_ratings = self._continuous_torque_ratings()
 
@@ -1500,9 +1552,10 @@ class FanfanRobot(LeggedRobot):
             self.cfg.control, "motor_temperature_initial_c", 30.0
         ))
         self.torque_clip_error[env_ids] = 0.0
-        self.raw_torques[env_ids] = 0.0
-        self.last_raw_torques[env_ids] = 0.0
-        self.motor_torques[env_ids] = 0.0
+        self.raw_pd_torques[env_ids] = 0.0
+        self.last_raw_pd_torques[env_ids] = 0.0
+        self.motor_electromagnetic_torques[env_ids] = 0.0
+        self.applied_joint_torques[env_ids] = 0.0
         self.active_motor_torque_limits[env_ids] = (
             self._active_episode_torque_limits()[env_ids]
             if self.use_real_actuator_model
@@ -1927,12 +1980,7 @@ class FanfanRobot(LeggedRobot):
         self.gym.refresh_rigid_body_state_tensor(self.sim)
         self.feet_state = self.rigid_body_states_view[:, self.feet_indices, :]
         self.feet_pos = self.feet_state[:, :, :3]
-        contact_threshold = float(getattr(
-            self.cfg.rewards, "foot_contact_force_threshold", 1.0
-        ))
-        foot_contact = (
-            self.contact_forces[:, self.feet_indices, 2] > contact_threshold
-        )
+        foot_contact = self.get_foot_contact_mask()
         self.feet_contact_time[:] = torch.where(
             foot_contact,
             self.feet_contact_time + self.dt,
@@ -2019,6 +2067,15 @@ class FanfanRobot(LeggedRobot):
         # A large impulse on one toe must not release the previous diagonal.
         # Require both toes of the arriving physical diagonal to be in
         # contact and the pair to carry a useful minimum load.
+        contact = self.get_foot_contact_mask()
+        fl_rr_ready &= (
+            contact[:, self.foot_slot_by_leg["FL"]]
+            & contact[:, self.foot_slot_by_leg["RR"]]
+        )
+        fr_rl_ready &= (
+            contact[:, self.foot_slot_by_leg["FR"]]
+            & contact[:, self.foot_slot_by_leg["RL"]]
+        )
         fl_rr_support, fr_rl_support = self._get_diagonal_support_scores()
         fl_rr_ready &= fl_rr_support >= 1.0
         fr_rl_ready &= fr_rl_support >= 1.0
@@ -2242,7 +2299,7 @@ class FanfanRobot(LeggedRobot):
                 < float(noise.velocity_zero_fraction)
             )
 
-        true_contact = self.contact_forces[:, self.feet_indices, 2] > 1.0
+        true_contact = self.get_foot_contact_mask()
         flip = torch.rand_like(true_contact.float()) < float(
             noise.contact_misclassification_probability
         )
@@ -2446,7 +2503,7 @@ class FanfanRobot(LeggedRobot):
         if getattr(self.cfg.env, "observe_actuator_state", False):
             continuous = self._continuous_torque_ratings()
             motor_torque_obs = (
-                self.motor_torques / continuous
+                self.motor_electromagnetic_torques / continuous
             ).clip(-2.5, 2.5)
             # Match the two fields available in the real RS01 type-2 feedback
             # packet: reported torque and motor temperature. Thermal RMS and
@@ -2737,6 +2794,21 @@ class FanfanRobot(LeggedRobot):
 
     def check_termination(self):
         super().check_termination()
+        self.reset_reason_bits.zero_()
+        trunk_contact = torch.any(
+            torch.norm(
+                self.contact_forces[:, self.termination_contact_indices, :],
+                dim=-1,
+            ) >= self.foot_contact_enter_force_n,
+            dim=1,
+        )
+        orientation = torch.logical_or(
+            torch.abs(self.rpy[:, 1]) > 1.0,
+            torch.abs(self.rpy[:, 0]) > 0.8,
+        )
+        self._add_reset_reason(trunk_contact, "trunk_contact")
+        self._add_reset_reason(orientation, "orientation")
+        self._add_reset_reason(self.time_out_buf, "timeout")
         if getattr(
             self.cfg.rewards,
             "enable_flight_termination",
@@ -2751,7 +2823,9 @@ class FanfanRobot(LeggedRobot):
             # Unlike other invalid multi-foot patterns, complete flight has
             # no contact ambiguity worth tolerating: one 50 Hz sample is
             # enough to reject a hopping cycle.
-            self.reset_buf |= grace & locomotion & self._get_flight_mask()
+            flight_failure = grace & locomotion & self._get_flight_mask()
+            self.reset_buf |= flight_failure
+            self._add_reset_reason(flight_failure, "flight")
         if getattr(
             self.cfg.rewards,
             "enable_non_diagonal_swing_termination",
@@ -2759,10 +2833,8 @@ class FanfanRobot(LeggedRobot):
         ):
             locomotion = self._stand_command_gate() < 0.5
             invalid_swing = self._get_non_diagonal_swing_mask() & locomotion
-            self.non_diagonal_swing_counter = torch.where(
-                invalid_swing,
-                self.non_diagonal_swing_counter + 1,
-                torch.zeros_like(self.non_diagonal_swing_counter),
+            self.non_diagonal_swing_counter = update_consecutive_true_count(
+                invalid_swing, self.non_diagonal_swing_counter
             )
             grace = self.episode_length_buf >= int(getattr(
                 self.cfg.rewards,
@@ -2797,7 +2869,9 @@ class FanfanRobot(LeggedRobot):
             sustained_invalid_swing = (
                 self.non_diagonal_swing_counter >= termination_steps
             )
-            self.reset_buf |= grace & sustained_invalid_swing
+            illegal_contact = grace & sustained_invalid_swing
+            self.reset_buf |= illegal_contact
+            self._add_reset_reason(illegal_contact, "illegal_contact")
         max_straight_heading_error = getattr(
             self.cfg.rewards, "terminate_straight_heading_error", None
         )
@@ -2811,9 +2885,11 @@ class FanfanRobot(LeggedRobot):
                 & (torch.abs(self.commands[:, 1]) < 0.02)
                 & (torch.abs(self.commands[:, 2]) < 0.05)
             )
-            self.reset_buf |= straight & (
+            straight_heading = straight & (
                 torch.abs(heading_error) > max_straight_heading_error
             )
+            self.reset_buf |= straight_heading
+            self._add_reset_reason(straight_heading, "straight_heading")
         max_translation_heading_error = getattr(
             self.cfg.rewards, "terminate_translation_heading_error", None
         )
@@ -2825,23 +2901,35 @@ class FanfanRobot(LeggedRobot):
             translation = (
                 torch.linalg.norm(self.commands[:, :2], dim=1) > 0.05
             ) & (torch.abs(self.commands[:, 2]) < 0.05)
-            self.reset_buf |= translation & (
+            translation_heading = translation & (
                 torch.abs(heading_error) > max_translation_heading_error
+            )
+            self.reset_buf |= translation_heading
+            self._add_reset_reason(
+                translation_heading, "translation_heading"
             )
         min_base_height = getattr(self.cfg.rewards, "min_base_height", None)
         if min_base_height is not None:
-            self.reset_buf |= self.root_states[:, 2] < min_base_height
+            low_height = self.root_states[:, 2] < min_base_height
+            self.reset_buf |= low_height
+            self._add_reset_reason(low_height, "low_height")
 
         terminate_rear_sit_pitch = getattr(self.cfg.rewards, "terminate_rear_sit_pitch", None)
         if terminate_rear_sit_pitch is not None:
-            self.reset_buf |= self.rpy[:, 1] < terminate_rear_sit_pitch
+            rear_sit = self.rpy[:, 1] < terminate_rear_sit_pitch
+            self.reset_buf |= rear_sit
+            self._add_reset_reason(rear_sit, "rear_sit")
 
         calf_angle_limits = getattr(self.cfg.rewards, "calf_angle_limits", None)
         terminate_on_calf_angle = getattr(self.cfg.rewards, "terminate_on_calf_angle", False)
         if terminate_on_calf_angle and calf_angle_limits is not None:
             calf_pos = self.dof_pos[:, self._get_calf_indices()]
             lower, upper = calf_angle_limits
-            self.reset_buf |= torch.any((calf_pos < lower) | (calf_pos > upper), dim=1)
+            calf_angle = torch.any(
+                (calf_pos < lower) | (calf_pos > upper), dim=1
+            )
+            self.reset_buf |= calf_angle
+            self._add_reset_reason(calf_angle, "calf_angle")
 
         if (
             self.use_real_actuator_model
@@ -2852,7 +2940,7 @@ class FanfanRobot(LeggedRobot):
             )
         ):
             active_limits = self._active_episode_torque_limits()
-            raw_ratio = torch.abs(self.raw_torques) / active_limits
+            raw_ratio = torch.abs(self.raw_pd_torques) / active_limits
             raw_over = torch.any(
                 raw_ratio
                 > float(self.cfg.rewards.raw_torque_termination_ratio),
@@ -2865,7 +2953,7 @@ class FanfanRobot(LeggedRobot):
             )
 
             saturation_ratio = torch.mean(
-                (torch.abs(self.raw_torques) >= active_limits).float(),
+                (torch.abs(self.raw_pd_torques) >= active_limits).float(),
                 dim=1,
             )
             history_index = self.torque_saturation_history_index
@@ -2908,7 +2996,9 @@ class FanfanRobot(LeggedRobot):
                 self.calf_error_over_counter
                 >= int(self.cfg.rewards.calf_error_termination_steps)
             )
-            self.reset_buf |= grace & actuator_failure
+            actuator_safety = grace & actuator_failure
+            self.reset_buf |= actuator_safety
+            self._add_reset_reason(actuator_safety, "actuator_safety")
 
     def _reward_calf_angle_limits(self):
         calf_angle_limits = getattr(self.cfg.rewards, "calf_angle_limits", None)
@@ -3066,7 +3156,7 @@ class FanfanRobot(LeggedRobot):
     def _reward_straight_torque_side_balance(self):
         """Balance normalized left/right PD torque demand."""
         torque_ratio = (
-            torch.abs(self.raw_torques)
+            torch.abs(self.raw_pd_torques)
             / self._active_episode_torque_limits()
         )
         left_energy = torch.mean(
@@ -3157,7 +3247,7 @@ class FanfanRobot(LeggedRobot):
     def _reward_straight_diagonal_torque_mirror(self):
         """Mirror normalized same-phase diagonal raw PD torque demand."""
         normalized_torque = (
-            self.raw_torques / self._active_episode_torque_limits()
+            self.raw_pd_torques / self._active_episode_torque_limits()
         )
         return (
             self._diagonal_mirror_error(normalized_torque)
@@ -3243,7 +3333,7 @@ class FanfanRobot(LeggedRobot):
 
     def _reward_diagonal_contact_sync_all(self):
         """Keep trot contact timing coordinated for every command mixture."""
-        contact = self.contact_forces[:, self.feet_indices, 2] > 1.0
+        contact = self.get_foot_contact_mask()
         mismatch = torch.zeros(self.num_envs, device=self.device)
         for first, second in (("FL", "RR"), ("FR", "RL")):
             mismatch += (
@@ -3510,7 +3600,7 @@ class FanfanRobot(LeggedRobot):
 
     def _reward_straight_diagonal_contact_sync(self):
         """Keep same-phase diagonal feet in contact at the same time."""
-        contact = self.contact_forces[:, self.feet_indices, 2] > 1.0
+        contact = self.get_foot_contact_mask()
         mismatch = torch.zeros(self.num_envs, device=self.device)
         for first, second in (("FL", "RR"), ("FR", "RL")):
             mismatch += (
@@ -3636,7 +3726,7 @@ class FanfanRobot(LeggedRobot):
         return torch.sum(torch.square(self.dof_vel), dim=1) * self._stand_command_gate()
 
     def _reward_torques(self):
-        return torch.sum(torch.square(self.raw_torques), dim=1)
+        return torch.sum(torch.square(self.raw_pd_torques), dim=1)
 
     def _reward_torque_clip(self):
         ratio = (
@@ -3656,7 +3746,7 @@ class FanfanRobot(LeggedRobot):
         thighs and calves contribute on the same scale.
         """
         normalized_delta = (
-            (self.raw_torques - self.last_raw_torques)
+            (self.raw_pd_torques - self.last_raw_pd_torques)
             / self._active_episode_torque_limits()
         ).clip(-3.0, 3.0)
         valid = (self.episode_length_buf > 1).float()
@@ -3664,7 +3754,7 @@ class FanfanRobot(LeggedRobot):
 
     def _reward_torque_near_limit(self):
         ratio = (
-            torch.abs(self.raw_torques)
+            torch.abs(self.raw_pd_torques)
             / self._active_episode_torque_limits()
         )
         excess = (
@@ -3676,7 +3766,7 @@ class FanfanRobot(LeggedRobot):
 
     def _reward_peak_torque(self):
         ratio = (
-            torch.abs(self.raw_torques)
+            torch.abs(self.raw_pd_torques)
             / self._active_episode_torque_limits()
         )
         peak_ratio = torch.max(ratio, dim=1).values
@@ -3718,7 +3808,9 @@ class FanfanRobot(LeggedRobot):
         return torch.square(excess)
 
     def _reward_mechanical_power(self):
-        return torch.mean(torch.abs(self.raw_torques * self.dof_vel), dim=1)
+        return torch.mean(
+            torch.abs(self.raw_pd_torques * self.dof_vel), dim=1
+        )
 
     def _reward_pd_position_error_over_limit(self):
         soft_limit_cfg = self.cfg.rewards.pd_pos_err_soft_limit
@@ -3833,10 +3925,7 @@ class FanfanRobot(LeggedRobot):
 
     def _get_diagonal_swing_masks(self):
         """Return airborne feet and the two legal exact diagonal patterns."""
-        threshold = float(getattr(
-            self.cfg.rewards, "foot_contact_force_threshold", 1.0
-        ))
-        air = self.contact_forces[:, self.feet_indices, 2] <= threshold
+        air = self.get_foot_air_mask()
         fl = air[:, self.foot_slot_by_leg["FL"]]
         fr = air[:, self.foot_slot_by_leg["FR"]]
         rl = air[:, self.foot_slot_by_leg["RL"]]
@@ -3858,11 +3947,7 @@ class FanfanRobot(LeggedRobot):
         return multiple_air & ~(fl_rr | fr_rl)
 
     def _get_flight_mask(self):
-        threshold = float(getattr(
-            self.cfg.rewards, "foot_contact_force_threshold", 1.0
-        ))
-        contact = self.contact_forces[:, self.feet_indices, 2] > threshold
-        return torch.all(~contact, dim=1)
+        return torch.all(self.get_foot_air_mask(), dim=1)
 
     def _get_diagonal_support_scores(self):
         """Return load-bearing scores for FL+RR and FR+RL.
@@ -3903,7 +3988,7 @@ class FanfanRobot(LeggedRobot):
         return pair_score("FL", "RR"), pair_score("FR", "RL")
 
     def _reward_diagonal_gait(self):
-        contact = self.contact_forces[:, self.feet_indices, 2] > 1.0
+        contact = self.get_foot_contact_mask()
         desired_contact = self._get_desired_foot_contacts()
         mismatch_count = torch.sum(contact != desired_contact, dim=1)
         trot_score = torch.exp(-1.5 * mismatch_count.float())
@@ -4176,12 +4261,7 @@ class FanfanRobot(LeggedRobot):
 
     def _reward_single_foot_swing(self):
         """Reject tentative one-toe stepping during a scheduled pair swing."""
-        threshold = float(getattr(
-            self.cfg.rewards, "foot_contact_force_threshold", 1.0
-        ))
-        actual_air = (
-            self.contact_forces[:, self.feet_indices, 2] <= threshold
-        )
+        actual_air = self.get_foot_air_mask()
         desired_air = ~self._get_desired_foot_contacts()
         tentative = (
             (torch.sum(desired_air, dim=1) == 2)
@@ -4197,7 +4277,7 @@ class FanfanRobot(LeggedRobot):
         flight.  This term compares each physical foot with the Fanfan phase
         schedule, while stand commands explicitly ask for all four contacts.
         """
-        contact = self.contact_forces[:, self.feet_indices, 2] > 1.0
+        contact = self.get_foot_contact_mask()
         desired_contact = self._get_desired_foot_contacts()
         gait_error = torch.mean(
             (contact != desired_contact).float(), dim=1
@@ -4351,7 +4431,7 @@ class FanfanRobot(LeggedRobot):
     def _reward_swing_contact(self):
         """Reject the all-feet-down shuffle during commanded locomotion."""
         desired_swing = ~self._get_desired_foot_contacts()
-        contact = self.contact_forces[:, self.feet_indices, 2] > 1.0
+        contact = self.get_foot_contact_mask()
         command_active = (
             torch.linalg.norm(self.commands[:, :2], dim=1) > 0.015
         ) | (torch.abs(self.commands[:, 2]) > 0.08)
@@ -4459,7 +4539,10 @@ class FanfanRobot(LeggedRobot):
     def _reward_front_feet_contact(self):
         front_feet_contact_height = getattr(self.cfg.rewards, "front_feet_contact_height", None)
         max_rear_sit_pitch = getattr(self.cfg.rewards, "max_rear_sit_pitch", 0.0)
-        contact = self.contact_forces[:, self._get_front_feet_indices(), 2] > 1.0
+        contact = self.get_foot_contact_mask()
+        contact = contact[:, [
+            self.foot_slot_by_leg["FL"], self.foot_slot_by_leg["FR"]
+        ]]
         missing_front_feet = torch.sum((~contact).float(), dim=1)
         if front_feet_contact_height is None:
             return missing_front_feet
