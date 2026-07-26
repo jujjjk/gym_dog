@@ -5,7 +5,8 @@ Task name: `rs01_go2_straight`
 This task is independent of the existing dog and fanfan tasks. Its learning
 surface follows the repository's Go2 task:
 
-- 48 observations: body velocity, gravity, command, joint state and last action;
+- 84 observations: the original 48-D body/command/joint input plus four
+  executed-action frames in total;
 - 12 direct joint-position residual actions;
 - flat ground and forward-only velocity commands;
 - the compact Go2 reward set, with no CPG, phase schedule, symmetry target,
@@ -20,6 +21,16 @@ The robot-specific substitutions are:
   Coulomb friction from `rs01shujv/rs01_actuator_data_20260720.json`;
 - 6 N·m continuous rating retained as telemetry and a 17 N·m hard
   electromagnetic peak limit.
+
+Observation indices `36:48` contain the current executed action. Indices
+`48:60`, `60:72` and `72:84` contain the three preceding executed actions.
+At 50 Hz this gives the policy four action frames spanning the actuator's
+roughly 40–55 ms observed closed-loop delay. It improves observability but
+does not change the delay calculation inside the actuator model.
+
+The earlier 48-D checkpoints are intentionally incompatible with this task.
+Train the 84-D policy from scratch; logs are written under
+`logs/rs01_go2_straight_84`.
 
 The measured delay is intentionally named `observed_closed_loop_delay_s`. The
 identification report states that it cannot be interpreted as pure
