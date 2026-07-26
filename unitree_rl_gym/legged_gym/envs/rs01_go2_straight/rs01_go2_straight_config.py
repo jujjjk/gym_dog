@@ -9,12 +9,10 @@ from legged_gym.envs.base.legged_robot_config import (
 class Rs01Go2StraightCfg(LeggedRobotCfg):
     class env(LeggedRobotCfg.env):
         num_envs = 4096
-        # The base 48-D observation already contains the current executed
-        # action. Three older 12-D frames make four action frames in total.
-        num_observations = 84
+        # Base Go2 proprioception plus sin/cos of the diagonal gait phase.
+        num_observations = 50
         num_privileged_obs = None
         num_actions = 12
-        action_history_frames = 4
         episode_length_s = 20
 
     class terrain(LeggedRobotCfg.terrain):
@@ -33,7 +31,7 @@ class Rs01Go2StraightCfg(LeggedRobotCfg):
 
         class ranges:
             # Positive-only commands keep this a straight-forward locomotion task.
-            lin_vel_x = [0.2, 0.6]
+            lin_vel_x = [0.2, 0.8]
             lin_vel_y = [0.0, 0.0]
             ang_vel_yaw = [0.0, 0.0]
             heading = [0.0, 0.0]
@@ -59,30 +57,34 @@ class Rs01Go2StraightCfg(LeggedRobotCfg):
             "RL_thigh_joint": -0.32987297,
             "RL_calf_joint": 1.31853104,
         }
-        reset_dof_position_noise_rad = 0.015
+        # At the supplied 0.316 m reset pose the 16 mm foot spheres are
+        # tangent to the ground.  A 0.015 rad independent joint perturbation
+        # moves a foot vertically by as much as about 3.1 mm and starts the
+        # episode with asymmetric penetration.  The URDF Jacobian gives about
+        # 0.62 mm worst-case vertical error at 0.003 rad.
+        reset_dof_position_noise_rad = 0.003
 
     class control(LeggedRobotCfg.control):
         control_type = "P"
-
-        # 第一阶段降低位置控制权威，避免随机探索直接打满 17 Nm。
-        stiffness = {
-            "hip": 45.0,
-            "thigh": 55.0,
-            "calf": 55.0,
-        }
-
-        # 增加大腿和小腿阻尼，抑制落地后的回弹与连续振荡。
-        damping = {
-            "hip": 1.2,
-            "thigh": 1.8,
-            "calf": 1.8,
-        }
-
-        # 满幅动作对应大腿/小腿约 55 × 0.14 = 7.7 Nm。
+        # Current gains read from the real 50 Hz controller.
+        stiffness = {"hip": 60.0, "thigh": 60.0, "calf": 70.0}
+        damping = {"hip": 1.2, "thigh": 1.6, "calf": 1.6}
         action_scale = 0.14
-
-        # 0.005 s × 4 = 0.02 s，即 50 Hz 控制频率。
         decimation = 4
+
+    class sim(LeggedRobotCfg.sim):
+        # Keep the 5 ms physics step and 50 Hz policy contract, but solve each
+        # step as two 2.5 ms contact substeps.  The base Go2 solver settings
+        # were too coarse for this robot's 16 mm feet and ~12.3 kN/m aggregate
+        # vertical leg stiffness.
+        substeps = 2
+
+        class physx(LeggedRobotCfg.sim.physx):
+            num_position_iterations = 8
+            num_velocity_iterations = 2
+            contact_offset = 0.003
+            rest_offset = 0.0
+            max_depenetration_velocity = 0.25
 
     class rs01_actuator:
         # Source: rs01shujv/rs01_actuator_data_20260720.json.
@@ -196,16 +198,58 @@ class Rs01Go2StraightCfg(LeggedRobotCfg):
     class rewards(LeggedRobotCfg.rewards):
         foot_contact_force_threshold = 2.0
         foot_contact_release_force_threshold = 2.0
+        # At 0.2 m/s a stationary robot scored 0.852 with sigma=0.25.
+        # Sigma=0.05 reduces that shortcut to 0.449 while preserving a smooth
+        # velocity-tracking gradient around the commanded speed.
         tracking_sigma = 0.05
+        only_positive_rewards = False
+        # A high-duty diagonal gait needs a short four-foot load-transfer
+        # window.  Only contact beyond this URDF/control-scale handoff is
+        # classified as prolonged standing.
+        all_feet_contact_grace_s = 0.12
+        # One minimal timing contract is required because the 48-D feed-forward
+        # policy repeatedly converged to static or front/rear-paired support.
+        # Duty > 0.5 creates a four-foot load-transfer window and no scheduled
+        # flight. Joint targets remain entirely learned 12-D outputs.
+        gait_period_s = 0.60
+        gait_stance_ratio = 0.65
+        # The URDF foot collision is a 16 mm sphere.  During the middle of a
+        # scheduled swing, ask for only 14 mm of ground clearance (30 mm foot
+        # centre height).  This closes the toe-drag/triple-support shortcut
+        # without encouraging the high stepping seen in the old task.
+        foot_collision_radius_m = 0.016
+        swing_clearance_m = 0.014
+        # At the pilot's typical three-foot error (~0.5), sigma 0.25 still
+        # paid 13.5% and allowed lateral/triple-support shortcuts. Sigma 0.10
+        # pays 0.7% there while retaining full credit for the exact schedule.
+        phase_support_sigma = 0.10
         soft_dof_pos_limit = 0.9
         max_contact_force = 200.0
 
         class scales(LeggedRobotCfg.rewards.scales):
-            # This is intentionally the compact Go2 reward set: no CPG, phase,
-            # symmetry, contact schedule, fixed step length or body-yaw shaping.
+            # Compact Go2 reward set plus one phase-resolved foot-load error.
+            # There is no CPG trajectory, fixed step length, or joint reference.
             termination = -0.0
             tracking_lin_vel = 1.0
-            tracking_ang_vel = 0.5
+            # Zero yaw command previously paid a full positive reward to a
+            # stationary policy.  Use a light direct yaw-rate cost instead.
+            tracking_ang_vel = 0.0
+            yaw_rate = -0.10
+            prolonged_all_feet_contact = -1.0
+            # Go2-style positive tracking avoids a large negative objective
+            # dominating early PPO updates. Long four-foot standing remains
+            # net-negative through prolonged_all_feet_contact.
+            phase_support_tracking = 1.0
+            phase_swing_clearance = -0.50
+            # A legal diagonal always leaves one front and one rear foot in
+            # support.  This specifically rejects front/rear bounding without
+            # constraining the learned joint trajectory.
+            same_axle_flight = -1.0
+            flight = -1.0
+            # These terms are inactive in the stable stand; they only charge
+            # unexecutable requests and actual use of the 17 Nm clip.
+            raw_torque_over_peak = -0.25
+            motor_saturation = -0.25
             lin_vel_z = -2.0
             ang_vel_xy = -0.05
             orientation = -0.0
@@ -231,12 +275,21 @@ class Rs01Go2StraightCfg(LeggedRobotCfg):
 
 
 class Rs01Go2StraightCfgPPO(LeggedRobotCfgPPO):
+    class policy(LeggedRobotCfgPPO.policy):
+        # The base Go2 value 1.0 clips roughly 32% of zero-mean samples per
+        # joint before learning.  Fixed 0.25 noise was stable in the measured
+        # RS01 contact A/B rollout while retaining stochastic exploration.
+        init_noise_std = 0.25
+
     class algorithm(LeggedRobotCfgPPO.algorithm):
-        entropy_coef = 0.01
+        # Exploration std is fixed below, so entropy optimization must not
+        # reward the policy for recreating the high-noise bouncing regime.
+        entropy_coef = 0.0
 
     class runner(LeggedRobotCfgPPO.runner):
         run_name = ""
-        # Keep 84-D checkpoints separate from the incompatible 48-D baseline.
-        experiment_name = "rs01_go2_straight_84"
+        experiment_name = "rs01_go2_straight_phase_load"
         max_iterations = 3000
-        save_interval = 100
+        save_interval = 50
+        action_std_value = 0.25
+        freeze_action_std = True
