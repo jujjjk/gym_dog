@@ -2884,17 +2884,52 @@ class FanfanRobot(LeggedRobot):
             False,
         ):
             locomotion = self._stand_command_gate() < 0.5
-            grace = self.episode_length_buf >= int(getattr(
-                self.cfg.rewards,
-                "flight_termination_grace_steps",
-                0,
-            ))
-            # Unlike other invalid multi-foot patterns, complete flight has
-            # no contact ambiguity worth tolerating: one 50 Hz sample is
-            # enough to reject a hopping cycle.
-            flight_failure = grace & locomotion & self._get_flight_mask()
+
+            grace = self.episode_length_buf >= int(
+                getattr(
+                    self.cfg.rewards,
+                    "flight_termination_grace_steps",
+                    0,
+                )
+            )
+
+            # 当前控制帧是否四脚全部腾空。
+            flight = locomotion & self._get_flight_mask()
+
+            # 只统计连续全腾空帧；一旦恢复接触，计数自动清零。
+            self.flight_counter = update_consecutive_true_count(
+                flight,
+                self.flight_counter,
+            )
+
+            termination_steps = int(
+                getattr(
+                    self.cfg.rewards,
+                    "flight_termination_steps",
+                    1,
+                )
+            )
+
+            # 测试时可以使用单独的严格阈值。
+            if getattr(self.cfg.env, "test", False):
+                termination_steps = int(
+                    getattr(
+                        self.cfg.rewards,
+                        "flight_termination_steps_test",
+                        termination_steps,
+                    )
+                )
+
+            flight_failure = (
+                grace
+                & (self.flight_counter >= termination_steps)
+            )
+
             self.reset_buf |= flight_failure
-            self._add_reset_reason(flight_failure, "flight")
+            self._add_reset_reason(
+                flight_failure,
+                "flight",
+            )
         if getattr(
             self.cfg.rewards,
             "enable_non_diagonal_swing_termination",

@@ -360,6 +360,14 @@ class DogRs01StraightWalkCfg(DogRs01StraightBaseCfg):
         # and walked the robot backwards at -0.009 m/s. 0.22 realigns lift-off
         # with the schedule that the contact rewards score against.
         gait_target_phase_lead = 0.22
+        # 新支撑对角腿未落地承重时，暂停相位交接。
+        use_contact_aware_phase_transfer = True
+
+        # 50 Hz 下 6 帧约为 120 ms，防止永久等待。
+        phase_transfer_max_wait_steps = 6
+
+        # 补偿不同 RS01 电机的位置响应增益差异。
+        compensate_identified_position_gain_in_gait = True
 
         # Softening the gains to 45 fitted the swing inside a 10 N·m clip at
         # 6.75 N·m, but that torque could not fold a loaded calf at all: the toe
@@ -464,7 +472,12 @@ class DogRs01StraightWalkCfg(DogRs01StraightBaseCfg):
             {"until_iteration": 1.0e12, "steps": 3},
         ]
         flight_termination_grace_steps = 15
+
+        # 训练时连续全腾空 4 帧才终止。
         flight_termination_steps = 4
+
+        # play/eval 时连续全腾空 3 帧终止。
+        flight_termination_steps_test = 3
 
         class scales:
             termination = -12.0
@@ -556,17 +569,31 @@ class DogRs01StraightWalkCfg(DogRs01StraightBaseCfg):
             stumble = -1.0
             feet_contact_forces = -0.02
 
+class DogRs01StraightWalkCfgPPO(
+    DogRs01StraightBaseCfgPPO
+):
+    class policy(
+        DogRs01StraightBaseCfgPPO.policy
+    ):
+        init_noise_std = 0.15
 
-class DogRs01StraightWalkCfgPPO(DogRs01StraightBaseCfgPPO):
-    class policy(DogRs01StraightBaseCfgPPO.policy):
-        # Half the base exploration. The open-loop reference is already a valid
-        # gait; noise wide enough to destroy it costs more than it buys.
-        init_noise_std = 0.25
+    # 只修改 walk，不影响前面的 stand 阶段。
+    class algorithm(
+        DogRs01StraightBaseCfgPPO.algorithm
+    ):
+        learning_rate = 2.0e-4
+        entropy_coef = 0.0
+        schedule = "fixed"
 
-    class runner(DogRs01StraightBaseCfgPPO.runner):
+    class runner(
+        DogRs01StraightBaseCfgPPO.runner
+    ):
         run_name = "rs01_straight_walk"
         max_iterations = 3000
-        # Start the actor's output layer near zero so the very first rollout is
-        # the open-loop diagonal reference rather than random joint noise on top
-        # of it. Without this the seed is buried before PPO can exploit it.
         actor_output_init_scale = 0.01
+
+        # checkpoint 加载后强制重置到 0.15。
+        action_std_value = 0.15
+
+        # 禁止 std 在训练中再次增大。
+        freeze_action_std = True

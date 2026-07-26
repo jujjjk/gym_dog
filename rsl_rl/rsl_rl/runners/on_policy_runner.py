@@ -63,6 +63,7 @@ class OnPolicyRunner:
                                                         num_critic_obs,
                                                         self.env.num_actions,
                                                         **self.policy_cfg).to(self.device)
+        self._configure_action_std(actor_critic)
         alg_class = eval(self.cfg["algorithm_class_name"]) # PPO
         self.alg: PPO = alg_class(actor_critic, device=self.device, **self.alg_cfg)
         self.num_steps_per_env = self.cfg["num_steps_per_env"]
@@ -77,8 +78,34 @@ class OnPolicyRunner:
         self.tot_timesteps = 0
         self.tot_time = 0
         self.current_learning_iteration = 0
+    def _configure_action_std(self, actor_critic):
+        """Reset and optionally freeze Gaussian exploration std."""
+        if not hasattr(actor_critic, "std"):
+            return
 
+        action_std_value = self.cfg.get(
+            "action_std_value",
+            None,
+        )
+
+        if action_std_value is not None:
+            with torch.no_grad():
+                actor_critic.std.fill_(
+                    float(action_std_value)
+                )
+
+        freeze_action_std = bool(
+            self.cfg.get(
+                "freeze_action_std",
+                False,
+            )
+        )
+
+        actor_critic.std.requires_grad_(
+            not freeze_action_std
+        )
         _, _ = self.env.reset()
+
     
     def learn(self, num_learning_iterations, init_at_random_ep_len=False):
         # initialize writer
@@ -227,12 +254,31 @@ class OnPolicyRunner:
             }, path)
 
     def load(self, path, load_optimizer=True):
-        loaded_dict = torch.load(path)
-        self.alg.actor_critic.load_state_dict(loaded_dict['model_state_dict'])
+        loaded_dict = torch.load(
+            path,
+            map_location=self.device,
+        )
+
+        self.alg.actor_critic.load_state_dict(
+            loaded_dict["model_state_dict"]
+        )
+
+        # checkpoint 会同时加载旧 std，
+        # 因此加载完成后按当前任务配置重新设置。
+        self._configure_action_std(
+            self.alg.actor_critic
+        )
+
         if load_optimizer:
-            self.alg.optimizer.load_state_dict(loaded_dict['optimizer_state_dict'])
-        self.current_learning_iteration = loaded_dict['iter']
-        return loaded_dict['infos']
+            self.alg.optimizer.load_state_dict(
+                loaded_dict["optimizer_state_dict"]
+            )
+
+        self.current_learning_iteration = int(
+            loaded_dict["iter"]
+        )
+
+        return loaded_dict.get("infos", None)
 
     def get_inference_policy(self, device=None):
         self.alg.actor_critic.eval() # switch to evaluation mode (dropout for example)
