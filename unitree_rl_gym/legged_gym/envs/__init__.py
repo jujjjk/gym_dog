@@ -1,6 +1,10 @@
 from legged_gym import LEGGED_GYM_ROOT_DIR, LEGGED_GYM_ENVS_DIR
 from legged_gym.envs.go2.go2_config import GO2RoughCfg, GO2RoughCfgPPO
 from legged_gym.envs.rs01_go2_straight import (
+    Rs01Go2PathPolishCfg,
+    Rs01Go2PathPolishCfgPPO,
+    Rs01Go2RearCoordCfg,
+    Rs01Go2RearCoordCfgPPO,
     Rs01Go2StraightCfg,
     Rs01Go2StraightCfgPPO,
     Rs01Go2StraightRobot,
@@ -136,6 +140,18 @@ task_registry.register(
     Rs01Go2StraightRobot,
     Rs01Go2StraightCfg(),
     Rs01Go2StraightCfgPPO(),
+)
+task_registry.register(
+    "rs01_go2_straight_rear_coord",
+    Rs01Go2StraightRobot,
+    Rs01Go2RearCoordCfg(),
+    Rs01Go2RearCoordCfgPPO(),
+)
+task_registry.register(
+    "rs01_go2_straight_path_polish",
+    Rs01Go2StraightRobot,
+    Rs01Go2PathPolishCfg(),
+    Rs01Go2PathPolishCfgPPO(),
 )
 task_registry.register(
     "dog_rs01_trot", DogRs01Robot, DogRs01TrotCfg(), DogRs01TrotCfgPPO()

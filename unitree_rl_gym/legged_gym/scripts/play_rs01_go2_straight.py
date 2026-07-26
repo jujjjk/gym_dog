@@ -7,12 +7,19 @@ from legged_gym.envs import *  # noqa: F401,F403 - performs task registration
 from legged_gym.utils import get_args, task_registry
 
 
-TASK_NAME = "rs01_go2_straight"
+SUPPORTED_TASKS = {
+    "rs01_go2_straight",
+    "rs01_go2_straight_path_polish",
+    "rs01_go2_straight_rear_coord",
+}
 
 
 def play(args):
-    if args.task != TASK_NAME:
-        raise ValueError(f"This player only supports --task {TASK_NAME}")
+    if args.task not in SUPPORTED_TASKS:
+        raise ValueError(
+            "This player only supports --task "
+            + " or ".join(sorted(SUPPORTED_TASKS))
+        )
 
     env_cfg, train_cfg = task_registry.get_cfgs(args.task)
     env_cfg.env.num_envs = 1
