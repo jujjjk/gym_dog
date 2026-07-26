@@ -32,6 +32,10 @@ from legged_gym.envs.dog import (
     DogRs01Stage2ActuatorACfgPPO,
     DogRs01Stage2ActuatorBCfg,
     DogRs01Stage2ActuatorBCfgPPO,
+    DogRs01StraightStandCfg,
+    DogRs01StraightStandCfgPPO,
+    DogRs01StraightWalkCfg,
+    DogRs01StraightWalkCfgPPO,
 )
 from legged_gym.envs.fanfan.fanfan_config import FanfanRoughCfg, FanfanRoughCfgPPO
 from legged_gym.envs.fanfan.fanfan_env import FanfanRobot
@@ -199,6 +203,18 @@ task_registry.register(
     DogRs01Robot,
     DogRs01Stage2ActuatorBCfg(),
     DogRs01Stage2ActuatorBCfgPPO(),
+)
+task_registry.register(
+    "dog_rs01_straight_stand",
+    DogRs01Robot,
+    DogRs01StraightStandCfg(),
+    DogRs01StraightStandCfgPPO(),
+)
+task_registry.register(
+    "dog_rs01_straight_walk",
+    DogRs01Robot,
+    DogRs01StraightWalkCfg(),
+    DogRs01StraightWalkCfgPPO(),
 )
 task_registry.register("fanfan", FanfanRobot, FanfanRoughCfg(), FanfanRoughCfgPPO())
 task_registry.register(

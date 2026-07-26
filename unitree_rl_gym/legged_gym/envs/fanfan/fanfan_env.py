@@ -2969,6 +2969,14 @@ class FanfanRobot(LeggedRobot):
         min_base_height = getattr(self.cfg.rewards, "min_base_height", None)
         if min_base_height is not None:
             low_height = self.root_states[:, 2] < min_base_height
+            grace_steps = int(getattr(
+                self.cfg.rewards, "min_base_height_grace_steps", 0
+            ))
+            if grace_steps > 0:
+                # Robots spawn with unloaded legs and then settle onto their
+                # stance. That first dip is a spawn artifact of the delayed
+                # actuator model, not a fall, so it must not reset the episode.
+                low_height &= self.episode_length_buf >= grace_steps
             self.reset_buf |= low_height
             self._add_reset_reason(low_height, "low_height")
 
@@ -4045,11 +4053,56 @@ class FanfanRobot(LeggedRobot):
 
         return pair_score("FL", "RR"), pair_score("FR", "RL")
 
+    def _actuator_headroom_gate(self):
+        """Share of the positive reward that the actuator budget still earns.
+
+        Speed and contact timing can always be bought with saturation, and a
+        policy will do exactly that if the positive terms pay out regardless.
+        Scaling them by remaining headroom removes the trade: once the
+        configured fraction of joints is at the clip the gate is zero, so
+        pushing the motors harder wins nothing. Absent the config key the gate
+        is identically one, which leaves every other task unchanged.
+        """
+        ratio = getattr(
+            self.cfg.rewards, "headroom_gate_saturation_ratio", None
+        )
+        if ratio is None:
+            return torch.ones(self.num_envs, device=self.device)
+        saturated = (
+            torch.abs(self.raw_pd_torques) >= self.torque_limits
+        ).float().mean(dim=1)
+        return (
+            1.0 - saturated / max(float(ratio), 1.0e-6)
+        ).clip(min=0.0, max=1.0)
+
+    def _reward_tracking_lin_vel(self):
+        """Planar velocity tracking, gated by remaining actuator headroom."""
+        error = torch.sum(
+            torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]),
+            dim=1,
+        )
+        return (
+            torch.exp(-error / self.cfg.rewards.tracking_sigma)
+            * self._actuator_headroom_gate()
+        )
+
+    def _reward_forward_overspeed(self):
+        """Charge only the forward speed that exceeds the command.
+
+        The symmetric tracking error lets a policy overshoot and pay the same
+        price as undershooting, which is the cheaper mistake when overshooting
+        also collects stride and contact reward.
+        """
+        return (self.base_lin_vel[:, 0] - self.commands[:, 0]).clip(min=0.0)
+
     def _reward_diagonal_gait(self):
         contact = self.get_foot_contact_mask()
         desired_contact = self._get_desired_foot_contacts()
         mismatch_count = torch.sum(contact != desired_contact, dim=1)
-        trot_score = torch.exp(-1.5 * mismatch_count.float())
+        trot_score = (
+            torch.exp(-1.5 * mismatch_count.float())
+            * self._actuator_headroom_gate()
+        )
         if not getattr(
             self.cfg.rewards, "gate_phase_rewards_with_command", False
         ):
@@ -4081,7 +4134,11 @@ class FanfanRobot(LeggedRobot):
             (actual_fl_rr & desired_fl_rr)
             | (actual_fr_rl & desired_fr_rl)
         )
-        return correct.float() * (1.0 - self._stand_command_gate())
+        return (
+            correct.float()
+            * (1.0 - self._stand_command_gate())
+            * self._actuator_headroom_gate()
+        )
 
     def _reward_scheduled_diagonal_pair_lift(self):
         """Reward the weaker member of the scheduled diagonal pair.

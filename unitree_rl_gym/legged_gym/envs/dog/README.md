@@ -155,3 +155,35 @@ CPG intact while exploration learns balance corrections. Training permits
 tightens to one; normal learned-policy play/test is always strict. The CPG-only
 viewer does not reset on brief non-diagonal threshold mismatches, but full
 flight, body contact and joint safety termination remain active.
+
+## RS01 straight-walking retraining: `dog_rs01_straight_stand` / `dog_rs01_straight_walk`
+
+Two tasks trained **from scratch** for one narrow goal: hold a stable flat-ground
+stance, then walk straight forward at 0.03–0.12 m/s with an FL+RR / FR+RL
+diagonal gait, all inside a 10 N·m RS01 envelope. They do not resume any
+existing checkpoint and log to a separate `logs/rs01_straight/` experiment.
+
+Deliberately excluded: lateral motion, turning, rough terrain, height scanner,
+camera, lidar, and real-motor id/sign/zero-offset mapping. Joint semantics come
+straight from the URDF.
+
+Config: `dog_rs01_straight_config.py`. Scripts:
+
+* `legged_gym/scripts/audit_dog_joints.py` — static URDF/joint/static-torque
+  audit, no GPU or Isaac Gym required.
+* `legged_gym/scripts/validate_dog_straight.py` — Isaac Gym runtime check of the
+  DOF order, default pose, contacts, torque envelope and reset reasons.
+* `legged_gym/scripts/export_dog_onnx.py` — ONNX plus a deployment contract JSON,
+  rebuilt from the checkpoint without Isaac Gym.
+
+Wrapper scripts and the full manual run guide live in `tools/rs01_straight/` and
+`artifacts/rs01_straight/README_RUN_MANUALLY.md`.
+
+```bash
+./tools/rs01_straight/validate.sh          # stage 0, always run this first
+./tools/rs01_straight/smoke.sh             # 5 iterations, throwaway
+./tools/rs01_straight/train_stand.sh       # stage 1, 600 iterations
+./tools/rs01_straight/train_straight.sh    # stage 2, 3000 iterations
+./tools/rs01_straight/play_straight.sh
+LOAD_RUN=<run> CHECKPOINT=<n> ./tools/rs01_straight/export_onnx.sh
+```

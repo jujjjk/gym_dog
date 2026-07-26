@@ -204,7 +204,7 @@ class TaskRegistry:
                 if hasattr(runner, "set_reference_policy"):
                     runner.set_reference_policy()
                     print("Frozen loaded actor as conservative continuation reference")
-            return (runner, train_cfg)
+        return (runner, train_cfg)
 
 
 task_registry = TaskRegistry()

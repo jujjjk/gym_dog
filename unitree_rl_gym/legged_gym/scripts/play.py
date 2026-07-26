@@ -33,6 +33,8 @@ def play(args):
         "dog_rs01_torque_straight_v5",
         "dog_rs01_stage2_actuator_a",
         "dog_rs01_stage2_actuator_b",
+        "dog_rs01_straight_stand",
+        "dog_rs01_straight_walk",
     ):
         env_cfg.env.num_envs = 1
         env_cfg.commands.ranges.lin_vel_x = [0.15, 0.15]
@@ -44,6 +46,14 @@ def play(args):
         env_cfg.domain_rand.randomize_gait_phase_on_reset = False
         if args.task in ("dog_rs01_safe6nm", "dog_rs01_safe6nm_v2"):
             env_cfg.commands.ranges.lin_vel_x = [0.12, 0.12]
+        elif args.task == "dog_rs01_straight_stand":
+            # Stage 1 only ever learned to hold still.
+            env_cfg.commands.ranges.lin_vel_x = [0.0, 0.0]
+            env_cfg.commands.stand_probability = 1.0
+        elif args.task == "dog_rs01_straight_walk":
+            # The single speed this stage is trained on.
+            env_cfg.commands.ranges.lin_vel_x = [0.10, 0.10]
+            env_cfg.commands.stand_probability = 0.0
         elif args.task in (
             "dog_rs01_stage2_actuator_a",
             "dog_rs01_stage2_actuator_b",
