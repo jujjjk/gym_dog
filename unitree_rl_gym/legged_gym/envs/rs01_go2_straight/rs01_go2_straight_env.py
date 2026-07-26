@@ -13,14 +13,23 @@ from .rs01_actuator import (
 
 
 class Rs01Go2StraightRobot(LeggedRobot):
-    """48-observation, 12-action task with no prescribed gait generator."""
+    """84-observation, 12-action task with no prescribed gait generator."""
 
     def __init__(self, *args, **kwargs):
         self._rs01_actuator_ready = False
+        self._action_history_ready = False
         super().__init__(*args, **kwargs)
         if self.num_dof != 12 or self.num_actions != 12:
             raise ValueError(
                 "rs01_go2_straight requires exactly 12 URDF joints and 12 actions"
+            )
+        expected_observations = 48 + (
+            int(self.cfg.env.action_history_frames) - 1
+        ) * self.num_actions
+        if self.num_obs != expected_observations:
+            raise ValueError(
+                "Observation size does not match the configured action history: "
+                f"expected {expected_observations}, got {self.num_obs}"
             )
         if len(self.feet_indices) != 4:
             raise ValueError(
@@ -30,7 +39,54 @@ class Rs01Go2StraightRobot(LeggedRobot):
             raise ValueError(
                 "Policy/control dt must match the measured RS01 50 Hz contract"
             )
+        self._initialize_action_history()
         self._initialize_rs01_actuator()
+
+    def _initialize_action_history(self):
+        older_frames = int(self.cfg.env.action_history_frames) - 1
+        if older_frames < 0:
+            raise ValueError("action_history_frames must be at least one")
+        self.action_history = torch.zeros(
+            self.num_envs,
+            older_frames,
+            self.num_actions,
+            device=self.device,
+            dtype=torch.float,
+        )
+        self._action_history_ready = True
+
+    def compute_observations(self):
+        """Append three older executed actions to the standard 48-D input."""
+        base_observation = torch.cat(
+            (
+                self.base_lin_vel * self.obs_scales.lin_vel,
+                self.base_ang_vel * self.obs_scales.ang_vel,
+                self.projected_gravity,
+                self.commands[:, :3] * self.commands_scale,
+                (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,
+                self.dof_vel * self.obs_scales.dof_vel,
+                self.actions,
+            ),
+            dim=-1,
+        )
+        older_actions = self.action_history.reshape(self.num_envs, -1)
+        self.obs_buf = torch.cat((base_observation, older_actions), dim=-1)
+        if self.add_noise:
+            self.obs_buf += (
+                2 * torch.rand_like(self.obs_buf) - 1
+            ) * self.noise_scale_vec
+
+        # The observation above contains [a_t, a_t-1, a_t-2, a_t-3].
+        # Advance history only after constructing it for the next policy call.
+        if self.action_history.shape[1] > 1:
+            self.action_history[:, 1:] = self.action_history[:, :-1].clone()
+        if self.action_history.shape[1] > 0:
+            self.action_history[:, 0] = self.actions
+
+    def reset_idx(self, env_ids):
+        super().reset_idx(env_ids)
+        if self._action_history_ready:
+            self.action_history[env_ids] = 0.0
 
     def _joint_type_value(self, values):
         result = []

@@ -12,8 +12,9 @@ from legged_gym.envs.rs01_go2_straight.rs01_go2_straight_config import (
 
 
 def test_task_contract_is_minimal_go2_shape_and_real_stand():
-    assert Rs01Go2StraightCfg.env.num_observations == 48
+    assert Rs01Go2StraightCfg.env.num_observations == 84
     assert Rs01Go2StraightCfg.env.num_actions == 12
+    assert Rs01Go2StraightCfg.env.action_history_frames == 4
     assert Rs01Go2StraightCfg.init_state.pos == [0.0, 0.0, 0.316]
     assert set(Rs01Go2StraightCfg.init_state.default_joint_angles.values()) == {
         0.0,
