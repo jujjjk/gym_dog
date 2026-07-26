@@ -202,8 +202,8 @@ class DogRs01StraightBaseCfg(_Direct12Cfg):
         diagonal_pair_lift_target_height = 0.020
 
         # One contact definition for reward, termination, statistics and CSV.
-        foot_contact_force_threshold = 2.0
-        foot_contact_release_force_threshold = 2.0
+        foot_contact_force_threshold = 3.0
+        foot_contact_release_force_threshold = 1.5
 
         # 6 N·m is the reported rating; the 10 N·m clip is the hard envelope.
         continuous_torque_limits_by_joint = {
@@ -359,7 +359,7 @@ class DogRs01StraightWalkCfg(DogRs01StraightBaseCfg):
         # a cycle, which put the leg into its stance sweep while still airborne
         # and walked the robot backwards at -0.009 m/s. 0.22 realigns lift-off
         # with the schedule that the contact rewards score against.
-        gait_target_phase_lead = 0.06
+        gait_target_phase_lead = 0.22
 
         # Softening the gains to 45 fitted the swing inside a 10 N·m clip at
         # 6.75 N·m, but that torque could not fold a loaded calf at all: the toe

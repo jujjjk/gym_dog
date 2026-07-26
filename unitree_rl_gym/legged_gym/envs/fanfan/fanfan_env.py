@@ -197,6 +197,11 @@ class FanfanRobot(LeggedRobot):
         self.non_diagonal_swing_counter = torch.zeros(
             self.num_envs, dtype=torch.long, device=self.device
         )
+        self.flight_counter = torch.zeros(
+            self.num_envs,
+            dtype=torch.long,
+            device=self.device,
+        )
         body_names = self.gym.get_actor_rigid_body_names(self.envs[0], self.actor_handles[0])
         phase_offsets = []
         self.foot_slot_by_leg = {}
@@ -1628,6 +1633,7 @@ class FanfanRobot(LeggedRobot):
         self.feet_contact_time[env_ids] = 0.0
         self.all_feet_contact_time[env_ids] = 0.0
         self.non_diagonal_swing_counter[env_ids] = 0
+        self.flight_counter[env_ids] = 0
         self.max_abs_raw_torque[env_ids] = 0.0
         self.max_thermal_torque_ratio[env_ids] = initial_thermal_ratio
         self.torque_metric_count[env_ids] = 0.0
@@ -2057,16 +2063,21 @@ class FanfanRobot(LeggedRobot):
             period = self.gait_period_low_speed + blend * (
                 self.gait_period_high_speed - self.gait_period_low_speed
             )
-            proposed_phase = (
-                self.gait_phase + self.dt / period.clip(min=0.20)
-            ) % 1.0
-            self.gait_phase = self._contact_aware_gait_phase(proposed_phase)
         else:
-            period = self.cfg.rewards.gait_period
-            self.gait_phase = (
-                self.episode_length_buf * self.dt / period
-                + self.gait_phase_reset_offset
-            ) % 1.0
+            # 固定周期任务也生成 proposed_phase，
+            # 后续统一经过接触感知的相位交接逻辑。
+            period = torch.full_like(
+                self.gait_phase,
+                float(self.cfg.rewards.gait_period),
+            )
+
+        proposed_phase = (
+            self.gait_phase + self.dt / period.clip(min=0.20)
+        ) % 1.0
+
+        # 如果 use_contact_aware_phase_transfer=False，
+        # 该函数会原样返回 proposed_phase。
+        self.gait_phase = self._contact_aware_gait_phase(proposed_phase)
         self._update_recovery_state()
 
     def _contact_aware_gait_phase(self, proposed_phase):
@@ -4054,23 +4065,26 @@ class FanfanRobot(LeggedRobot):
         return pair_score("FL", "RR"), pair_score("FR", "RL")
 
     def _actuator_headroom_gate(self):
-        """Share of the positive reward that the actuator budget still earns.
-
-        Speed and contact timing can always be bought with saturation, and a
-        policy will do exactly that if the positive terms pay out regardless.
-        Scaling them by remaining headroom removes the trade: once the
-        configured fraction of joints is at the clip the gate is zero, so
-        pushing the motors harder wins nothing. Absent the config key the gate
-        is identically one, which leaves every other task unchanged.
-        """
         ratio = getattr(
-            self.cfg.rewards, "headroom_gate_saturation_ratio", None
+            self.cfg.rewards,
+            "headroom_gate_saturation_ratio",
+            None,
         )
         if ratio is None:
             return torch.ones(self.num_envs, device=self.device)
+
+        # 使用当前控制步真正生效的电机上限。
+        if hasattr(self, "active_motor_torque_limits"):
+            active_limits = self.active_motor_torque_limits
+        else:
+            active_limits = self._active_episode_torque_limits()
+
+        active_limits = active_limits.clip(min=1.0e-6)
+
         saturated = (
-            torch.abs(self.raw_pd_torques) >= self.torque_limits
+            torch.abs(self.raw_pd_torques) >= active_limits
         ).float().mean(dim=1)
+
         return (
             1.0 - saturated / max(float(ratio), 1.0e-6)
         ).clip(min=0.0, max=1.0)

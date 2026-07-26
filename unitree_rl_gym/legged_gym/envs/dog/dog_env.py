@@ -738,27 +738,57 @@ class DogRs01Robot(FanfanRobot):
         )
 
     def _reward_commanded_smooth_straight_progress(self):
-        """Reward motion only near the requested speed and a quiet straight path."""
+        """Reward actual forward motion near the command with a quiet path."""
         (_, lateral_velocity, heading_error) = self._straight_path_state()
-        speed_error = torch.abs(self.base_lin_vel[:, 0] - self.commands[:, 0])
-        speed_headroom = (1.0 - speed_error / 0.12).clip(0.0, 1.0)
-        lateral_headroom = (1.0 - torch.abs(lateral_velocity) / 0.18).clip(0.0, 1.0)
-        heading_headroom = (1.0 - torch.abs(heading_error) / 0.5).clip(0.0, 1.0)
-        diagonal_valid = (~self._get_non_diagonal_swing_mask()).float()
-        command_active = 1.0 - torch.exp(-torch.square(self.commands[:, 0]) / 0.01)
+
+        speed_error = torch.abs(
+            self.base_lin_vel[:, 0] - self.commands[:, 0]
+        )
+        speed_headroom = (
+            1.0 - speed_error / 0.12
+        ).clip(0.0, 1.0)
+
+        lateral_headroom = (
+            1.0 - torch.abs(lateral_velocity) / 0.18
+        ).clip(0.0, 1.0)
+
+        heading_headroom = (
+            1.0 - torch.abs(heading_error) / 0.5
+        ).clip(0.0, 1.0)
+
+        diagonal_valid = (
+            ~self._get_non_diagonal_swing_mask()
+        ).float()
+
+        command_active = (
+            1.0
+            - torch.exp(-torch.square(self.commands[:, 0]) / 0.01)
+        )
+
+        # 关键修复：vx=0 时该项必须严格为 0。
+        actual_progress = self._forward_progress_gate()
+
         (load_transfer_score, _) = self._get_diagonal_load_transfer()
         transfer_floor = float(
-            getattr(self.cfg.rewards, "smooth_progress_load_transfer_floor", 1.0)
+            getattr(
+                self.cfg.rewards,
+                "smooth_progress_load_transfer_floor",
+                1.0,
+            )
         )
         load_transfer_headroom = (
-            transfer_floor + (1.0 - transfer_floor) * load_transfer_score
+            transfer_floor
+            + (1.0 - transfer_floor) * load_transfer_score
         )
+
         return (
-            speed_headroom
+            actual_progress
+            * speed_headroom
             * lateral_headroom
             * heading_headroom
             * diagonal_valid
             * command_active
+            * self._actuator_headroom_gate()
             * self._body_angular_headroom()
             * self._body_angular_acceleration_headroom()
             * load_transfer_headroom
