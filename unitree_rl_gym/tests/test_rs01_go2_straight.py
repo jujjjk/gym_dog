@@ -13,6 +13,14 @@ from legged_gym.envs.rs01_go2_straight.rs01_go2_straight_config import (
 from legged_gym.envs.rs01_go2_straight.rs01_go2_straight_env import (
     Rs01Go2StraightRobot,
 )
+from legged_gym.envs.rs01_go2_straight.rs01_go2_rear_coord_config import (
+    Rs01Go2RearCoordCfg,
+    Rs01Go2RearCoordCfgPPO,
+)
+from legged_gym.envs.rs01_go2_straight.rs01_go2_path_polish_config import (
+    Rs01Go2PathPolishCfg,
+    Rs01Go2PathPolishCfgPPO,
+)
 
 
 def test_task_contract_is_minimal_go2_shape_and_real_stand():
@@ -201,6 +209,86 @@ def test_same_axle_flight_rejects_bound_but_not_diagonal_swing():
     )
     penalty = robot._reward_same_axle_flight()
     assert torch.equal(penalty, torch.tensor([0.0, 1.0, 2.0]))
+
+
+def test_rear_coord_polish_preserves_control_contract_and_uses_small_updates():
+    assert Rs01Go2RearCoordCfg.env.num_observations == 50
+    assert Rs01Go2RearCoordCfg.env.num_actions == 12
+    assert Rs01Go2RearCoordCfg.control.stiffness == (
+        Rs01Go2StraightCfg.control.stiffness
+    )
+    assert Rs01Go2RearCoordCfg.control.damping == (
+        Rs01Go2StraightCfg.control.damping
+    )
+    assert Rs01Go2RearCoordCfg.control.action_scale == 0.14
+    assert Rs01Go2RearCoordCfg.commands.ranges.lin_vel_x == [0.30, 0.45]
+    assert Rs01Go2RearCoordCfg.rewards.scales.diagonal_contact_sync < 0.0
+    assert Rs01Go2RearCoordCfg.rewards.scales.rear_swing_clearance < 0.0
+    assert Rs01Go2RearCoordCfgPPO.policy.init_noise_std == 0.15
+    assert Rs01Go2RearCoordCfgPPO.algorithm.learning_rate == 2.0e-4
+    assert Rs01Go2RearCoordCfgPPO.algorithm.schedule == "fixed"
+    assert Rs01Go2RearCoordCfgPPO.runner.load_optimizer is False
+    assert Rs01Go2RearCoordCfgPPO.runner.reference_policy_coef > 0.0
+
+
+def test_diagonal_contact_sync_penalizes_only_pair_disagreement():
+    robot = object.__new__(Rs01Go2StraightRobot)
+    robot.commands = torch.tensor([[0.4, 0.0, 0.0, 0.0]] * 3)
+    robot.foot_slot_by_leg = {"FL": 0, "FR": 1, "RL": 2, "RR": 3}
+    robot.foot_contact_mask = torch.tensor(
+        [
+            [True, False, False, True],
+            [True, False, False, False],
+            [True, True, False, False],
+        ]
+    )
+    penalty = robot._reward_diagonal_contact_sync()
+    assert torch.allclose(penalty, torch.tensor([0.0, 0.5, 1.0]))
+
+
+def test_path_polish_widens_only_heading_observation_and_adapts_checkpoint():
+    assert Rs01Go2PathPolishCfg.env.num_observations == 51
+    assert Rs01Go2PathPolishCfg.env.num_actions == 12
+    assert Rs01Go2PathPolishCfg.commands.observe_straight_heading_error
+    assert Rs01Go2PathPolishCfg.rewards.scales.yaw_rate == 0.0
+    assert Rs01Go2PathPolishCfg.rewards.scales.heading_recovery < 0.0
+    assert Rs01Go2PathPolishCfg.control.stiffness == (
+        Rs01Go2RearCoordCfg.control.stiffness
+    )
+    assert Rs01Go2PathPolishCfg.control.action_scale == 0.14
+    assert Rs01Go2PathPolishCfgPPO.runner.adapt_observation_input is True
+    assert Rs01Go2PathPolishCfgPPO.runner.load_optimizer is False
+    assert Rs01Go2PathPolishCfgPPO.algorithm.learning_rate == 5.0e-5
+    assert Rs01Go2PathPolishCfgPPO.runner.save_interval == 5
+
+
+def test_heading_recovery_tracks_restoring_rate_instead_of_zero_rate():
+    robot = object.__new__(Rs01Go2StraightRobot)
+    robot.commands = torch.tensor([[0.4, 0.0, 0.0, 0.0]] * 2)
+    robot.straight_heading_target_rad = torch.zeros(2)
+    robot.rpy = torch.tensor(
+        [[0.0, 0.0, 0.2], [0.0, 0.0, -0.2]]
+    )
+    robot.base_ang_vel = torch.tensor(
+        [[0.0, 0.0, -0.3], [0.0, 0.0, 0.0]]
+    )
+    robot.cfg = type(
+        "Cfg",
+        (),
+        {
+            "rewards": type(
+                "Rewards",
+                (),
+                {
+                    "heading_recovery_gain_rad_s_per_rad": 1.5,
+                    "heading_recovery_max_rate_rad_s": 0.6,
+                },
+            )()
+        },
+    )()
+    penalty = robot._reward_heading_recovery()
+    assert penalty[0].item() < 1.0e-6
+    assert torch.allclose(penalty[1], torch.tensor(0.25))
 
 
 def test_position_target_obeys_rate_and_acceleration_limits():

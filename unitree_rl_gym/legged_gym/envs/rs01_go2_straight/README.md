@@ -77,3 +77,82 @@ python3 legged_gym/scripts/play_rs01_go2_straight.py \
   --load_run=<run-directory> \
   --checkpoint=<iteration>
 ```
+
+## Rear-leg coordination polish
+
+Task `rs01_go2_straight_rear_coord` is checkpoint-compatible with the 50-D
+straight task and is intended only for conservative continuation from the
+accepted model_550.  It keeps the gait clock, 12 direct actions, gains, action
+scale, rate/acceleration limits, and measured RS01 actuator unchanged.
+
+The polish adds contact-state disagreement inside `FL+RR` and `FR+RL`, plus an
+extra clearance-shortfall signal applied only to scheduled `RL/RR` swing.  It
+does not force front and rear foot heights to be identical.  PPO uses lower
+fixed noise, a fresh low-rate optimizer, and a frozen model_550 executed-action
+reference so the accepted front-leg motion cannot drift quickly.
+
+Run only a short checkpointed pilot first:
+
+```bash
+python3 legged_gym/scripts/train.py \
+  --task=rs01_go2_straight_rear_coord \
+  --headless \
+  --max_iterations=50 \
+  --run_name=rear_coord_pilot_from550 \
+  --resume \
+  --load_run=Jul26_20-17-54_pilot_live_clearance_resume500 \
+  --checkpoint=550
+```
+
+Do not treat the pilot as hardware-ready solely because its diagonal timing is
+better; reject continuations that increase peak saturation or body yaw.
+
+## Closed-loop straight-path polish
+
+Task `rs01_go2_straight_path_polish` conservatively continues from the accepted
+rear-coordinated model. It appends one wrapped desired-minus-current heading
+scalar to the 50-D observation, giving a 51-D actor input. Actor and critic
+checkpoint inputs are migrated from 50 to 51 dimensions; all learned weights
+are retained and the new heading column starts at zero.
+
+The heading term tracks a bounded restoring yaw rate instead of penalizing all
+yaw rate. This distinction lets the robot turn back toward its initial heading
+when it has drifted. It does not add global lateral position, change the gait
+clock, alter the 12 direct actions, or modify the measured RS01 actuator.
+Deployment must provide the same wrapped yaw relative to the heading captured
+at locomotion start.
+
+The first deterministic 30 s pilot at 0.35 m/s selected model_625 rather than
+the final model_650: model_625 reduced lateral displacement from 5.03 m to
+1.24 m and final heading error from 59.15 degrees to -6.67 degrees without
+reducing the exact diagonal-contact rate. Since later updates crossed through
+zero and over-corrected, fine continuation uses a `5e-5` fixed learning rate
+and saves every five iterations.
+
+The fine continuation was ranked with 16 parallel 30 s nominal rollouts.
+Model_635 is the selected path checkpoint: mean path lateral RMS was 0.430 m,
+mean absolute final lateral displacement was 0.872 m, exact desired-contact
+matching was 67.88%, and 17 N.m motor saturation was 17.86%. Model_640 had a
+slightly lower heading RMS but more lateral path error, so it was not selected.
+
+Fine-polish from the selected checkpoint:
+
+```bash
+python3 legged_gym/scripts/train.py \
+  --task=rs01_go2_straight_path_polish \
+  --headless \
+  --max_iterations=25 \
+  --run_name=path_polish_fine_from625 \
+  --resume \
+  --load_run=Jul26_21-06-58_path_polish_pilot_from600 \
+  --checkpoint=625
+```
+
+Play the selected fine-polish checkpoint:
+
+```bash
+python3 legged_gym/scripts/play_rs01_go2_straight.py \
+  --task=rs01_go2_straight_path_polish \
+  --load_run=Jul26_21-12-32_path_polish_fine_from625 \
+  --checkpoint=635
+```

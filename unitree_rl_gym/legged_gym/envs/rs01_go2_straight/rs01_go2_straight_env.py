@@ -28,6 +28,7 @@ class Rs01Go2StraightRobot(LeggedRobot):
     def __init__(self, *args, **kwargs):
         self._rs01_actuator_ready = False
         self._anti_stand_ready = False
+        self._straight_path_ready = False
         super().__init__(*args, **kwargs)
         if self.num_dof != 12 or self.num_actions != 12:
             raise ValueError(
@@ -49,6 +50,12 @@ class Rs01Go2StraightRobot(LeggedRobot):
         )
         self._initialize_contact_pattern_masks()
         self._anti_stand_ready = True
+        self.straight_heading_target_rad = torch.zeros(
+            self.num_envs,
+            device=self.device,
+            dtype=torch.float,
+        )
+        self._straight_path_ready = True
 
     def _initialize_contact_pattern_masks(self):
         actor_body_names = self.gym.get_actor_rigid_body_names(
@@ -109,12 +116,35 @@ class Rs01Go2StraightRobot(LeggedRobot):
         super().reset_idx(env_ids)
         if self._anti_stand_ready:
             self.all_feet_contact_time_s[env_ids] = 0.0
+        if self._straight_path_ready:
+            self.straight_heading_target_rad[env_ids] = 0.0
 
     def _walking_command_gate(self):
         return (self.commands[:, 0] > 0.1).to(dtype=torch.float)
 
     def _reward_yaw_rate(self):
         return torch.square(self.base_ang_vel[:, 2])
+
+    def _straight_heading_error(self):
+        raw_error = self.straight_heading_target_rad - self.rpy[:, 2]
+        return torch.atan2(torch.sin(raw_error), torch.cos(raw_error))
+
+    def _reward_heading_recovery(self):
+        heading_error = self._straight_heading_error()
+        gain = float(self.cfg.rewards.heading_recovery_gain_rad_s_per_rad)
+        max_rate = float(self.cfg.rewards.heading_recovery_max_rate_rad_s)
+        target_yaw_rate = torch.clamp(
+            gain * heading_error,
+            min=-max_rate,
+            max=max_rate,
+        )
+        normalized_error = (
+            self.base_ang_vel[:, 2] - target_yaw_rate
+        ) / max(max_rate, 1.0e-6)
+        return (
+            torch.square(normalized_error)
+            * self._walking_command_gate()
+        )
 
     def _reward_prolonged_all_feet_contact(self):
         grace_s = float(self.cfg.rewards.all_feet_contact_grace_s)
@@ -230,6 +260,9 @@ class Rs01Go2StraightRobot(LeggedRobot):
         return target, swing
 
     def _reward_phase_swing_clearance(self):
+        return self._phase_swing_clearance_error() * self._walking_command_gate()
+
+    def _phase_swing_clearance_error(self, selected_feet=None):
         clearance_m = float(self.cfg.rewards.swing_clearance_m)
         target_height, desired_swing = self._swing_height_target_from_phase(
             self._gait_phase(),
@@ -239,6 +272,11 @@ class Rs01Go2StraightRobot(LeggedRobot):
             float(self.cfg.rewards.foot_collision_radius_m),
             clearance_m,
         )
+        if selected_feet is not None:
+            desired_swing = (
+                desired_swing
+                & selected_feet.unsqueeze(0).to(dtype=torch.bool)
+            )
         normalized_shortfall = torch.clamp(
             target_height - self.feet_pos[:, :, 2],
             min=0.0,
@@ -251,7 +289,34 @@ class Rs01Go2StraightRobot(LeggedRobot):
             torch.sum(desired_swing.to(dtype=torch.float), dim=1),
             min=1.0,
         )
-        return error * self._walking_command_gate()
+        return error
+
+    def _reward_rear_swing_clearance(self):
+        rear_feet = torch.zeros(
+            len(self.feet_indices),
+            device=self.device,
+            dtype=torch.bool,
+        )
+        rear_feet[self.foot_slot_by_leg["RL"]] = True
+        rear_feet[self.foot_slot_by_leg["RR"]] = True
+        return (
+            self._phase_swing_clearance_error(rear_feet)
+            * self._walking_command_gate()
+        )
+
+    def _reward_diagonal_contact_sync(self):
+        contact = self.get_foot_contact_mask()
+        fl = self.foot_slot_by_leg["FL"]
+        fr = self.foot_slot_by_leg["FR"]
+        rl = self.foot_slot_by_leg["RL"]
+        rr = self.foot_slot_by_leg["RR"]
+        mismatch_a = torch.logical_xor(contact[:, fl], contact[:, rr])
+        mismatch_b = torch.logical_xor(contact[:, fr], contact[:, rl])
+        mismatch = 0.5 * (
+            mismatch_a.to(dtype=torch.float)
+            + mismatch_b.to(dtype=torch.float)
+        )
+        return mismatch * self._walking_command_gate()
 
     def _reward_same_axle_flight(self):
         contact = self.get_foot_contact_mask()
@@ -275,18 +340,32 @@ class Rs01Go2StraightRobot(LeggedRobot):
         phase_observation = torch.stack(
             (torch.sin(phase_angle), torch.cos(phase_angle)), dim=1
         )
+        observations = [
+            self.base_lin_vel * self.obs_scales.lin_vel,
+            self.base_ang_vel * self.obs_scales.ang_vel,
+            self.projected_gravity,
+            self.commands[:, :3] * self.commands_scale,
+            (self.dof_pos - self.default_dof_pos)
+            * self.obs_scales.dof_pos,
+            self.dof_vel * self.obs_scales.dof_vel,
+            self.actions,
+            phase_observation,
+        ]
+        if getattr(
+            self.cfg.commands, "observe_straight_heading_error", False
+        ):
+            scale = float(
+                self.cfg.commands.straight_heading_observation_scale
+            )
+            observations.append(
+                torch.clamp(
+                    self._straight_heading_error() * scale,
+                    min=-1.0,
+                    max=1.0,
+                ).unsqueeze(1)
+            )
         self.obs_buf = torch.cat(
-            (
-                self.base_lin_vel * self.obs_scales.lin_vel,
-                self.base_ang_vel * self.obs_scales.ang_vel,
-                self.projected_gravity,
-                self.commands[:, :3] * self.commands_scale,
-                (self.dof_pos - self.default_dof_pos)
-                * self.obs_scales.dof_pos,
-                self.dof_vel * self.obs_scales.dof_vel,
-                self.actions,
-                phase_observation,
-            ),
+            observations,
             dim=-1,
         )
         if self.add_noise:
@@ -475,6 +554,21 @@ class Rs01Go2StraightRobot(LeggedRobot):
         self.root_states[env_ids] = self.base_init_state
         self.root_states[env_ids, :3] += self.env_origins[env_ids]
         self.root_states[env_ids, 7:13] = 0.0
+        heading_noise = float(getattr(
+            self.cfg.init_state,
+            "reset_heading_noise_rad",
+            0.0,
+        ))
+        if heading_noise > 0.0 and not self.cfg.env.test:
+            yaw = (
+                2.0 * torch.rand(
+                    len(env_ids), device=self.device
+                ) - 1.0
+            ) * heading_noise
+            self.root_states[env_ids, 3] = 0.0
+            self.root_states[env_ids, 4] = 0.0
+            self.root_states[env_ids, 5] = torch.sin(0.5 * yaw)
+            self.root_states[env_ids, 6] = torch.cos(0.5 * yaw)
 
         env_ids_int32 = env_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(
