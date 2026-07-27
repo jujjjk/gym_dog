@@ -19,6 +19,8 @@ from legged_gym.envs.rs01_go2_straight import (
     Rs01Go2Sim2SimRobustCfgPPO,
     Rs01Go2MatchedTransferCfg,
     Rs01Go2MatchedTransferCfgPPO,
+    Rs01Go2Heading52Cfg,
+    Rs01Go2Heading52CfgPPO,
     Rs01Go2StraightCfg,
     Rs01Go2StraightCfgPPO,
     Rs01Go2StraightRobot,
@@ -208,6 +210,12 @@ task_registry.register(
     Rs01Go2StraightRobot,
     Rs01Go2MatchedTransferCfg(),
     Rs01Go2MatchedTransferCfgPPO(),
+)
+task_registry.register(
+    "rs01_go2_sim2sim_heading52",
+    Rs01Go2StraightRobot,
+    Rs01Go2Heading52Cfg(),
+    Rs01Go2Heading52CfgPPO(),
 )
 task_registry.register(
     "dog_rs01_trot", DogRs01Robot, DogRs01TrotCfg(), DogRs01TrotCfgPPO()

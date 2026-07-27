@@ -27,7 +27,8 @@ setup(
             + glob("resource/fanfan_tilt_recovery_5530_5650.*")
             + glob("resource/fanfan_clearance_robust_5730.*")
             + glob("resource/fanfan_hardware_balance_5530_best.*")
-            + glob("resource/fanfan_realdata_best.*"),
+            + glob("resource/fanfan_realdata_best.*")
+            + glob("resource/model_930_rs01_heading52.*"),
         ),
     ],
     install_requires=["setuptools"],
@@ -91,6 +92,14 @@ setup(
             (
                 "mydog_realdata_node = "
                 "mydog_policy.sim2real_realdata_node:main"
+            ),
+            (
+                "mydog_rs01_model930_node = "
+                "mydog_policy.rs01_model930_node:main"
+            ),
+            (
+                "mydog_validate_rs01_model930 = "
+                "mydog_policy.validate_rs01_model930:main"
             ),
         ],
     },

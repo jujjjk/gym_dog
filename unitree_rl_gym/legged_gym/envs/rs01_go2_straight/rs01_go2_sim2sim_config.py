@@ -237,3 +237,59 @@ class Rs01Go2MatchedTransferCfgPPO(Rs01Go2Sim2SimRobustCfgPPO):
         reference_policy_coef = 0.12
         reference_action_deadband = 0.06
         reference_action_hinge_coef = 1.0
+
+
+class Rs01Go2Heading52Cfg(Rs01Go2MatchedTransferCfg):
+    """Global heading recovery after closing the Sim2Sim runtime contract."""
+
+    class env(Rs01Go2MatchedTransferCfg.env):
+        # Replace the saturated scalar heading error with sin/cos.
+        num_observations = 52
+
+    class commands(Rs01Go2MatchedTransferCfg.commands):
+        observe_straight_heading_error = False
+        observe_straight_heading_sin_cos = True
+
+    class init_state(Rs01Go2MatchedTransferCfg.init_state):
+        # First recovery stage: wider than the old local +/-0.12 rad range,
+        # but still conservative enough to preserve the accepted gait.
+        reset_heading_noise_rad = 0.30
+        reset_yaw_rate_noise_rad_s = 0.20
+
+
+class Rs01Go2Heading52CfgPPO(Rs01Go2MatchedTransferCfgPPO):
+    class policy(Rs01Go2MatchedTransferCfgPPO.policy):
+        init_noise_std = 0.05
+
+    class algorithm(Rs01Go2MatchedTransferCfgPPO.algorithm):
+        learning_rate = 2.0e-5
+        schedule = "fixed"
+
+    class runner(Rs01Go2MatchedTransferCfgPPO.runner):
+        run_name = ""
+        experiment_name = "rs01_go2_straight_phase_load"
+        save_interval = 5
+        action_std_value = 0.05
+        freeze_action_std = True
+        load_optimizer = False
+        adapt_observation_input = True
+        # The first 50 columns are unchanged. The old final scalar represented
+        # approximately 2*heading_error near zero; map its first-layer weight
+        # to 2*sin(error), and initialize cos(error) to zero.
+        observation_column_migration = {
+            "source_width": 51,
+            "destination_width": 52,
+            "copy_prefix": 50,
+            "column_mappings": [
+                {
+                    "source": 50,
+                    "destination": 50,
+                    "scale": 2.0,
+                },
+            ],
+        }
+        # Keep the nominal gait prior, but allow more recovery authority than
+        # the local-heading transfer used before runtime parity was fixed.
+        reference_policy_coef = 0.08
+        reference_action_deadband = 0.08
+        reference_action_hinge_coef = 0.75

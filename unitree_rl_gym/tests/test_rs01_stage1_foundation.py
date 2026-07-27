@@ -139,6 +139,36 @@ class CheckpointAdapterTests(unittest.TestCase):
         self.assertTrue(torch.all(adapted["actor.0.weight"][:, 52:] == 0))
         self.assertEqual(len(changes), 2)
 
+    def test_51_scalar_heading_to_52_sin_cos_migration(self):
+        target = self.ActorCritic(52)
+        source = self.state(51)
+        source["actor.0.weight"][:, 50] = 3.0
+        source["critic.0.weight"][:, 50] = 4.0
+        migration = {
+            "source_width": 51,
+            "destination_width": 52,
+            "copy_prefix": 50,
+            "column_mappings": [
+                {"source": 50, "destination": 50, "scale": 2.0},
+            ],
+        }
+        adapted, changes = adapt_observation_input_state(
+            source,
+            target.state_dict(),
+            column_migration=migration,
+        )
+        target.load_state_dict(adapted, strict=True)
+        self.assertTrue(
+            torch.all(adapted["actor.0.weight"][:, 50] == 6.0)
+        )
+        self.assertTrue(
+            torch.all(adapted["critic.0.weight"][:, 50] == 8.0)
+        )
+        self.assertTrue(
+            torch.all(adapted["actor.0.weight"][:, 51] == 0.0)
+        )
+        self.assertEqual(len(changes), 2)
+
     def test_76_to_76(self):
         target = self.ActorCritic(76)
         adapted, changes = adapt_observation_input_state(

@@ -1,5 +1,13 @@
 # RS01 matched-scene short-transfer result
 
+> **Superseded:** the MuJoCo numbers below were generated with schema-version-1
+> actor routing in URDF declaration order and with a mismatched body-velocity
+> frame. They are retained only as fault evidence and must not be used to rank
+> policies. After schema-version-2 runtime parity fixes, the same model_900
+> reaches 0.2224 m/s, 76.47% exact desired contact, zero flight/fall, 18.44
+> N.m raw P95 and 8.16% peak saturation over 30 seconds. Its remaining failure
+> is -0.887 rad unwrapped yaw drift and 1.663 m final lateral displacement.
+
 - Source: `Jul27_13-07-38_sim2sim_robust_from_kd050_840/model_870.pt`
 - Task: `rs01_go2_sim2sim_matched_transfer`
 - Run: `Jul27_14-22-47_matched_mujoco_transfer_short_from870`

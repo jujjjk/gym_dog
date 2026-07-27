@@ -92,6 +92,22 @@ class Rs01Go2StraightCfg(LeggedRobotCfg):
         peak_torque_limit_nm = 17.0
         continuous_torque_nm = 6.0
         friction_smoothing_rad_s = 0.05
+        # Isaac Gym exposes this asset in lexical leg order, not URDF
+        # declaration order. This is the authoritative actor/action order.
+        runtime_dof_order = [
+            "FL_hip_joint",
+            "FL_thigh_joint",
+            "FL_calf_joint",
+            "FR_hip_joint",
+            "FR_thigh_joint",
+            "FR_calf_joint",
+            "RL_hip_joint",
+            "RL_thigh_joint",
+            "RL_calf_joint",
+            "RR_hip_joint",
+            "RR_thigh_joint",
+            "RR_calf_joint",
+        ]
 
         target_rate_limit_rad_s = {
             "hip": 2.0,
@@ -110,12 +126,32 @@ class Rs01Go2StraightCfg(LeggedRobotCfg):
             "FL_hip_joint": "0x21",
             "FL_thigh_joint": "0x22",
             "FL_calf_joint": "0x23",
-            "RR_hip_joint": "0x31",
-            "RR_thigh_joint": "0x32",
-            "RR_calf_joint": "0x33",
-            "RL_hip_joint": "0x41",
-            "RL_thigh_joint": "0x42",
-            "RL_calf_joint": "0x43",
+            # Verified against the real feedback interface and semantic
+            # mapper: board B reports the left-rear leg first, then right-rear.
+            "RL_hip_joint": "0x31",
+            "RL_thigh_joint": "0x32",
+            "RL_calf_joint": "0x33",
+            "RR_hip_joint": "0x41",
+            "RR_thigh_joint": "0x42",
+            "RR_calf_joint": "0x43",
+        }
+        # New-machine hardware semantics verified on 2026-07-27.
+        # Policy/URDF coordinates are recovered from feedback with
+        # q_policy = real_to_policy_sign_by_motor_id[id] * q_real.
+        # The same sign maps policy position targets back to the motor.
+        real_to_policy_sign_by_motor_id = {
+            "0x11": -1.0,
+            "0x12": 1.0,
+            "0x13": -1.0,
+            "0x21": -1.0,
+            "0x22": -1.0,
+            "0x23": 1.0,
+            "0x31": 1.0,
+            "0x32": -1.0,
+            "0x33": 1.0,
+            "0x41": 1.0,
+            "0x42": 1.0,
+            "0x43": -1.0,
         }
 
         # 0x11 and 0x41 were under repair during identification, so those two

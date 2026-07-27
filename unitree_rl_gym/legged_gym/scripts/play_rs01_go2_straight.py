@@ -18,6 +18,7 @@ SUPPORTED_TASKS = {
     "rs01_go2_sim2sim_kd050",
     "rs01_go2_sim2sim_robust",
     "rs01_go2_sim2sim_matched_transfer",
+    "rs01_go2_sim2sim_heading52",
 }
 
 

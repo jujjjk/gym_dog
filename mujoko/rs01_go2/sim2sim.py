@@ -24,7 +24,7 @@ def load_contract(session):
     if METADATA_KEY not in metadata:
         raise RuntimeError(f"ONNX is missing {METADATA_KEY}")
     contract = json.loads(metadata[METADATA_KEY])
-    if contract.get("schema_version") != 1:
+    if contract.get("schema_version") != 2:
         raise RuntimeError(
             f"Unsupported schema version {contract.get('schema_version')}"
         )
@@ -305,9 +305,11 @@ class Rs01Go2Sim:
         ]
         self.data.qpos[self.qpos_indices] = self.default
         self.action = np.zeros(len(self.names), dtype=np.float64)
+        self.desired_target = self.default.copy()
         self.limited_target = self.default.copy()
         self.target_rate = np.zeros(len(self.names), dtype=np.float64)
         self.response_target = self.default.copy()
+        self.last_delayed_target = self.default.copy()
         self.target_history = np.repeat(
             self.default[None, :],
             self.max_delay_steps + 1,
@@ -336,9 +338,18 @@ class Rs01Go2Sim:
             mujoco.mjtObj.mjOBJ_BODY,
             self.trunk_body,
             velocity,
-            1,
+            0,
         )
-        return velocity[3:].copy(), velocity[:3].copy()
+        # World-frame mj_objectVelocity is ordered angular, then linear.
+        # Convert explicitly with the floating-base quaternion, matching
+        # Isaac Gym's quat_rotate_inverse. MuJoCo's flg_local=1 convention for
+        # this imported free body has a fixed axis permutation and must not be
+        # used as the policy body frame.
+        rotation = quaternion_rotation_matrix(self.data.qpos[3:7])
+        return (
+            rotation.T @ velocity[3:],
+            rotation.T @ velocity[:3],
+        )
 
     def observation(self):
         quaternion = self.data.qpos[3:7]
@@ -353,22 +364,33 @@ class Rs01Go2Sim:
             1.0,
         )
         angle = 2.0 * math.pi * self.phase
-        observation = np.concatenate(
-            (
-                linear * float(self.obs_cfg["lin_vel_scale"]),
-                angular * float(self.obs_cfg["ang_vel_scale"]),
-                gravity,
-                self.command
-                * np.asarray(self.obs_cfg["command_scale"], dtype=np.float64),
-                (self.data.qpos[self.qpos_indices] - self.default)
-                * float(self.obs_cfg["dof_pos_scale"]),
-                self.data.qvel[self.qvel_indices]
-                * float(self.obs_cfg["dof_vel_scale"]),
-                self.action,
-                [math.sin(angle), math.cos(angle)],
-                [heading_error],
+        observation_parts = [
+            linear * float(self.obs_cfg["lin_vel_scale"]),
+            angular * float(self.obs_cfg["ang_vel_scale"]),
+            gravity,
+            self.command
+            * np.asarray(self.obs_cfg["command_scale"], dtype=np.float64),
+            (self.data.qpos[self.qpos_indices] - self.default)
+            * float(self.obs_cfg["dof_pos_scale"]),
+            self.data.qvel[self.qvel_indices]
+            * float(self.obs_cfg["dof_vel_scale"]),
+            self.action,
+            [math.sin(angle), math.cos(angle)],
+        ]
+        if self.obs_cfg.get(
+            "heading_representation",
+            "scaled_wrapped_scalar",
+        ) == "sin_cos":
+            raw_heading_error = wrapped_angle(self.heading_target - yaw)
+            observation_parts.append(
+                [
+                    math.sin(raw_heading_error),
+                    math.cos(raw_heading_error),
+                ]
             )
-        ).astype(np.float32)
+        else:
+            observation_parts.append([heading_error])
+        observation = np.concatenate(observation_parts).astype(np.float32)
         expected = int(self.cfg["dimensions"]["observations"])
         if observation.size != expected:
             raise RuntimeError(
@@ -392,6 +414,7 @@ class Rs01Go2Sim:
             self.action_clip,
         )
         desired = self.default + self.action_scale * self.action
+        self.desired_target = desired.copy()
         self.limited_target, self.target_rate = limited_target_step(
             desired,
             self.limited_target,
@@ -410,6 +433,7 @@ class Rs01Go2Sim:
                 for index in range(len(self.names))
             ]
         )
+        self.last_delayed_target = delayed.copy()
         equilibrium = self.default + self.response_gain * (
             delayed - self.default
         )
@@ -445,9 +469,11 @@ class Rs01Go2Sim:
             self.physics_step()
         self.policy_steps += 1
 
-    def contact_forces(self):
+    def contact_diagnostics(self):
         force_by_geom = {geom: 0.0 for geom in self.foot_geoms.values()}
         contact_force = np.zeros(6, dtype=np.float64)
+        illegal_contact_count = 0
+        illegal_geom_names = set()
         for index in range(self.data.ncon):
             contact = self.data.contact[index]
             if self.ground_geom not in (contact.geom1, contact.geom2):
@@ -458,6 +484,14 @@ class Rs01Go2Sim:
                 else contact.geom1
             )
             if foot_geom not in force_by_geom:
+                illegal_contact_count += 1
+                illegal_geom_names.add(
+                    mujoco.mj_id2name(
+                        self.model,
+                        mujoco.mjtObj.mjOBJ_GEOM,
+                        foot_geom,
+                    ) or f"geom_{foot_geom}"
+                )
                 continue
             mujoco.mj_contactForce(
                 self.model,
@@ -466,9 +500,32 @@ class Rs01Go2Sim:
                 contact_force,
             )
             force_by_geom[foot_geom] += abs(float(contact_force[0]))
-        return np.asarray(
-            [force_by_geom[self.foot_geoms[leg]] for leg in LEGS]
+        return (
+            np.asarray(
+                [force_by_geom[self.foot_geoms[leg]] for leg in LEGS]
+            ),
+            illegal_contact_count,
+            sorted(illegal_geom_names),
         )
+
+    def contact_forces(self):
+        return self.contact_diagnostics()[0]
+
+    def foot_slip_speeds(self):
+        result = []
+        velocity = np.zeros(6, dtype=np.float64)
+        for leg in LEGS:
+            mujoco.mj_objectVelocity(
+                self.model,
+                self.data,
+                mujoco.mjtObj.mjOBJ_GEOM,
+                self.foot_geoms[leg],
+                velocity,
+                0,
+            )
+            # World-frame object velocity is angular, then linear.
+            result.append(float(np.linalg.norm(velocity[3:5])))
+        return np.asarray(result)
 
     def desired_contact(self):
         stance = float(self.gait_cfg["stance_ratio"])
@@ -510,23 +567,34 @@ def run(args):
             "base_vx_body_m_s",
             "base_vy_body_m_s",
             "yaw_rate_body_rad_s",
+            "unwrapped_yaw_rad",
             "gait_phase",
             "exact_desired_contact",
             "flight",
             "all_four_contact",
+            "illegal_ground_contact_count",
         ]
         for group in (
             "contact",
             "desired_contact",
             "foot_force_n",
             "foot_center_z_m",
+            "foot_slip_speed_m_s",
             "action",
+            "desired_position_target_rad",
+            "limited_position_target_rad",
+            "delayed_position_target_rad",
+            "response_position_target_rad",
             "raw_pd_torque_nm",
             "motor_electromagnetic_torque_nm",
             "applied_joint_torque_nm",
         ):
             labels = LEGS if group not in (
                 "action",
+                "desired_position_target_rad",
+                "limited_position_target_rad",
+                "delayed_position_target_rad",
+                "response_position_target_rad",
                 "raw_pd_torque_nm",
                 "motor_electromagnetic_torque_nm",
                 "applied_joint_torque_nm",
@@ -547,6 +615,10 @@ def run(args):
     contacts = []
     desired_contacts = []
     foot_heights = []
+    foot_slip_speeds = []
+    illegal_contact_counts = []
+    illegal_geom_names = set()
+    wrapped_yaws = []
     min_height = float("inf")
     fall_time = None
     fall_reason = None
@@ -569,13 +641,16 @@ def run(args):
             sim.control_step()
             linear, angular = sim.base_velocity_body()
             roll, pitch, yaw = roll_pitch_yaw(sim.data.qpos[3:7])
-            force = sim.contact_forces()
+            force, illegal_count, illegal_names = sim.contact_diagnostics()
             contact = force >= float(sim.gait_cfg["contact_threshold_n"])
             desired = sim.desired_contact()
             exact = bool(np.array_equal(contact, desired))
             flight = bool(not contact.any())
             all_four = bool(contact.all())
             height = sim.foot_heights()
+            slip_speed = sim.foot_slip_speeds()
+            wrapped_yaws.append(yaw)
+            unwrapped_yaw = float(np.unwrap(wrapped_yaws)[-1])
 
             path_y.append(float(sim.data.qpos[1] - start_xy[1]))
             velocities.append(linear.copy())
@@ -588,6 +663,9 @@ def run(args):
             contacts.append(contact.copy())
             desired_contacts.append(desired.copy())
             foot_heights.append(height.copy())
+            foot_slip_speeds.append(slip_speed.copy())
+            illegal_contact_counts.append(illegal_count)
+            illegal_geom_names.update(illegal_names)
             min_height = min(min_height, float(sim.data.qpos[2]))
             current_fall_reason = None
             if float(sim.data.qpos[2]) < 0.18:
@@ -612,15 +690,22 @@ def run(args):
                         linear[0],
                         linear[1],
                         angular[2],
+                        unwrapped_yaw,
                         sim.phase,
                         int(exact),
                         int(flight),
                         int(all_four),
+                        illegal_count,
                         *contact.astype(int),
                         *desired.astype(int),
                         *force,
                         *height,
+                        *slip_speed,
                         *sim.action,
+                        *sim.desired_target,
+                        *sim.limited_target,
+                        *sim.last_delayed_target,
+                        *sim.response_target,
                         *sim.last_raw_torque,
                         *sim.last_motor_torque,
                         *sim.last_applied_torque,
@@ -650,6 +735,9 @@ def run(args):
     contact = np.asarray(contacts)
     desired = np.asarray(desired_contacts)
     height = np.asarray(foot_heights)
+    slip_speed = np.asarray(foot_slip_speeds)
+    illegal_count = np.asarray(illegal_contact_counts)
+    unwrapped_yaw = np.unwrap(np.asarray(wrapped_yaws))
     exact = np.all(contact == desired, axis=1)
     diagonal_a = (
         contact[:, LEGS.index("FL")]
@@ -678,6 +766,10 @@ def run(args):
         "lateral_path_rms_m": float(np.sqrt(np.mean(np.square(path_y)))),
         "final_lateral_displacement_m": float(displacement[1]),
         "final_yaw_rad": float(final_yaw),
+        "final_unwrapped_yaw_rad": float(unwrapped_yaw[-1]),
+        "unwrapped_yaw_drift_rad": float(
+            unwrapped_yaw[-1] - unwrapped_yaw[0]
+        ),
         "yaw_rate_rms_rad_s": float(np.sqrt(np.mean(np.square(yaw_rates)))),
         "roll_rms_rad": float(np.sqrt(np.mean(np.square(rolls)))),
         "pitch_rms_rad": float(np.sqrt(np.mean(np.square(pitches)))),
@@ -691,12 +783,28 @@ def run(args):
         "diagonal_b_only_ratio": float(diagonal_b.mean()),
         "flight_ratio": float((~contact.any(axis=1)).mean()),
         "all_four_contact_ratio": float(contact.all(axis=1).mean()),
+        "illegal_ground_contact_frame_ratio": float(
+            (illegal_count > 0).mean()
+        ),
+        "illegal_ground_contact_count": int(illegal_count.sum()),
+        "illegal_ground_contact_geoms": sorted(illegal_geom_names),
         "contact_duty_by_leg": {
             leg: float(contact[:, index].mean())
             for index, leg in enumerate(LEGS)
         },
         "foot_center_height_p95_m": {
             leg: percentile(height[:, index], 0.95)
+            for index, leg in enumerate(LEGS)
+        },
+        "foot_contact_slip_speed_p95_m_s": {
+            leg: (
+                percentile(
+                    slip_speed[contact[:, index], index],
+                    0.95,
+                )
+                if np.any(contact[:, index])
+                else 0.0
+            )
             for index, leg in enumerate(LEGS)
         },
         "raw_pd_torque_p95_nm": percentile(raw, 0.95),

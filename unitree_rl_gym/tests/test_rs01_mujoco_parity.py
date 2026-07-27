@@ -10,13 +10,16 @@ sys.path.insert(0, str(ROOT))
 
 from mujoko.rs01_go2.export_policy import (  # noqa: E402
     build_contract,
+    movable_joint_names,
     sha256_file,
 )
 from mujoko.rs01_go2.sim2sim import (  # noqa: E402
+    Rs01Go2Sim,
     compute_rs01_torques,
     load_scene_contract,
 )
 from legged_gym.envs.rs01_go2_straight.rs01_go2_sim2sim_config import (  # noqa: E402
+    Rs01Go2Heading52Cfg,
     Rs01Go2Sim2SimRobustCfg,
 )
 
@@ -29,12 +32,46 @@ def test_export_contract_binds_exact_new_rs01_urdf_and_physx_timing():
         ROOT / "dummy_policy.onnx",
     )
     simulator = contract["simulator"]
+    assert contract["schema_version"] == 2
     urdf = Path(simulator["urdf"])
     assert urdf == ROOT / "dog_urdf/urdf/dog_rs01.urdf"
     assert simulator["urdf_sha256"] == sha256_file(urdf)
+    assert contract["joint_names"] == list(
+        Rs01Go2Sim2SimRobustCfg.rs01_actuator.runtime_dof_order
+    )
+    assert contract["joint_names"] != movable_joint_names(urdf)
     assert simulator["physx"]["physics_step_s"] == 0.005
     assert simulator["physx"]["contact_substeps"] == 2
     assert simulator["physx"]["contact_substep_s"] == 0.0025
+
+
+def test_export_contract_contains_action_to_real_motor_mapping():
+    contract = build_contract(
+        "rs01_go2_sim2sim_heading52",
+        Rs01Go2Heading52Cfg,
+        ROOT / "dummy_checkpoint.pt",
+        ROOT / "dummy_policy.onnx",
+    )
+    mapping = contract["motor_mapping"]
+    assert [item["action_index"] for item in mapping] == list(range(12))
+    assert [item["joint_name"] for item in mapping] == list(
+        Rs01Go2Heading52Cfg.rs01_actuator.runtime_dof_order
+    )
+    assert [item["motor_id"] for item in mapping] == [
+        "0x21", "0x22", "0x23",
+        "0x11", "0x12", "0x13",
+        "0x31", "0x32", "0x33",
+        "0x41", "0x42", "0x43",
+    ]
+    assert [item["real_feedback_index"] for item in mapping] == [
+        3, 4, 5, 0, 1, 2, 6, 7, 8, 9, 10, 11,
+    ]
+    assert contract["real_motor_order"] == [
+        "0x11", "0x12", "0x13",
+        "0x21", "0x22", "0x23",
+        "0x31", "0x32", "0x33",
+        "0x41", "0x42", "0x43",
+    ]
 
 
 def test_mujoco_contact_contract_matches_calibrated_new_machine():
@@ -60,6 +97,19 @@ def test_mujoco_contact_contract_matches_calibrated_new_machine():
         * mujoco_cfg["integration_substeps_per_motor_step"]
         == contract["control"]["physics_dt_s"]
     )
+
+
+def test_heading52_export_contract_uses_sin_cos_layout():
+    contract = build_contract(
+        "rs01_go2_sim2sim_heading52",
+        Rs01Go2Heading52Cfg,
+        ROOT / "dummy_checkpoint.pt",
+        ROOT / "dummy_policy.onnx",
+    )
+    observations = contract["observations"]
+    assert contract["dimensions"]["observations"] == 52
+    assert observations["heading_representation"] == "sin_cos"
+    assert observations["layout"][-1] == ["heading_error_sin_cos", 2]
 
 
 def test_scene_metadata_loader_exposes_rs01_machine_binding(tmp_path):
@@ -97,3 +147,34 @@ def test_mujoco_motor_limit_is_electromagnetic_not_second_net_clip():
     # 17 N.m electromagnetic limit. It must not be clipped a second time.
     assert applied[0] > motor[0]
     assert applied[1] < motor[1]
+
+
+def test_mujoco_world_velocity_is_rotated_into_policy_body_frame():
+    class FakeMujoco:
+        class mjtObj:
+            mjOBJ_BODY = 1
+
+        @staticmethod
+        def mj_objectVelocity(model, data, kind, body, output, local):
+            assert local == 0
+            output[:] = [0.01, -0.02, 0.4, 0.2, -0.1, 0.03]
+
+    original = sys.modules["mujoco"].mj_objectVelocity
+    try:
+        import mujoco
+
+        mujoco.mj_objectVelocity = FakeMujoco.mj_objectVelocity
+        sim = object.__new__(Rs01Go2Sim)
+        sim.model = object()
+        sim.data = type(
+            "Data",
+            (),
+            {"qpos": np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0])},
+        )()
+        sim.trunk_body = 0
+        linear, angular = sim.base_velocity_body()
+    finally:
+        mujoco.mj_objectVelocity = original
+
+    assert np.allclose(linear, [0.2, -0.1, 0.03])
+    assert np.allclose(angular, [0.01, -0.02, 0.4])
