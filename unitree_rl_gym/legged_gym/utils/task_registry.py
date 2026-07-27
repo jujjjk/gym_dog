@@ -172,7 +172,7 @@ class TaskRegistry:
                 )
                 # Strict loading is deliberately performed once, only after
                 # both actor and critic input layers have been adapted.
-                runner.alg.actor_critic.load_state_dict(
+                runner.load_actor_critic_state_dict(
                     loaded_state, strict=True
                 )
 

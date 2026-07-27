@@ -359,15 +359,15 @@ class DogRs01StraightWalkCfg(DogRs01StraightBaseCfg):
         # a cycle, which put the leg into its stance sweep while still airborne
         # and walked the robot backwards at -0.009 m/s. 0.22 realigns lift-off
         # with the schedule that the contact rewards score against.
-        gait_target_phase_lead = 0.22
+        gait_target_phase_lead = 0.06
         # 新支撑对角腿未落地承重时，暂停相位交接。
-        use_contact_aware_phase_transfer = True
+        use_contact_aware_phase_transfer = False
 
         # 50 Hz 下 6 帧约为 120 ms，防止永久等待。
         phase_transfer_max_wait_steps = 6
 
         # 补偿不同 RS01 电机的位置响应增益差异。
-        compensate_identified_position_gain_in_gait = True
+        compensate_identified_position_gain_in_gait = False
 
         # Softening the gains to 45 fitted the swing inside a 10 N·m clip at
         # 6.75 N·m, but that torque could not fold a loaded calf at all: the toe

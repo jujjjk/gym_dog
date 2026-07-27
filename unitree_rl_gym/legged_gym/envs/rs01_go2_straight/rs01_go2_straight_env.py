@@ -42,6 +42,25 @@ class Rs01Go2StraightRobot(LeggedRobot):
             raise ValueError(
                 "Policy/control dt must match the measured RS01 50 Hz contract"
             )
+        self.calf_dof_indices = torch.tensor(
+            [
+                index
+                for index, name in enumerate(self.dof_names)
+                if "calf" in name.lower()
+            ],
+            device=self.device,
+            dtype=torch.long,
+        )
+        if self.calf_dof_indices.numel() != 4:
+            raise ValueError(
+                "rs01_go2_straight requires exactly four calf joints"
+            )
+        self.policy_actions_unclipped = torch.zeros(
+            self.num_envs,
+            self.num_actions,
+            device=self.device,
+            dtype=torch.float,
+        )
         self._initialize_rs01_actuator()
         self.all_feet_contact_time_s = torch.zeros(
             self.num_envs,
@@ -388,6 +407,42 @@ class Rs01Go2StraightRobot(LeggedRobot):
         )
         return torch.mean(saturated.to(dtype=torch.float), dim=1)
 
+    def _reward_calf_velocity_excess(self):
+        """Penalize the measured swing snap before the URDF velocity ceiling."""
+        soft_limit = float(
+            self.cfg.rewards.calf_velocity_soft_limit_rad_s
+        )
+        if soft_limit <= 0.0:
+            raise ValueError(
+                "calf_velocity_soft_limit_rad_s must be positive"
+            )
+        calf_speed = torch.abs(
+            self.dof_vel[:, self.calf_dof_indices]
+        )
+        normalized_excess = torch.clamp(
+            calf_speed - soft_limit,
+            min=0.0,
+        ) / soft_limit
+        return torch.mean(torch.square(normalized_excess), dim=1)
+
+    def _reward_action_saturation(self):
+        """Charge actor means outside the executable action interval."""
+        soft_limit = float(
+            self.cfg.rewards.action_saturation_soft_limit
+        )
+        clip_limit = float(self.cfg.normalization.clip_actions)
+        if soft_limit < 0.0 or soft_limit >= clip_limit:
+            raise ValueError(
+                "action_saturation_soft_limit must satisfy "
+                f"0 <= soft limit < clip limit, got {soft_limit} and "
+                f"{clip_limit}"
+            )
+        excess = torch.clamp(
+            torch.abs(self.policy_actions_unclipped) - soft_limit,
+            min=0.0,
+        )
+        return torch.mean(torch.square(excess), dim=1)
+
     def _joint_type_value(self, values):
         result = []
         for name in self.dof_names:
@@ -411,24 +466,85 @@ class Rs01Go2StraightRobot(LeggedRobot):
         motor_cfg = self.cfg.rs01_actuator
         shape = (self.num_envs, self.num_dof)
 
+        action_scale_by_joint = getattr(
+            self.cfg.control,
+            "action_scale_by_joint",
+            None,
+        )
+        if action_scale_by_joint is None:
+            self.rs01_action_scale_rad = torch.full(
+                (self.num_dof,),
+                float(self.cfg.control.action_scale),
+                device=self.device,
+                dtype=torch.float,
+            )
+        else:
+            self.rs01_action_scale_rad = self._joint_type_value(
+                action_scale_by_joint
+            )
         self.rs01_target_rate_limit_rad_s = self._joint_type_value(
             motor_cfg.target_rate_limit_rad_s
         )
         self.rs01_target_acceleration_limit_rad_s2 = self._joint_type_value(
             motor_cfg.target_acceleration_limit_rad_s2
         )
-        self.rs01_response_gain = self._motor_value(motor_cfg.response_gain)
-        self.rs01_time_constant_s = self._motor_value(motor_cfg.time_constant_s)
-        self.rs01_coulomb_friction_nm = self._motor_value(
+        self.rs01_nominal_response_gain = self._motor_value(
+            motor_cfg.response_gain
+        )
+        self.rs01_nominal_time_constant_s = self._motor_value(
+            motor_cfg.time_constant_s
+        )
+        self.rs01_nominal_coulomb_friction_nm = self._motor_value(
             motor_cfg.coulomb_friction_nm
         )
         observed_delay_s = self._motor_value(
             motor_cfg.observed_closed_loop_delay_s
         )
-        self.rs01_delay_steps = torch.round(
+        self.rs01_nominal_delay_steps = torch.round(
             observed_delay_s / float(self.sim_params.dt)
         ).to(dtype=torch.long)
-        max_delay_steps = int(torch.max(self.rs01_delay_steps).item())
+        randomize_actuator = bool(getattr(
+            self.cfg.domain_rand,
+            "randomize_rs01_actuator",
+            False,
+        ))
+        if randomize_actuator:
+            self.rs01_response_gain = (
+                self.rs01_nominal_response_gain.unsqueeze(0)
+                .repeat(self.num_envs, 1)
+            )
+            self.rs01_time_constant_s = (
+                self.rs01_nominal_time_constant_s.unsqueeze(0)
+                .repeat(self.num_envs, 1)
+            )
+            self.rs01_coulomb_friction_nm = (
+                self.rs01_nominal_coulomb_friction_nm.unsqueeze(0)
+                .repeat(self.num_envs, 1)
+            )
+            self.rs01_delay_steps = (
+                self.rs01_nominal_delay_steps.unsqueeze(0)
+                .repeat(self.num_envs, 1)
+            )
+            delay_range = getattr(
+                self.cfg.domain_rand,
+                "rs01_delay_step_offset_range",
+                [0, 0],
+            )
+            maximum_delay_offset = max(0, int(delay_range[1]))
+        else:
+            self.rs01_response_gain = self.rs01_nominal_response_gain.clone()
+            self.rs01_time_constant_s = (
+                self.rs01_nominal_time_constant_s.clone()
+            )
+            self.rs01_coulomb_friction_nm = (
+                self.rs01_nominal_coulomb_friction_nm.clone()
+            )
+            self.rs01_delay_steps = self.rs01_nominal_delay_steps.clone()
+            maximum_delay_offset = 0
+        max_delay_steps = (
+            int(torch.max(self.rs01_nominal_delay_steps).item())
+            + maximum_delay_offset
+        )
 
         default = self.default_dof_pos.repeat(self.num_envs, 1)
         self.rs01_limited_position_target_rad = default.clone()
@@ -459,10 +575,91 @@ class Rs01Go2StraightRobot(LeggedRobot):
             self.raw_pd_torques
         )
         self.applied_joint_torques = torch.zeros_like(self.raw_pd_torques)
+        if randomize_actuator:
+            all_env_ids = torch.arange(
+                self.num_envs,
+                device=self.device,
+                dtype=torch.long,
+            )
+            self._randomize_rs01_actuator(all_env_ids)
         self._rs01_actuator_ready = True
+
+    def _randomize_rs01_actuator(self, env_ids):
+        if len(env_ids) == 0 or self.rs01_delay_steps.ndim != 2:
+            return
+        domain_cfg = self.cfg.domain_rand
+        if self.cfg.env.test:
+            response_range = [1.0, 1.0]
+            time_range = [1.0, 1.0]
+            friction_range = [1.0, 1.0]
+            delay_range = [0, 0]
+        else:
+            response_range = domain_cfg.rs01_response_gain_scale_range
+            time_range = domain_cfg.rs01_time_constant_scale_range
+            friction_range = domain_cfg.rs01_friction_scale_range
+            delay_range = domain_cfg.rs01_delay_step_offset_range
+
+        count = len(env_ids)
+        # Most continuation tasks use one scale per robot.  The matched
+        # Sim2Sim transfer task deliberately samples each identified motor
+        # independently: the nominal centre remains the measured RS01 motor,
+        # while the actor must recover from small left/right response and
+        # delay differences instead of relying on perfectly paired dynamics.
+        motor_columns = (
+            self.num_dof
+            if bool(getattr(
+                domain_cfg,
+                "rs01_independent_motor_randomization",
+                False,
+            ))
+            else 1
+        )
+        delay_columns = (
+            self.num_dof
+            if bool(getattr(
+                domain_cfg,
+                "rs01_independent_delay_randomization",
+                False,
+            ))
+            else 1
+        )
+        response_scale = torch.empty(
+            count, motor_columns, device=self.device
+        ).uniform_(float(response_range[0]), float(response_range[1]))
+        time_scale = torch.empty(
+            count, motor_columns, device=self.device
+        ).uniform_(float(time_range[0]), float(time_range[1]))
+        friction_scale = torch.empty(
+            count, motor_columns, device=self.device
+        ).uniform_(float(friction_range[0]), float(friction_range[1]))
+        delay_offset = torch.randint(
+            int(delay_range[0]),
+            int(delay_range[1]) + 1,
+            (count, delay_columns),
+            device=self.device,
+        )
+
+        self.rs01_response_gain[env_ids] = (
+            self.rs01_nominal_response_gain.unsqueeze(0) * response_scale
+        )
+        self.rs01_time_constant_s[env_ids] = (
+            self.rs01_nominal_time_constant_s.unsqueeze(0) * time_scale
+        )
+        self.rs01_coulomb_friction_nm[env_ids] = (
+            self.rs01_nominal_coulomb_friction_nm.unsqueeze(0)
+            * friction_scale
+        )
+        self.rs01_delay_steps[env_ids] = torch.clamp(
+            self.rs01_nominal_delay_steps.unsqueeze(0) + delay_offset,
+            min=0,
+            max=self.rs01_target_delay_buffer.shape[0] - 1,
+        )
 
     def step(self, actions):
         if self._rs01_actuator_ready:
+            self.policy_actions_unclipped.copy_(
+                actions.to(self.device)
+            )
             clipped_actions = torch.clamp(
                 actions.to(self.device),
                 -float(self.cfg.normalization.clip_actions),
@@ -470,7 +667,7 @@ class Rs01Go2StraightRobot(LeggedRobot):
             )
             desired_target = (
                 self.default_dof_pos
-                + float(self.cfg.control.action_scale) * clipped_actions
+                + self.rs01_action_scale_rad * clipped_actions
             )
             (
                 self.rs01_limited_position_target_rad,
@@ -495,11 +692,21 @@ class Rs01Go2StraightRobot(LeggedRobot):
         self.rs01_target_delay_buffer[0].copy_(
             self.rs01_limited_position_target_rad
         )
-        delayed_columns = [
-            self.rs01_target_delay_buffer[int(self.rs01_delay_steps[j]), :, j]
-            for j in range(self.num_dof)
-        ]
-        delayed_target = torch.stack(delayed_columns, dim=1)
+        if self.rs01_delay_steps.ndim == 1:
+            delayed_columns = [
+                self.rs01_target_delay_buffer[
+                    int(self.rs01_delay_steps[j]), :, j
+                ]
+                for j in range(self.num_dof)
+            ]
+            delayed_target = torch.stack(delayed_columns, dim=1)
+        else:
+            delay_history = self.rs01_target_delay_buffer.permute(1, 2, 0)
+            delayed_target = torch.gather(
+                delay_history,
+                dim=2,
+                index=self.rs01_delay_steps.unsqueeze(-1),
+            ).squeeze(-1)
 
         self.rs01_response_target_rad = step_identified_position_response(
             self.rs01_response_target_rad,
@@ -541,6 +748,7 @@ class Rs01Go2StraightRobot(LeggedRobot):
             self.raw_pd_torques[env_ids] = 0.0
             self.motor_electromagnetic_torques[env_ids] = 0.0
             self.applied_joint_torques[env_ids] = 0.0
+            self._randomize_rs01_actuator(env_ids)
 
         env_ids_int32 = env_ids.to(dtype=torch.int32)
         self.gym.set_dof_state_tensor_indexed(
