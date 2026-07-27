@@ -87,6 +87,20 @@ class TorqueDomainTests(unittest.TestCase):
         ))
         self.assertLess(float(delta[0, 0]), 0.01)
 
+    def test_reference_delta_can_match_hard_clipped_action_space(self):
+        policy = torch.tensor([[4.0, 0.5, -2.0]])
+        reference = torch.tensor([[3.0, -0.5, 0.25]])
+        delta = executed_action_delta(
+            policy,
+            reference,
+            transform="clip",
+            clip_value=1.0,
+        )
+        self.assertTrue(torch.equal(
+            delta,
+            torch.tensor([[0.0, 1.0, -1.25]]),
+        ))
+
 
 class CheckpointAdapterTests(unittest.TestCase):
     class ActorCritic(torch.nn.Module):

@@ -11,12 +11,46 @@ from .rs01_go2_path_polish_config import (
     Rs01Go2PathPolishCfg,
     Rs01Go2PathPolishCfgPPO,
 )
+from .rs01_go2_kp40_config import (
+    Rs01Go2Kp40Cfg,
+    Rs01Go2Kp40CfgPPO,
+)
+from .rs01_go2_kp40_polish_config import (
+    Rs01Go2Kp40PolishCfg,
+    Rs01Go2Kp40PolishCfgPPO,
+)
+from .rs01_go2_sim2sim_config import (
+    Rs01Go2Sim2SimAdaptCfg,
+    Rs01Go2Sim2SimAdaptCfgPPO,
+    Rs01Go2Sim2SimCalfRepairCfg,
+    Rs01Go2Sim2SimCalfRepairCfgPPO,
+    Rs01Go2Sim2SimKd050Cfg,
+    Rs01Go2Sim2SimKd050CfgPPO,
+    Rs01Go2Sim2SimRobustCfg,
+    Rs01Go2Sim2SimRobustCfgPPO,
+    Rs01Go2MatchedTransferCfg,
+    Rs01Go2MatchedTransferCfgPPO,
+)
 
 __all__ = [
+    "Rs01Go2Kp40Cfg",
+    "Rs01Go2Kp40CfgPPO",
+    "Rs01Go2Kp40PolishCfg",
+    "Rs01Go2Kp40PolishCfgPPO",
     "Rs01Go2PathPolishCfg",
     "Rs01Go2PathPolishCfgPPO",
     "Rs01Go2RearCoordCfg",
     "Rs01Go2RearCoordCfgPPO",
+    "Rs01Go2Sim2SimAdaptCfg",
+    "Rs01Go2Sim2SimAdaptCfgPPO",
+    "Rs01Go2Sim2SimCalfRepairCfg",
+    "Rs01Go2Sim2SimCalfRepairCfgPPO",
+    "Rs01Go2Sim2SimKd050Cfg",
+    "Rs01Go2Sim2SimKd050CfgPPO",
+    "Rs01Go2Sim2SimRobustCfg",
+    "Rs01Go2Sim2SimRobustCfgPPO",
+    "Rs01Go2MatchedTransferCfg",
+    "Rs01Go2MatchedTransferCfgPPO",
     "Rs01Go2StraightCfg",
     "Rs01Go2StraightCfgPPO",
     "Rs01Go2StraightRobot",

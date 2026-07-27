@@ -1,5 +1,8 @@
 import isaacgym  # noqa: F401 - Isaac Gym must be loaded before torch
 import torch
+from types import SimpleNamespace
+
+from rsl_rl.runners.on_policy_runner import OnPolicyRunner
 
 from legged_gym.envs.rs01_go2_straight.rs01_actuator import (
     compute_rs01_joint_torques,
@@ -20,6 +23,25 @@ from legged_gym.envs.rs01_go2_straight.rs01_go2_rear_coord_config import (
 from legged_gym.envs.rs01_go2_straight.rs01_go2_path_polish_config import (
     Rs01Go2PathPolishCfg,
     Rs01Go2PathPolishCfgPPO,
+)
+from legged_gym.envs.rs01_go2_straight.rs01_go2_kp40_config import (
+    Rs01Go2Kp40Cfg,
+    Rs01Go2Kp40CfgPPO,
+)
+from legged_gym.envs.rs01_go2_straight.rs01_go2_kp40_polish_config import (
+    Rs01Go2Kp40PolishCfg,
+    Rs01Go2Kp40PolishCfgPPO,
+)
+from legged_gym.envs.rs01_go2_straight.rs01_go2_sim2sim_config import (
+    Rs01Go2Sim2SimAdaptCfg,
+    Rs01Go2Sim2SimAdaptCfgPPO,
+    Rs01Go2Sim2SimCalfRepairCfg,
+    Rs01Go2Sim2SimCalfRepairCfgPPO,
+    Rs01Go2Sim2SimKd050Cfg,
+    Rs01Go2Sim2SimKd050CfgPPO,
+    Rs01Go2Sim2SimRobustCfg,
+    Rs01Go2MatchedTransferCfg,
+    Rs01Go2MatchedTransferCfgPPO,
 )
 
 
@@ -260,6 +282,234 @@ def test_path_polish_widens_only_heading_observation_and_adapts_checkpoint():
     assert Rs01Go2PathPolishCfgPPO.runner.load_optimizer is False
     assert Rs01Go2PathPolishCfgPPO.algorithm.learning_rate == 5.0e-5
     assert Rs01Go2PathPolishCfgPPO.runner.save_interval == 5
+
+
+def test_kp40_task_is_isolated_and_keeps_rs01_motor_contract():
+    assert Rs01Go2Kp40Cfg.env.num_observations == 51
+    assert Rs01Go2Kp40Cfg.env.num_actions == 12
+    assert Rs01Go2Kp40Cfg.control.stiffness == {
+        "hip": 40.0,
+        "thigh": 40.0,
+        "calf": 40.0,
+    }
+    assert Rs01Go2Kp40Cfg.control.damping == {
+        "hip": 1.0,
+        "thigh": 1.0,
+        "calf": 1.0,
+    }
+    assert Rs01Go2Kp40Cfg.control.action_scale == 0.18
+    assert Rs01Go2Kp40Cfg.commands.ranges.lin_vel_x == [0.18, 0.28]
+    assert Rs01Go2Kp40Cfg.commands.playback_speed_mps == 0.23
+    assert Rs01Go2Kp40Cfg.rewards.tracking_sigma == 0.015
+    assert Rs01Go2Kp40Cfg.rs01_actuator.continuous_torque_nm == 6.0
+    assert Rs01Go2Kp40Cfg.rs01_actuator.peak_torque_limit_nm == 17.0
+    assert Rs01Go2Kp40CfgPPO.algorithm.learning_rate == 1.0e-4
+    assert Rs01Go2Kp40CfgPPO.runner.reference_policy_coef == 0.05
+
+
+def test_kp40_polish_changes_only_small_update_and_quality_terms():
+    assert Rs01Go2Kp40PolishCfg.control.stiffness == (
+        Rs01Go2Kp40Cfg.control.stiffness
+    )
+    assert Rs01Go2Kp40PolishCfg.control.damping == (
+        Rs01Go2Kp40Cfg.control.damping
+    )
+    assert Rs01Go2Kp40PolishCfg.control.action_scale == 0.18
+    assert Rs01Go2Kp40PolishCfg.commands.ranges.lin_vel_x == [0.18, 0.28]
+    assert Rs01Go2Kp40PolishCfg.rewards.gait_period_s == (
+        Rs01Go2Kp40Cfg.rewards.gait_period_s
+    )
+    assert Rs01Go2Kp40PolishCfg.rewards.gait_stance_ratio == (
+        Rs01Go2Kp40Cfg.rewards.gait_stance_ratio
+    )
+    scales = Rs01Go2Kp40PolishCfg.rewards.scales
+    assert scales.raw_torque_over_peak == -1.0
+    assert scales.motor_saturation == -1.0
+    assert scales.diagonal_contact_sync == -1.0
+    assert Rs01Go2Kp40PolishCfgPPO.algorithm.learning_rate == 5.0e-5
+    assert Rs01Go2Kp40PolishCfgPPO.policy.init_noise_std == 0.07
+    assert Rs01Go2Kp40PolishCfgPPO.runner.save_interval == 5
+    assert Rs01Go2Kp40PolishCfgPPO.runner.reference_policy_coef == 0.15
+
+
+def test_sim2sim_adapt_reduces_only_calf_target_authority():
+    assert Rs01Go2Sim2SimAdaptCfg.env.num_observations == 51
+    assert Rs01Go2Sim2SimAdaptCfg.env.num_actions == 12
+    assert Rs01Go2Sim2SimAdaptCfg.control.stiffness == {
+        "hip": 40.0,
+        "thigh": 40.0,
+        "calf": 40.0,
+    }
+    assert Rs01Go2Sim2SimAdaptCfg.control.action_scale_by_joint == {
+        "hip": 0.18,
+        "thigh": 0.18,
+        "calf": 0.14,
+    }
+    assert (
+        Rs01Go2Sim2SimAdaptCfg.rs01_actuator
+        .target_rate_limit_rad_s["calf"]
+    ) == 2.6
+    assert (
+        Rs01Go2Sim2SimAdaptCfg.rs01_actuator
+        .target_acceleration_limit_rad_s2["calf"]
+    ) == 72.0
+    assert (
+        Rs01Go2Sim2SimAdaptCfgPPO.runner
+        .reference_action_transform
+    ) == "clip"
+
+
+def test_sim2sim_robust_randomization_is_narrow_and_progressive():
+    domain = Rs01Go2Sim2SimRobustCfg.domain_rand
+    assert domain.friction_range == [0.85, 1.15]
+    assert domain.added_mass_range == [-0.30, 0.30]
+    assert domain.rs01_response_gain_scale_range == [0.95, 1.05]
+    assert domain.rs01_time_constant_scale_range == [0.90, 1.10]
+    assert domain.rs01_friction_scale_range == [0.90, 1.10]
+    assert domain.rs01_delay_step_offset_range == [-1, 1]
+
+
+def test_matched_transfer_preserves_contract_and_randomizes_each_motor():
+    assert Rs01Go2MatchedTransferCfg.env.num_observations == 51
+    assert Rs01Go2MatchedTransferCfg.env.num_actions == 12
+    assert Rs01Go2MatchedTransferCfg.control.stiffness == {
+        "hip": 40.0,
+        "thigh": 40.0,
+        "calf": 40.0,
+    }
+    assert Rs01Go2MatchedTransferCfg.control.damping["calf"] == 0.50
+    assert Rs01Go2MatchedTransferCfg.rs01_actuator.peak_torque_limit_nm == 17.0
+    domain = Rs01Go2MatchedTransferCfg.domain_rand
+    assert domain.rs01_independent_motor_randomization is True
+    assert domain.rs01_independent_delay_randomization is True
+    assert domain.rs01_response_gain_scale_range == [0.97, 1.03]
+    assert domain.rs01_time_constant_scale_range == [0.95, 1.05]
+    assert domain.rs01_friction_scale_range == [0.95, 1.05]
+    assert domain.rs01_delay_step_offset_range == [-1, 1]
+    assert Rs01Go2MatchedTransferCfg.init_state.reset_heading_noise_rad == 0.12
+    assert Rs01Go2MatchedTransferCfg.rewards.scales.heading_recovery == -0.40
+    assert Rs01Go2MatchedTransferCfgPPO.algorithm.learning_rate == 2.0e-5
+    assert Rs01Go2MatchedTransferCfgPPO.runner.save_interval == 5
+
+
+def test_calf_repair_uses_measured_kd_sweep_and_direct_feasibility_terms():
+    assert Rs01Go2Sim2SimCalfRepairCfg.env.num_observations == 51
+    assert Rs01Go2Sim2SimCalfRepairCfg.env.num_actions == 12
+    assert Rs01Go2Sim2SimCalfRepairCfg.control.damping == {
+        "hip": 1.0,
+        "thigh": 1.0,
+        "calf": 0.55,
+    }
+    assert (
+        Rs01Go2Sim2SimCalfRepairCfg.rewards
+        .calf_velocity_soft_limit_rad_s
+    ) == 8.0
+    assert (
+        Rs01Go2Sim2SimCalfRepairCfg.rewards
+        .action_saturation_soft_limit
+    ) == 0.90
+    scales = Rs01Go2Sim2SimCalfRepairCfg.rewards.scales
+    assert scales.calf_velocity_excess < 0.0
+    assert scales.action_saturation < 0.0
+    assert scales.raw_torque_over_peak == -1.0
+    assert scales.motor_saturation == -1.0
+    assert Rs01Go2Sim2SimCalfRepairCfgPPO.runner.action_std_value == 0.08
+    assert Rs01Go2Sim2SimCalfRepairCfgPPO.runner.freeze_action_std is True
+
+
+def test_kd050_stage_is_a_small_checkpoint_815_continuation():
+    assert Rs01Go2Sim2SimKd050Cfg.env.num_observations == 51
+    assert Rs01Go2Sim2SimKd050Cfg.env.num_actions == 12
+    assert Rs01Go2Sim2SimKd050Cfg.control.stiffness == {
+        "hip": 40.0,
+        "thigh": 40.0,
+        "calf": 40.0,
+    }
+    assert Rs01Go2Sim2SimKd050Cfg.control.damping == {
+        "hip": 1.0,
+        "thigh": 1.0,
+        "calf": 0.50,
+    }
+    assert (
+        Rs01Go2Sim2SimKd050Cfg.control.action_scale_by_joint
+        == Rs01Go2Sim2SimCalfRepairCfg.control.action_scale_by_joint
+    )
+    assert (
+        Rs01Go2Sim2SimKd050Cfg.rs01_actuator
+        .target_rate_limit_rad_s
+        == Rs01Go2Sim2SimCalfRepairCfg.rs01_actuator
+        .target_rate_limit_rad_s
+    )
+    assert Rs01Go2Sim2SimKd050CfgPPO.algorithm.learning_rate == 2.0e-5
+    assert Rs01Go2Sim2SimKd050CfgPPO.runner.action_std_value == 0.06
+    assert Rs01Go2Sim2SimKd050CfgPPO.runner.freeze_action_std is True
+    assert Rs01Go2Sim2SimKd050CfgPPO.runner.save_interval == 5
+    assert Rs01Go2Sim2SimRobustCfg.control.damping["calf"] == 0.50
+
+
+def test_calf_velocity_reward_is_zero_below_soft_limit_and_quadratic_above():
+    robot = object.__new__(Rs01Go2StraightRobot)
+    robot.calf_dof_indices = torch.tensor([2, 5, 8, 11])
+    robot.dof_vel = torch.zeros(2, 12)
+    robot.dof_vel[0, robot.calf_dof_indices] = torch.tensor(
+        [4.0, 8.0, -6.0, -7.0]
+    )
+    robot.dof_vel[1, robot.calf_dof_indices] = torch.tensor(
+        [16.0, -8.0, 8.0, 8.0]
+    )
+    robot.cfg = SimpleNamespace(
+        rewards=SimpleNamespace(calf_velocity_soft_limit_rad_s=8.0)
+    )
+    penalty = robot._reward_calf_velocity_excess()
+    assert penalty[0].item() == 0.0
+    assert torch.allclose(penalty[1], torch.tensor(0.25))
+
+
+def test_action_saturation_reward_observes_preclip_policy_output():
+    robot = object.__new__(Rs01Go2StraightRobot)
+    robot.policy_actions_unclipped = torch.tensor(
+        [[0.5, 0.9, 1.1, -1.3]]
+    )
+    robot.cfg = SimpleNamespace(
+        rewards=SimpleNamespace(action_saturation_soft_limit=0.9),
+        normalization=SimpleNamespace(clip_actions=1.0),
+    )
+    penalty = robot._reward_action_saturation()
+    assert torch.allclose(
+        penalty,
+        torch.tensor([(0.2**2 + 0.4**2) / 4.0]),
+        atol=1.0e-7,
+    )
+
+
+def test_checkpoint_state_loading_reapplies_destination_action_std():
+    class Actor(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.std = torch.nn.Parameter(torch.full((3,), 0.15))
+
+    class ResettableEnv:
+        def __init__(self):
+            self.reset_count = 0
+
+        def reset(self):
+            self.reset_count += 1
+            return None, None
+
+    runner = object.__new__(OnPolicyRunner)
+    runner.cfg = {
+        "action_std_value": 0.08,
+        "freeze_action_std": True,
+    }
+    runner.env = ResettableEnv()
+    actor = Actor()
+    runner.alg = SimpleNamespace(actor_critic=actor)
+    runner.load_actor_critic_state_dict(
+        {"std": torch.full((3,), 0.15)}
+    )
+    assert torch.allclose(actor.std, torch.full((3,), 0.08))
+    assert actor.std.requires_grad is False
+    assert runner.env.reset_count == 1
 
 
 def test_heading_recovery_tracks_restoring_rate_instead_of_zero_rate():

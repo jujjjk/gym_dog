@@ -106,6 +106,21 @@ class OnPolicyRunner:
         )
         _, _ = self.env.reset()
 
+    def load_actor_critic_state_dict(self, state_dict, strict=True):
+        """Load policy weights, then restore this task's exploration contract.
+
+        A resumed checkpoint contains the source task's ``std`` parameter.
+        Every checkpoint-loading path, including observation-input migration,
+        must therefore reapply the destination task's configured value after
+        the state dict has been loaded.
+        """
+        self.alg.actor_critic.load_state_dict(
+            state_dict,
+            strict=strict,
+        )
+        self._configure_action_std(
+            self.alg.actor_critic
+        )
     
     def learn(self, num_learning_iterations, init_at_random_ep_len=False):
         # initialize writer
@@ -259,14 +274,8 @@ class OnPolicyRunner:
             map_location=self.device,
         )
 
-        self.alg.actor_critic.load_state_dict(
-            loaded_dict["model_state_dict"]
-        )
-
-        # checkpoint 会同时加载旧 std，
-        # 因此加载完成后按当前任务配置重新设置。
-        self._configure_action_std(
-            self.alg.actor_critic
+        self.load_actor_critic_state_dict(
+            loaded_dict["model_state_dict"],
         )
 
         if load_optimizer:

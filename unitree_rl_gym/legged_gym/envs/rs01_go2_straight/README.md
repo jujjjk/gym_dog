@@ -156,3 +156,180 @@ python3 legged_gym/scripts/play_rs01_go2_straight.py \
   --load_run=Jul26_21-12-32_path_polish_fine_from625 \
   --checkpoint=635
 ```
+
+## Kp40 actuator-feasibility continuation
+
+Task `rs01_go2_straight_kp40` preserves the 51-D heading observation, diagonal
+clock, 12 direct outputs, measured RS01 response/delay/friction model, and
+17 N.m electromagnetic peak limit. It changes only the control experiment to
+`Kp=40/40/40`, `Kd=1/1/1`, and an evidence-selected action scale of `0.18`.
+
+Applying Kp40 directly to model_635 at action scale 0.14 reduced raw torque P95
+from about 56 N.m to 14.6 N.m and peak saturation from about 17.9% to 3.2%,
+but speed collapsed to 0.025 m/s. A scale sweep selected 0.18 as the smallest
+useful continuation point: it produced 0.112 m/s, raw torque P95 32.2 N.m,
+and 8.0% peak saturation before adaptation. Larger scales moved faster but
+spent more time on the peak limit.
+
+The continuation trains only at 0.18--0.28 m/s and uses a tighter velocity
+tracking sigma so standing is not an attractive shortcut. Start from the
+accepted 51-D model_635; this is not a from-scratch task:
+
+```bash
+python3 legged_gym/scripts/train.py \
+  --task=rs01_go2_straight_kp40 \
+  --headless \
+  --max_iterations=100 \
+  --run_name=kp40_adapt_from635_pilot \
+  --resume \
+  --load_run=Jul26_21-12-32_path_polish_fine_from625 \
+  --checkpoint=635
+```
+
+## Kp40 conservative refinement
+
+Task `rs01_go2_straight_kp40_polish` starts from the selected model_730. It
+does not change Kp/Kd, action scale, command range, gait period, duty factor,
+clearance, observations, or actuator dynamics. It lowers PPO learning rate to
+`5e-5`, fixed exploration to `0.07`, and saves every five iterations.
+
+The only reward changes are modest increases to raw-over-peak torque, actual
+peak saturation, and diagonal pair synchronization. A stronger frozen
+model_730 action reference limits regression. Run only 30 iterations first:
+
+```bash
+python3 legged_gym/scripts/train.py \
+  --task=rs01_go2_straight_kp40_polish \
+  --headless \
+  --max_iterations=30 \
+  --run_name=kp40_polish_from730 \
+  --resume \
+  --load_run=Jul27_09-51-57_kp40_adapt_from635_pilot \
+  --checkpoint=730
+```
+
+Reject a continuation if deterministic speed falls below 0.20 m/s, path
+lateral RMS exceeds 0.398 m, exact desired-contact matching falls below
+56.64%, or 17 N.m saturation exceeds 11.03%.
+
+## Sim2Sim bridge from model_730
+
+The independent Sim2Sim tasks preserve the 51 observations, 12 direct outputs,
+Kp40, gait phase, default standing state and measured RS01 actuator. The first
+adaptation keeps Kd1; the measured calf repair below changes only calf Kd, and
+the robust task inherits that selected repair contract.
+
+Stage A reduces only calf target authority from 0.18 to 0.14 rad and limits
+calf target rate/acceleration to 2.6 rad/s and 72 rad/s2. Hip and thigh
+authority remain 0.18 rad. The model_730 warm-start still runs continuously in
+Isaac Gym with zero flight, while raw-over-17 falls from about 11.0% to 8.3%;
+speed/contact timing must be recovered by the short adaptation.
+
+```bash
+python3 legged_gym/scripts/train.py \
+  --task=rs01_go2_sim2sim_adapt \
+  --headless \
+  --max_iterations=60 \
+  --run_name=sim2sim_adapt_from730 \
+  --resume \
+  --load_run=Jul27_09-51-57_kp40_adapt_from635_pilot \
+  --checkpoint=730
+```
+
+Do not start Stage B merely because reward rises. First select a Stage-A
+checkpoint that preserves zero flight/reset, restores at least 0.20 m/s and
+56% exact contact matching, and improves MuJoCo survival beyond the model_730
+5.9 s baseline.
+
+The first Stage-A continuation reached speed/contact targets but did not lower
+raw demand. Deterministic model_785 analysis showed that the four calf joints
+hit the URDF 32.9867 rad/s velocity ceiling during swing: calf damping demand
+was about 33 N.m while its position-error contribution was only 7--8 N.m.
+Use the isolated calf-repair task before any randomization. It keeps Kp40,
+changes only calf Kd from 1.0 to 0.55 based on a fixed-checkpoint sweep, and
+adds direct calf-speed and pre-clamp action-saturation costs:
+
+```bash
+python3 legged_gym/scripts/train.py \
+  --task=rs01_go2_sim2sim_calf_repair \
+  --headless \
+  --max_iterations=80 \
+  --run_name=sim2sim_calf_repair_from785 \
+  --resume \
+  --load_run=Jul27_11-23-28_sim2sim_adapt_from730 \
+  --checkpoint=785
+```
+
+The resume loader must report a fixed action standard deviation of 0.08; the
+observation-adaptation path now reapplies the destination task's exploration
+contract after loading the source checkpoint.
+
+The 80-update calf-repair run selected `model_815`: under the nominal PhysX
+contract it retained zero flight/reset, 66.7% exact contact matching and a
+0.168 m 30-second path RMS. The remaining failure was physical calf velocity:
+15.2% of calf samples still touched the 32.9867 rad/s URDF ceiling. A fixed
+model_815 sweep showed that calf Kd=0.50 halves this to 7.86% while retaining
+0.217 m/s, 65.18% exact contact and zero flight. Continue with the isolated
+nominal task before adding randomization:
+
+```bash
+python3 legged_gym/scripts/train.py \
+  --task=rs01_go2_sim2sim_kd050 \
+  --headless \
+  --max_iterations=40 \
+  --run_name=sim2sim_kd050_from815 \
+  --resume \
+  --load_run=Jul27_12-10-20_sim2sim_calf_repair_from785 \
+  --checkpoint=815
+```
+
+This stage keeps all action scales, target rate/acceleration limits, rewards,
+phase, observations and RS01 actuator identification unchanged. Only calf Kd,
+learning rate, exploration standard deviation and conservative continuation
+strength change. Do not use Kd=0.45: the fixed-checkpoint ablation reduced
+exact contact matching to 47.85%.
+
+Stage B adds only narrow randomization after the Kd=0.50 checkpoint passes:
+friction 0.85--1.15, base mass
++/-0.30 kg, response gain +/-5%, time constant +/-10%, motor friction +/-10%,
+and a shared +/-1 physics-step delay offset. Continue it from the selected
+Kd=0.50 run:
+
+```bash
+python3 legged_gym/scripts/train.py \
+  --task=rs01_go2_sim2sim_robust \
+  --headless \
+  --max_iterations=100 \
+  --run_name=sim2sim_robust_from_kd050 \
+  --resume \
+  --load_run=<selected-kd050-run> \
+  --checkpoint=<selected-kd050-checkpoint>
+```
+
+## Matched MuJoCo short transfer
+
+Task `rs01_go2_sim2sim_matched_transfer` is a conservative continuation of the
+selected robust checkpoint. It preserves 51 observations, 12 direct actions,
+Kp40/Kd0.50, the real standing pose, measured per-motor centre values, gait
+timing, action scales and the 17 N.m electromagnetic peak. Its narrow
+response/time/friction and +/-1-step delay perturbations are sampled
+independently per joint so that the actor cannot rely on perfectly paired
+left/right dynamics.
+
+Run only 30 updates first and save every five:
+
+```bash
+python3 legged_gym/scripts/train.py \
+  --task=rs01_go2_sim2sim_matched_transfer \
+  --headless \
+  --max_iterations=30 \
+  --run_name=matched_mujoco_transfer_short_from870 \
+  --resume \
+  --load_run=Jul27_13-07-38_sim2sim_robust_from_kd050_840 \
+  --checkpoint=870
+```
+
+PhysX reward is not the acceptance result. Export each retained checkpoint,
+regenerate its new-machine MuJoCo scene, and require a complete 30-second run
+with meaningful forward body velocity, bounded yaw, no fall/flight regression,
+and no raw-torque or 17 N.m saturation regression.

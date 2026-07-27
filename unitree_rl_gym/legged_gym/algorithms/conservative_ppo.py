@@ -9,9 +9,24 @@ from rsl_rl.algorithms import PPO
 from rsl_rl.runners import OnPolicyRunner
 
 
-def executed_action_delta(policy_mean, reference_mean):
+def executed_action_delta(
+    policy_mean,
+    reference_mean,
+    transform="tanh",
+    clip_value=1.0,
+):
     """Difference in the normalized action space executed by the environment."""
-    return torch.tanh(policy_mean) - torch.tanh(reference_mean)
+    if transform == "tanh":
+        return torch.tanh(policy_mean) - torch.tanh(reference_mean)
+    if transform == "clip":
+        limit = float(clip_value)
+        return (
+            torch.clamp(policy_mean, -limit, limit)
+            - torch.clamp(reference_mean, -limit, limit)
+        )
+    raise ValueError(
+        f"Unsupported reference action transform: {transform}"
+    )
 
 
 class ConservativePPO(PPO):
@@ -23,12 +38,16 @@ class ConservativePPO(PPO):
         reference_policy_coef=0.25,
         reference_action_deadband=0.10,
         reference_action_hinge_coef=2.0,
+        reference_action_transform="tanh",
+        reference_action_clip=1.0,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.reference_policy_coef = float(reference_policy_coef)
         self.reference_action_deadband = float(reference_action_deadband)
         self.reference_action_hinge_coef = float(reference_action_hinge_coef)
+        self.reference_action_transform = str(reference_action_transform)
+        self.reference_action_clip = float(reference_action_clip)
         self.reference_actor = None
 
     def set_reference_policy(self):
@@ -111,7 +130,10 @@ class ConservativePPO(PPO):
             with torch.no_grad():
                 reference_mu = self.reference_actor(obs_batch)
             reference_delta = executed_action_delta(
-                mu_batch, reference_mu
+                mu_batch,
+                reference_mu,
+                transform=self.reference_action_transform,
+                clip_value=self.reference_action_clip,
             )
             reference_loss = torch.mean(torch.square(reference_delta))
             reference_hinge_loss = torch.mean(torch.square(
@@ -162,6 +184,12 @@ class ConservativeOnPolicyRunner(OnPolicyRunner):
             ),
             reference_action_hinge_coef=self.cfg.get(
                 "reference_action_hinge_coef", 2.0
+            ),
+            reference_action_transform=self.cfg.get(
+                "reference_action_transform", "tanh"
+            ),
+            reference_action_clip=self.cfg.get(
+                "reference_action_clip", 1.0
             ),
             **self.alg_cfg,
         )

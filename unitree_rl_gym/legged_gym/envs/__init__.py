@@ -1,10 +1,24 @@
 from legged_gym import LEGGED_GYM_ROOT_DIR, LEGGED_GYM_ENVS_DIR
 from legged_gym.envs.go2.go2_config import GO2RoughCfg, GO2RoughCfgPPO
 from legged_gym.envs.rs01_go2_straight import (
+    Rs01Go2Kp40Cfg,
+    Rs01Go2Kp40CfgPPO,
+    Rs01Go2Kp40PolishCfg,
+    Rs01Go2Kp40PolishCfgPPO,
     Rs01Go2PathPolishCfg,
     Rs01Go2PathPolishCfgPPO,
     Rs01Go2RearCoordCfg,
     Rs01Go2RearCoordCfgPPO,
+    Rs01Go2Sim2SimAdaptCfg,
+    Rs01Go2Sim2SimAdaptCfgPPO,
+    Rs01Go2Sim2SimCalfRepairCfg,
+    Rs01Go2Sim2SimCalfRepairCfgPPO,
+    Rs01Go2Sim2SimKd050Cfg,
+    Rs01Go2Sim2SimKd050CfgPPO,
+    Rs01Go2Sim2SimRobustCfg,
+    Rs01Go2Sim2SimRobustCfgPPO,
+    Rs01Go2MatchedTransferCfg,
+    Rs01Go2MatchedTransferCfgPPO,
     Rs01Go2StraightCfg,
     Rs01Go2StraightCfgPPO,
     Rs01Go2StraightRobot,
@@ -152,6 +166,48 @@ task_registry.register(
     Rs01Go2StraightRobot,
     Rs01Go2PathPolishCfg(),
     Rs01Go2PathPolishCfgPPO(),
+)
+task_registry.register(
+    "rs01_go2_straight_kp40",
+    Rs01Go2StraightRobot,
+    Rs01Go2Kp40Cfg(),
+    Rs01Go2Kp40CfgPPO(),
+)
+task_registry.register(
+    "rs01_go2_straight_kp40_polish",
+    Rs01Go2StraightRobot,
+    Rs01Go2Kp40PolishCfg(),
+    Rs01Go2Kp40PolishCfgPPO(),
+)
+task_registry.register(
+    "rs01_go2_sim2sim_adapt",
+    Rs01Go2StraightRobot,
+    Rs01Go2Sim2SimAdaptCfg(),
+    Rs01Go2Sim2SimAdaptCfgPPO(),
+)
+task_registry.register(
+    "rs01_go2_sim2sim_calf_repair",
+    Rs01Go2StraightRobot,
+    Rs01Go2Sim2SimCalfRepairCfg(),
+    Rs01Go2Sim2SimCalfRepairCfgPPO(),
+)
+task_registry.register(
+    "rs01_go2_sim2sim_kd050",
+    Rs01Go2StraightRobot,
+    Rs01Go2Sim2SimKd050Cfg(),
+    Rs01Go2Sim2SimKd050CfgPPO(),
+)
+task_registry.register(
+    "rs01_go2_sim2sim_robust",
+    Rs01Go2StraightRobot,
+    Rs01Go2Sim2SimRobustCfg(),
+    Rs01Go2Sim2SimRobustCfgPPO(),
+)
+task_registry.register(
+    "rs01_go2_sim2sim_matched_transfer",
+    Rs01Go2StraightRobot,
+    Rs01Go2MatchedTransferCfg(),
+    Rs01Go2MatchedTransferCfgPPO(),
 )
 task_registry.register(
     "dog_rs01_trot", DogRs01Robot, DogRs01TrotCfg(), DogRs01TrotCfgPPO()
