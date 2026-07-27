@@ -34,6 +34,8 @@ from legged_gym.envs.rs01_go2_straight.rs01_go2_sim2sim_config import (  # noqa:
     Rs01Go2Sim2SimRobustCfgPPO,
     Rs01Go2MatchedTransferCfg,
     Rs01Go2MatchedTransferCfgPPO,
+    Rs01Go2Heading52Cfg,
+    Rs01Go2Heading52CfgPPO,
 )
 from rsl_rl.modules import ActorCritic  # noqa: E402
 
@@ -63,6 +65,10 @@ TASKS = {
     "rs01_go2_sim2sim_matched_transfer": (
         Rs01Go2MatchedTransferCfg,
         Rs01Go2MatchedTransferCfgPPO,
+    ),
+    "rs01_go2_sim2sim_heading52": (
+        Rs01Go2Heading52Cfg,
+        Rs01Go2Heading52CfgPPO,
     ),
 }
 
@@ -97,6 +103,26 @@ def movable_joint_names(urdf_path):
     ]
 
 
+def transmission_motor_names(urdf_path):
+    """Return the URDF actuator name associated with every movable joint."""
+    root = ET.parse(urdf_path).getroot()
+    result = {}
+    for transmission in root.findall("transmission"):
+        joint = transmission.find("joint")
+        actuator = transmission.find("actuator")
+        if joint is None or actuator is None:
+            continue
+        joint_name = joint.get("name")
+        actuator_name = actuator.get("name")
+        if joint_name and actuator_name:
+            if joint_name in result:
+                raise ValueError(
+                    f"URDF contains duplicate transmissions for {joint_name}"
+                )
+            result[joint_name] = actuator_name
+    return result
+
+
 def sha256_file(path):
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -119,15 +145,67 @@ def build_contract(task_name, cfg, checkpoint, onnx_path):
             str(GYM_ROOT),
         )
     ).resolve()
-    joint_names = movable_joint_names(urdf_path)
+    urdf_joint_names = movable_joint_names(urdf_path)
+    urdf_motor_names = transmission_motor_names(urdf_path)
+    joint_names = list(cfg.rs01_actuator.runtime_dof_order)
     if len(joint_names) != cfg.env.num_actions:
         raise ValueError(
-            f"URDF has {len(joint_names)} movable joints, expected "
+            f"Runtime contract has {len(joint_names)} movable joints, expected "
             f"{cfg.env.num_actions}"
+        )
+    if (
+        len(set(joint_names)) != len(joint_names)
+        or set(joint_names) != set(urdf_joint_names)
+    ):
+        raise ValueError(
+            "Configured Isaac Gym runtime DOF order does not match the URDF: "
+            f"runtime={joint_names}, urdf={urdf_joint_names}"
         )
 
     obs_scales = cfg.normalization.obs_scales
     actuator = cfg.rs01_actuator
+    motor_id_by_joint = dict(actuator.joint_to_motor_id)
+    if set(motor_id_by_joint) != set(joint_names):
+        raise ValueError(
+            "RS01 joint-to-motor map must cover the runtime DOF order exactly"
+        )
+    motor_ids = list(motor_id_by_joint.values())
+    if len(set(motor_ids)) != len(motor_ids):
+        raise ValueError("RS01 motor IDs must be unique")
+    sign_by_motor_id = dict(
+        actuator.real_to_policy_sign_by_motor_id
+    )
+    if set(sign_by_motor_id) != set(motor_ids):
+        raise ValueError(
+            "RS01 real-to-policy sign map must cover all 12 motors exactly"
+        )
+    if any(float(value) not in (-1.0, 1.0)
+           for value in sign_by_motor_id.values()):
+        raise ValueError("RS01 semantic signs must be exactly -1 or +1")
+    missing_actuators = sorted(set(joint_names) - set(urdf_motor_names))
+    if missing_actuators:
+        raise ValueError(
+            f"URDF transmissions missing for joints: {missing_actuators}"
+        )
+    real_motor_order = sorted(motor_ids, key=lambda value: int(value, 16))
+    real_feedback_index = {
+        motor_id: index for index, motor_id in enumerate(real_motor_order)
+    }
+    motor_mapping = [
+        {
+            "action_index": index,
+            "joint_name": joint_name,
+            "urdf_actuator_name": urdf_motor_names[joint_name],
+            "motor_id": motor_id_by_joint[joint_name],
+            "real_feedback_index": real_feedback_index[
+                motor_id_by_joint[joint_name]
+            ],
+            "real_to_policy_sign": float(
+                sign_by_motor_id[motor_id_by_joint[joint_name]]
+            ),
+        }
+        for index, joint_name in enumerate(joint_names)
+    ]
     action_scale_by_joint = getattr(
         cfg.control,
         "action_scale_by_joint",
@@ -142,9 +220,33 @@ def build_contract(task_name, cfg, checkpoint, onnx_path):
             matching_value(action_scale_by_joint, name)
             for name in joint_names
         ]
+    heading_sin_cos = bool(getattr(
+        cfg.commands,
+        "observe_straight_heading_sin_cos",
+        False,
+    ))
+    observation_layout = [
+        ["base_linear_velocity_body_m_s", 3],
+        ["base_angular_velocity_body_rad_s", 3],
+        ["projected_gravity_body", 3],
+        ["command_scaled", 3],
+        ["joint_position_error_rad_scaled", 12],
+        ["joint_velocity_rad_s_scaled", 12],
+        ["previous_action", 12],
+        ["gait_phase_sin_cos", 2],
+    ]
+    if heading_sin_cos:
+        observation_layout.append(["heading_error_sin_cos", 2])
+        heading_representation = "sin_cos"
+    else:
+        observation_layout.append(["wrapped_heading_error_scaled", 1])
+        heading_representation = "scaled_wrapped_scalar"
 
     return {
-        "schema_version": 1,
+        # Version 2 fixes the actor I/O joint order to the verified Isaac Gym
+        # runtime order. Version-1 exports used URDF declaration order and are
+        # unsafe for dynamic playback.
+        "schema_version": 2,
         "task": task_name,
         "checkpoint": str(checkpoint.resolve()),
         "onnx": str(onnx_path.resolve()),
@@ -154,8 +256,16 @@ def build_contract(task_name, cfg, checkpoint, onnx_path):
         },
         "joint_names": joint_names,
         "joint_order_note": (
-            "URDF declaration order, equal to the Isaac Gym runtime DOF order "
-            "for dog_rs01.urdf: FR, FL, RR, RL and hip, thigh, calf."
+            "Authoritative Isaac Gym runtime DOF order for dog_rs01.urdf: "
+            "FL, FR, RL, RR and hip, thigh, calf. URDF declaration order is "
+            "different and must never be used for actor I/O routing."
+        ),
+        "motor_mapping": motor_mapping,
+        "real_motor_order": real_motor_order,
+        "real_motor_order_note": (
+            "Physical feedback/CAN order is FR, FL, RL, RR. Route actor "
+            "outputs by joint name or action_index; never send the actor "
+            "array directly in this real-motor order."
         ),
         "default_joint_angles_rad": [
             float(cfg.init_state.default_joint_angles[name])
@@ -166,17 +276,8 @@ def build_contract(task_name, cfg, checkpoint, onnx_path):
             "base_quaternion_xyzw": list(cfg.init_state.rot),
         },
         "observations": {
-            "layout": [
-                ["base_linear_velocity_body_m_s", 3],
-                ["base_angular_velocity_body_rad_s", 3],
-                ["projected_gravity_body", 3],
-                ["command_scaled", 3],
-                ["joint_position_error_rad_scaled", 12],
-                ["joint_velocity_rad_s_scaled", 12],
-                ["previous_action", 12],
-                ["gait_phase_sin_cos", 2],
-                ["wrapped_heading_error_scaled", 1],
-            ],
+            "layout": observation_layout,
+            "heading_representation": heading_representation,
             "clip": float(cfg.normalization.clip_observations),
             "lin_vel_scale": float(obs_scales.lin_vel),
             "ang_vel_scale": float(obs_scales.ang_vel),

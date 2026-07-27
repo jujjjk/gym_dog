@@ -333,3 +333,41 @@ PhysX reward is not the acceptance result. Export each retained checkpoint,
 regenerate its new-machine MuJoCo scene, and require a complete 30-second run
 with meaningful forward body velocity, bounded yaw, no fall/flight regression,
 and no raw-torque or 17 N.m saturation regression.
+
+## Runtime-parity fix and 52-D heading recovery
+
+Isaac Gym's verified runtime DOF order for this URDF is `FL, FR, RL, RR`, with
+hip/thigh/calf inside each leg. It differs from URDF declaration order. The
+environment now refuses to run if that order changes, and schema-version-2
+exports use the same authoritative list. Old schema-version-1 ONNX files must
+not be used.
+
+After fixing both joint routing and the MuJoCo body-velocity frame, the
+untrained model_900 bridge changed from effectively zero body speed and 11.5%
+exact contact to 0.222 m/s, 76.5% exact contact, zero flight and no 30-second
+fall. The remaining failure is accumulated heading/lateral drift.
+
+Task `rs01_go2_sim2sim_heading52` replaces the clipped scalar heading input
+with `sin(error), cos(error)`. Its 51-to-52 checkpoint migration preserves the
+first 50 columns, maps the old local heading weight to `2*sin(error)`, and
+initializes `cos(error)` to zero. It adds only reset heading/yaw-rate recovery
+coverage; motor, PD, action scale, target limits, gait and torque limits remain
+unchanged.
+
+First run a 30-update pilot from the selected model_900:
+
+```bash
+python3 legged_gym/scripts/train.py \
+  --task=rs01_go2_sim2sim_heading52 \
+  --headless \
+  --max_iterations=30 \
+  --run_name=heading52_recovery_from900 \
+  --resume \
+  --load_run=Jul27_14-22-47_matched_mujoco_transfer_short_from870 \
+  --checkpoint=900
+```
+
+Reject the pilot unless matched MuJoCo retains at least 0.20 m/s, zero
+fall/flight, raw P95 below 20 N.m and peak saturation below 10%, while reducing
+30-second unwrapped yaw drift below the fixed-runtime baseline magnitude of
+0.887 rad.

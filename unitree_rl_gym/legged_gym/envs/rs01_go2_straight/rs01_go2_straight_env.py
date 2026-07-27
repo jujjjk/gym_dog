@@ -34,6 +34,15 @@ class Rs01Go2StraightRobot(LeggedRobot):
             raise ValueError(
                 "rs01_go2_straight requires exactly 12 URDF joints and 12 actions"
             )
+        configured_dof_order = list(
+            self.cfg.rs01_actuator.runtime_dof_order
+        )
+        if list(self.dof_names) != configured_dof_order:
+            raise ValueError(
+                "RS01 runtime DOF order changed; refusing ambiguous motor "
+                f"routing: runtime={list(self.dof_names)}, "
+                f"configured={configured_dof_order}"
+            )
         if len(self.feet_indices) != 4:
             raise ValueError(
                 "rs01_go2_straight requires four retained foot rigid bodies"
@@ -382,6 +391,21 @@ class Rs01Go2StraightRobot(LeggedRobot):
                     min=-1.0,
                     max=1.0,
                 ).unsqueeze(1)
+            )
+        elif getattr(
+            self.cfg.commands,
+            "observe_straight_heading_sin_cos",
+            False,
+        ):
+            heading_error = self._straight_heading_error()
+            observations.append(
+                torch.stack(
+                    (
+                        torch.sin(heading_error),
+                        torch.cos(heading_error),
+                    ),
+                    dim=1,
+                )
             )
         self.obs_buf = torch.cat(
             observations,
@@ -777,6 +801,17 @@ class Rs01Go2StraightRobot(LeggedRobot):
             self.root_states[env_ids, 4] = 0.0
             self.root_states[env_ids, 5] = torch.sin(0.5 * yaw)
             self.root_states[env_ids, 6] = torch.cos(0.5 * yaw)
+        yaw_rate_noise = float(getattr(
+            self.cfg.init_state,
+            "reset_yaw_rate_noise_rad_s",
+            0.0,
+        ))
+        if yaw_rate_noise > 0.0 and not self.cfg.env.test:
+            self.root_states[env_ids, 12] = (
+                2.0 * torch.rand(
+                    len(env_ids), device=self.device
+                ) - 1.0
+            ) * yaw_rate_noise
 
         env_ids_int32 = env_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(

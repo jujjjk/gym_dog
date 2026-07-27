@@ -51,7 +51,7 @@ def load_contract(policy):
     if METADATA_KEY not in metadata:
         raise RuntimeError(f"ONNX is missing {METADATA_KEY}")
     contract = json.loads(metadata[METADATA_KEY])
-    if contract.get("schema_version") != 1:
+    if contract.get("schema_version") != 2:
         raise RuntimeError(
             f"Unsupported schema version {contract.get('schema_version')}"
         )

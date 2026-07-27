@@ -30,6 +30,8 @@ from .rs01_go2_sim2sim_config import (
     Rs01Go2Sim2SimRobustCfgPPO,
     Rs01Go2MatchedTransferCfg,
     Rs01Go2MatchedTransferCfgPPO,
+    Rs01Go2Heading52Cfg,
+    Rs01Go2Heading52CfgPPO,
 )
 
 __all__ = [
@@ -51,6 +53,8 @@ __all__ = [
     "Rs01Go2Sim2SimRobustCfgPPO",
     "Rs01Go2MatchedTransferCfg",
     "Rs01Go2MatchedTransferCfgPPO",
+    "Rs01Go2Heading52Cfg",
+    "Rs01Go2Heading52CfgPPO",
     "Rs01Go2StraightCfg",
     "Rs01Go2StraightCfgPPO",
     "Rs01Go2StraightRobot",

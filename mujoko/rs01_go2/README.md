@@ -5,6 +5,13 @@ describes the minimal reward/task layout; it is not a Unitree or previous-
 generation physical model. Every newly exported policy is bound by SHA-256 to
 `dog_urdf/urdf/dog_rs01.urdf`, the calibrated new-machine URDF.
 
+Only schema-version-2 exports are accepted. Version 1 incorrectly routed actor
+I/O in URDF declaration order (`FR, FL, RR, RL`), while Isaac Gym actually
+exposes this asset as `FL, FR, RL, RR`. The default standing angles are equal
+on all legs, so that error passed static standing checks but destroyed dynamic
+diagonal walking. Re-export every checkpoint after this fix; old ONNX files
+are intentionally rejected.
+
 The runner preserves the 51-observation Kp40 policy contract and the measured
 per-motor RS01 delay, first-order response, gain and Coulomb friction. The
 identified actuator state advances every 5 ms. Contact is integrated in two
@@ -14,6 +21,12 @@ calibrated against the new machine's zero-action standing equilibrium.
 The actor output is used directly. There is no `tanh`, CPG offset, compensation
 controller or ideal motor. The 17 N.m limit applies to electromagnetic motor
 torque; friction is then applied separately without a second hidden clip.
+
+Body-frame linear and angular velocity are computed from MuJoCo world-frame
+object velocity using the floating-base quaternion. Do not use
+`mj_objectVelocity(..., flg_local=1)` as the policy frame for this imported
+model: its local-axis convention does not match Isaac Gym's
+`quat_rotate_inverse`.
 
 ```bash
 cd /home/nszb/gym

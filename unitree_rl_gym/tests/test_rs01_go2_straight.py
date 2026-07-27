@@ -42,6 +42,8 @@ from legged_gym.envs.rs01_go2_straight.rs01_go2_sim2sim_config import (
     Rs01Go2Sim2SimRobustCfg,
     Rs01Go2MatchedTransferCfg,
     Rs01Go2MatchedTransferCfgPPO,
+    Rs01Go2Heading52Cfg,
+    Rs01Go2Heading52CfgPPO,
 )
 
 
@@ -56,6 +58,38 @@ def test_task_contract_is_minimal_go2_shape_and_real_stand():
     }
     assert Rs01Go2StraightCfg.rs01_actuator.peak_torque_limit_nm == 17.0
     assert Rs01Go2StraightCfg.rs01_actuator.continuous_torque_nm == 6.0
+    assert Rs01Go2StraightCfg.rs01_actuator.runtime_dof_order == [
+        "FL_hip_joint",
+        "FL_thigh_joint",
+        "FL_calf_joint",
+        "FR_hip_joint",
+        "FR_thigh_joint",
+        "FR_calf_joint",
+        "RL_hip_joint",
+        "RL_thigh_joint",
+        "RL_calf_joint",
+        "RR_hip_joint",
+        "RR_thigh_joint",
+        "RR_calf_joint",
+    ]
+
+
+def test_real_rs01_motor_ids_match_verified_leg_wiring():
+    mapping = Rs01Go2StraightCfg.rs01_actuator.joint_to_motor_id
+    assert mapping == {
+        "FR_hip_joint": "0x11",
+        "FR_thigh_joint": "0x12",
+        "FR_calf_joint": "0x13",
+        "FL_hip_joint": "0x21",
+        "FL_thigh_joint": "0x22",
+        "FL_calf_joint": "0x23",
+        "RL_hip_joint": "0x31",
+        "RL_thigh_joint": "0x32",
+        "RL_calf_joint": "0x33",
+        "RR_hip_joint": "0x41",
+        "RR_thigh_joint": "0x42",
+        "RR_calf_joint": "0x43",
+    }
 
 
 def test_contact_solver_and_reset_noise_are_scaled_to_rs01_feet():
@@ -390,6 +424,35 @@ def test_matched_transfer_preserves_contract_and_randomizes_each_motor():
     assert Rs01Go2MatchedTransferCfg.rewards.scales.heading_recovery == -0.40
     assert Rs01Go2MatchedTransferCfgPPO.algorithm.learning_rate == 2.0e-5
     assert Rs01Go2MatchedTransferCfgPPO.runner.save_interval == 5
+
+
+def test_heading52_replaces_saturated_scalar_without_changing_motor_contract():
+    assert Rs01Go2Heading52Cfg.env.num_observations == 52
+    assert Rs01Go2Heading52Cfg.env.num_actions == 12
+    assert Rs01Go2Heading52Cfg.commands.observe_straight_heading_error is False
+    assert (
+        Rs01Go2Heading52Cfg.commands.observe_straight_heading_sin_cos
+        is True
+    )
+    assert Rs01Go2Heading52Cfg.init_state.reset_heading_noise_rad == 0.30
+    assert (
+        Rs01Go2Heading52Cfg.init_state.reset_yaw_rate_noise_rad_s
+        == 0.20
+    )
+    assert (
+        Rs01Go2Heading52Cfg.control.action_scale_by_joint
+        == Rs01Go2MatchedTransferCfg.control.action_scale_by_joint
+    )
+    assert (
+        Rs01Go2Heading52Cfg.rs01_actuator.runtime_dof_order
+        == Rs01Go2MatchedTransferCfg.rs01_actuator.runtime_dof_order
+    )
+    migration = (
+        Rs01Go2Heading52CfgPPO.runner.observation_column_migration
+    )
+    assert migration["source_width"] == 51
+    assert migration["destination_width"] == 52
+    assert migration["copy_prefix"] == 50
 
 
 def test_calf_repair_uses_measured_kd_sweep_and_direct_feasibility_terms():

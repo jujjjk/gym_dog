@@ -168,7 +168,13 @@ class TaskRegistry:
                 loaded_state = loaded["model_state_dict"]
                 current_state = runner.alg.actor_critic.state_dict()
                 loaded_state, adapted = adapt_observation_input_state(
-                    loaded_state, current_state
+                    loaded_state,
+                    current_state,
+                    column_migration=getattr(
+                        train_cfg.runner,
+                        "observation_column_migration",
+                        None,
+                    ),
                 )
                 # Strict loading is deliberately performed once, only after
                 # both actor and critic input layers have been adapted.
