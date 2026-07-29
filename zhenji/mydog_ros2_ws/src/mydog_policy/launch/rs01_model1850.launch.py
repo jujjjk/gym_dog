@@ -43,6 +43,12 @@ def generate_launch_description():
             "hip_current_limit_amp": 12.0,
             "thigh_current_limit_amp": 12.0,
             "calf_current_limit_amp": 16.0,
+            "walk_start_stable_sec": 1.0,
+            "walk_start_max_abs_roll_rad": 0.10,
+            "walk_start_max_abs_pitch_rad": 0.10,
+            "walk_start_max_gyro_rad_s": 0.08,
+            "walk_start_max_odom_speed_mps": 0.05,
+            "walk_start_min_odom_confidence": 0.5,
             "debug_csv_path": LaunchConfiguration("debug_csv_path"),
         }],
     )

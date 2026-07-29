@@ -11,6 +11,10 @@ from .rs01_actuator import (
     limit_position_target,
     step_identified_position_response,
 )
+from .rs01_odometry import (
+    Rs01TorchLegOdometry,
+    Rs01TorchStraightPathEstimator,
+)
 
 
 class Rs01Go2StraightRobot(LeggedRobot):
@@ -32,6 +36,7 @@ class Rs01Go2StraightRobot(LeggedRobot):
         self._straight_path_ready = False
         self._lateral_path_ready = False
         self._drift_repair_metrics_ready = False
+        self._rs01_observation_estimator_ready = False
         super().__init__(*args, **kwargs)
         if self.num_dof != 12 or self.num_actions != 12:
             raise ValueError(
@@ -90,6 +95,96 @@ class Rs01Go2StraightRobot(LeggedRobot):
         self._straight_path_ready = True
         self.straight_path_origin_xy = self.root_states[:, :2].clone()
         self._lateral_path_ready = True
+        if getattr(
+            self.cfg.commands,
+            "use_rs01_estimated_observations",
+            False,
+        ):
+            self._initialize_rs01_observation_estimator()
+
+    def _initialize_rs01_observation_estimator(self):
+        """Create the actor-side estimator used by the real deployment."""
+        cfg = self.cfg.rs01_odometry
+        self.rs01_leg_odometry = Rs01TorchLegOdometry(
+            num_envs=self.num_envs,
+            device=self.device,
+            nominal_base_height=cfg.nominal_base_height_m,
+            foot_radius=cfg.foot_radius_m,
+            height_margin=cfg.height_margin_m,
+            vertical_speed_threshold=cfg.vertical_speed_threshold_m_s,
+            velocity_residual_threshold=(
+                cfg.velocity_residual_threshold_m_s
+            ),
+            filter_alpha=cfg.filter_alpha,
+            no_contact_decay=cfg.no_contact_decay,
+            previous_stance_score_bonus=(
+                cfg.previous_stance_score_bonus
+            ),
+        )
+        self.rs01_path_estimator = Rs01TorchStraightPathEstimator(
+            num_envs=self.num_envs,
+            device=self.device,
+            policy_dt=self.dt,
+        )
+        self.estimated_base_lin_vel = torch.zeros(
+            self.num_envs, 3, device=self.device, dtype=torch.float
+        )
+        self.estimated_path_lateral_displacement_m = torch.zeros(
+            self.num_envs, device=self.device, dtype=torch.float
+        )
+        self.estimated_path_lateral_velocity_m_s = torch.zeros_like(
+            self.estimated_path_lateral_displacement_m
+        )
+        self.estimated_odom_confidence = torch.zeros_like(
+            self.estimated_path_lateral_displacement_m
+        )
+        self.estimated_odom_stance_mask = torch.zeros(
+            self.num_envs, 4, device=self.device, dtype=torch.bool
+        )
+        self.estimated_velocity_by_foot_m_s = torch.zeros(
+            self.num_envs, 4, 3, device=self.device, dtype=torch.float
+        )
+        self.estimated_path_position_error_m = torch.zeros_like(
+            self.estimated_path_lateral_displacement_m
+        )
+        self.estimated_path_velocity_error_m_s = torch.zeros_like(
+            self.estimated_path_lateral_displacement_m
+        )
+        env_ids = torch.arange(self.num_envs, device=self.device)
+        self.rs01_leg_odometry.reset(env_ids)
+        self.rs01_path_estimator.reset(
+            env_ids, self.straight_heading_target_rad
+        )
+        self._rs01_observation_estimator_ready = True
+
+    def _update_rs01_observation_estimator(self):
+        """Update estimated actor state while retaining root truth for reward."""
+        result = self.rs01_leg_odometry.estimate(
+            self.dof_pos,
+            self.dof_vel,
+            self.base_ang_vel,
+        )
+        self.estimated_base_lin_vel.copy_(
+            result["base_linear_velocity"]
+        )
+        self.estimated_odom_confidence.copy_(result["confidence"])
+        self.estimated_odom_stance_mask.copy_(result["stance_mask"])
+        self.estimated_velocity_by_foot_m_s.copy_(
+            result["velocity_by_foot"]
+        )
+        displacement, velocity = self.rs01_path_estimator.update(
+            self.rpy[:, 2],
+            self.estimated_base_lin_vel,
+        )
+        self.estimated_path_lateral_displacement_m.copy_(displacement)
+        self.estimated_path_lateral_velocity_m_s.copy_(velocity)
+        true_displacement, true_velocity = self._straight_path_state()
+        self.estimated_path_position_error_m.copy_(
+            displacement - true_displacement
+        )
+        self.estimated_path_velocity_error_m_s.copy_(
+            velocity - true_velocity
+        )
 
     def _initialize_drift_repair_metrics(self):
         """Prepare cycle-scale rear load metrics used by optional rewards."""
@@ -199,6 +294,8 @@ class Rs01Go2StraightRobot(LeggedRobot):
                 self.rear_torque_ema_alpha
                 * (rear_torque_abs - self.rear_motor_torque_abs_ema_nm)
             )
+        if self._rs01_observation_estimator_ready:
+            self._update_rs01_observation_estimator()
 
     def reset_idx(self, env_ids):
         super().reset_idx(env_ids)
@@ -231,6 +328,20 @@ class Rs01Go2StraightRobot(LeggedRobot):
                 )
         if self._drift_repair_metrics_ready:
             self.rear_motor_torque_abs_ema_nm[env_ids] = 0.0
+        if self._rs01_observation_estimator_ready:
+            self.rs01_leg_odometry.reset(env_ids)
+            self.rs01_path_estimator.reset(
+                env_ids,
+                self.straight_heading_target_rad[env_ids],
+            )
+            self.estimated_base_lin_vel[env_ids] = 0.0
+            self.estimated_path_lateral_displacement_m[env_ids] = 0.0
+            self.estimated_path_lateral_velocity_m_s[env_ids] = 0.0
+            self.estimated_odom_confidence[env_ids] = 0.0
+            self.estimated_odom_stance_mask[env_ids] = False
+            self.estimated_velocity_by_foot_m_s[env_ids] = 0.0
+            self.estimated_path_position_error_m[env_ids] = 0.0
+            self.estimated_path_velocity_error_m_s[env_ids] = 0.0
 
     def _walking_command_gate(self):
         return (self.commands[:, 0] > 0.1).to(dtype=torch.float)
@@ -258,6 +369,15 @@ class Rs01Go2StraightRobot(LeggedRobot):
             dim=1,
         )
         return lateral_error, lateral_velocity
+
+    def _straight_path_observation_state(self):
+        """Return deployable path state for the actor, truth otherwise."""
+        if self._rs01_observation_estimator_ready:
+            return (
+                self.estimated_path_lateral_displacement_m,
+                self.estimated_path_lateral_velocity_m_s,
+            )
+        return self._straight_path_state()
 
     def _lateral_path_target_velocity(self):
         lateral_error, _ = self._straight_path_state()
@@ -600,7 +720,11 @@ class Rs01Go2StraightRobot(LeggedRobot):
             (torch.sin(phase_angle), torch.cos(phase_angle)), dim=1
         )
         observations = [
-            self.base_lin_vel * self.obs_scales.lin_vel,
+            (
+                self.estimated_base_lin_vel
+                if self._rs01_observation_estimator_ready
+                else self.base_lin_vel
+            ) * self.obs_scales.lin_vel,
             self.base_ang_vel * self.obs_scales.ang_vel,
             self.projected_gravity,
             self.commands[:, :3] * self.commands_scale,
@@ -643,7 +767,9 @@ class Rs01Go2StraightRobot(LeggedRobot):
             "observe_straight_path_state",
             False,
         ):
-            lateral_error, lateral_velocity = self._straight_path_state()
+            lateral_error, lateral_velocity = (
+                self._straight_path_observation_state()
+            )
             position_scale = float(
                 self.cfg.commands
                 .straight_path_lateral_position_scale

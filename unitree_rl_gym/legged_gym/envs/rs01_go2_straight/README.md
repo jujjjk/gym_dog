@@ -371,3 +371,52 @@ Reject the pilot unless matched MuJoCo retains at least 0.20 m/s, zero
 fall/flight, raw P95 below 20 N.m and peak saturation below 10%, while reducing
 30-second unwrapped yaw drift below the fixed-runtime baseline magnitude of
 0.887 rad.
+
+## Actor-side estimator parity after model_1850
+
+Task `rs01_go2_estimator_parity` keeps the selected model_1850 policy
+interface and locomotion contract unchanged: 54 observations, 12 direct
+actions, Kp/Kd, action scales, gait period/duty, rewards and RS01 actuator
+limits are inherited without retuning. The only intentional change is the
+source of actor observations:
+
+- body linear velocity is estimated from joint position/velocity and ideal
+  body-frame IMU angular velocity with the same FK, stance selection,
+  hysteresis and filtering as the Jetson node;
+- the last two straight-path observations are integrated from that estimate
+  in the latched heading frame;
+- simulator root velocity and root path remain available to rewards and
+  diagnostics, but are no longer visible to the actor.
+
+The real node now latches heading/path zero only after the robot has completed
+the stand ramp and remained quiet and supported for one second. This prevents
+manual support or a moving stand transition from becoming the policy's path
+origin.
+
+Run a short continuation first; do not immediately launch a long run:
+
+```bash
+python3 legged_gym/scripts/train.py \
+  --task=rs01_go2_estimator_parity \
+  --headless \
+  --max_iterations=100 \
+  --run_name=estimator_parity_short_from1850 \
+  --resume \
+  --load_run=Jul29_11-08-16_path54_sim2sim_transfer_from1725 \
+  --checkpoint=1850
+```
+
+Evaluate a retained checkpoint with the deterministic parity report:
+
+```bash
+RS01_EVAL_DURATION_S=30 RS01_EVAL_VX=0.23 \
+python3 legged_gym/scripts/evaluate_rs01_estimator_parity.py \
+  --task=rs01_go2_estimator_parity \
+  --headless \
+  --load_run=<estimator-parity-run> \
+  --checkpoint=<checkpoint>
+```
+
+Accept continuation only if estimator error and true-root path error both
+remain bounded; optimizing the internally estimated path alone is not an
+acceptable result.

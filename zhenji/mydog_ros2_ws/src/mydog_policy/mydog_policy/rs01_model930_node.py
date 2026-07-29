@@ -93,6 +93,12 @@ class Rs01Model930Node(Node):
         self.declare_parameter("startup_hip_rate_rad_s", 0.12)
         self.declare_parameter("startup_thigh_rate_rad_s", 0.15)
         self.declare_parameter("startup_calf_rate_rad_s", 0.15)
+        self.declare_parameter("walk_start_stable_sec", 1.0)
+        self.declare_parameter("walk_start_max_abs_roll_rad", 0.10)
+        self.declare_parameter("walk_start_max_abs_pitch_rad", 0.10)
+        self.declare_parameter("walk_start_max_gyro_rad_s", 0.08)
+        self.declare_parameter("walk_start_max_odom_speed_mps", 0.05)
+        self.declare_parameter("walk_start_min_odom_confidence", 0.5)
         self.declare_parameter("low_odom_confidence_timeout_sec", 0.60)
         self.declare_parameter("http_timeout_sec", 0.08)
         self.declare_parameter("debug_csv_path", "")
@@ -178,6 +184,26 @@ class Rs01Model930Node(Node):
         )
         self.startup_max_initial_error = float(
             self.get_parameter("startup_max_initial_error_rad").value
+        )
+        self.walk_start_stable_sec = float(
+            self.get_parameter("walk_start_stable_sec").value
+        )
+        self.walk_start_max_abs_roll = float(
+            self.get_parameter("walk_start_max_abs_roll_rad").value
+        )
+        self.walk_start_max_abs_pitch = float(
+            self.get_parameter("walk_start_max_abs_pitch_rad").value
+        )
+        self.walk_start_max_gyro = float(
+            self.get_parameter("walk_start_max_gyro_rad_s").value
+        )
+        self.walk_start_max_odom_speed = float(
+            self.get_parameter("walk_start_max_odom_speed_mps").value
+        )
+        self.walk_start_min_odom_confidence = float(
+            self.get_parameter(
+                "walk_start_min_odom_confidence"
+            ).value
         )
         self.low_odom_timeout = float(
             self.get_parameter("low_odom_confidence_timeout_sec").value
@@ -317,6 +343,9 @@ class Rs01Model930Node(Node):
         self.cmd_vx = 0.0
         self.last_command_time = 0.0
         self.command_active_last = False
+        self.walk_ready_since = None
+        self.walk_start_stable = False
+        self.walk_session_reset_count = 0
         self.mode = "waiting_feedback"
         self.mode_start = time.monotonic()
         self.ready_since = None
@@ -581,6 +610,35 @@ class Rs01Model930Node(Node):
         self.mode = "startup_hold"
         self.mode_start = now
         self.initialized = True
+        self.leg_odometry.reset()
+
+    def _walk_start_is_stable(self, roll, pitch, odometry):
+        """Require a quiet, supported pose before latching a walk origin."""
+        gyro_norm = float(
+            np.linalg.norm(self.corrected_gyro_rad_s)
+        )
+        odom_speed = float(
+            np.linalg.norm(
+                np.asarray(
+                    odometry["base_linear_velocity"],
+                    dtype=np.float32,
+                )[:2]
+            )
+        )
+        return bool(
+            abs(float(roll)) <= self.walk_start_max_abs_roll
+            and abs(float(pitch)) <= self.walk_start_max_abs_pitch
+            and gyro_norm <= self.walk_start_max_gyro
+            and odom_speed <= self.walk_start_max_odom_speed
+            and float(odometry["confidence"])
+            >= self.walk_start_min_odom_confidence
+        )
+
+    def _reset_walk_session(self, now, yaw, q_policy):
+        """Clear estimator memory before defining a new path/phase origin."""
+        self.leg_odometry.reset()
+        self.core.reset(now, yaw, q_policy=q_policy)
+        self.walk_session_reset_count += 1
 
     def _stand_target(self, q_policy, dq_policy):
         max_step = self.startup_rate * self.contract.policy_dt
@@ -691,15 +749,34 @@ class Rs01Model930Node(Node):
                 self._initialize_from_feedback(now, q_policy, yaw)
 
             command_active = self.command_active(now)
-            # A command can arrive while the soft stand ramp is still active.
-            # Keep the gait/path origin fresh until the node can actually enter
-            # walk mode, otherwise a path-aware policy would start from a stale
-            # integration timestamp and immediately trip its stale-state guard.
-            if command_active and (
-                not self.command_active_last or self.mode != "walk"
-            ):
-                self.core.reset(now, yaw, q_policy=q_policy)
             self.command_active_last = command_active
+            walk_authorized = command_active and self.mode == "walk"
+            self.walk_start_stable = self._walk_start_is_stable(
+                roll, pitch, odometry
+            )
+            if command_active and self.mode == "ready":
+                if self.walk_start_stable:
+                    if self.walk_ready_since is None:
+                        self.walk_ready_since = now
+                    elif (
+                        now - self.walk_ready_since
+                        >= self.walk_start_stable_sec
+                    ):
+                        self._reset_walk_session(
+                            now, yaw, q_policy
+                        )
+                        odometry = self.leg_odometry.estimate(
+                            q_policy,
+                            dq_policy,
+                            self.corrected_gyro_rad_s,
+                        )
+                        self.mode = "walk"
+                        self.mode_start = now
+                        walk_authorized = True
+                else:
+                    self.walk_ready_since = None
+            elif self.mode != "walk":
+                self.walk_ready_since = None
 
             action = np.zeros(12, dtype=np.float32)
             observation = np.zeros(
@@ -730,10 +807,11 @@ class Rs01Model930Node(Node):
                     elif now - self.ready_since >= self.startup_ready_hold_sec:
                         self.mode = "ready"
                         self.mode_start = now
+                        self.leg_odometry.reset()
                         self.core.reset(now, yaw, q_policy=q_policy)
                 else:
                     self.ready_since = None
-            elif command_active:
+            elif walk_authorized:
                 self.mode = "walk"
                 observation = self.core.build_observation(
                     now=now,
@@ -773,6 +851,8 @@ class Rs01Model930Node(Node):
                     q_policy, dq_policy
                 )
                 self.core.reset(now, yaw, q_policy=q_policy)
+                if not command_active:
+                    self.walk_ready_since = None
                 self.low_odom_since = None
 
             target_real = self.mapper.policy_target_to_real(
@@ -822,6 +902,15 @@ class Rs01Model930Node(Node):
         self._publish_array(self.pub_obs, observation)
         self._publish_array(self.pub_action, action)
         self._publish_array(self.pub_target, target_real)
+        heading_error = math.atan2(
+            math.sin(float(self.core.heading_target) - float(yaw)),
+            math.cos(float(self.core.heading_target) - float(yaw)),
+        )
+        ready_duration = (
+            max(0.0, float(now) - float(self.walk_ready_since))
+            if self.walk_ready_since is not None
+            else 0.0
+        )
         status = {
             "mode": self.mode,
             "send": bool(self.enable_send),
@@ -845,6 +934,19 @@ class Rs01Model930Node(Node):
             "min_active_torque_limit_nm": float(
                 np.min(self.active_limit_policy)
             ),
+            "walk_start_stable": bool(self.walk_start_stable),
+            "walk_ready_duration_s": ready_duration,
+            "walk_session_reset_count": int(
+                self.walk_session_reset_count
+            ),
+            "heading_target_rad": float(self.core.heading_target),
+            "heading_error_rad": heading_error,
+            "odom_stance_mask": [
+                int(value) for value in odometry["stance_mask"]
+            ],
+            "odom_velocity_by_foot_m_s": np.asarray(
+                odometry["velocity_by_foot"], dtype=np.float32
+            ).reshape(-1).tolist(),
         }
         if self.include_path_state:
             status.update({
@@ -910,7 +1012,19 @@ class Rs01Model930Node(Node):
             "max_temperature_c",
             "max_thermal_rms_nm",
             "min_active_torque_limit_nm",
+            "walk_start_stable",
+            "walk_ready_duration_s",
+            "walk_session_reset_count",
+            "heading_target_rad",
+            "heading_error_rad",
         ]
+        for leg in ("FL", "FR", "RL", "RR"):
+            headers.append(f"odom_stance_{leg}")
+        for leg in ("FL", "FR", "RL", "RR"):
+            for axis in ("x", "y", "z"):
+                headers.append(
+                    f"odom_velocity_by_foot_{leg}_{axis}_m_s"
+                )
         if self.include_path_state:
             headers.extend([
                 "path_lateral_displacement_m",
@@ -971,7 +1085,14 @@ class Rs01Model930Node(Node):
             status["max_temperature_c"],
             status["max_thermal_rms_nm"],
             status["min_active_torque_limit_nm"],
+            int(status["walk_start_stable"]),
+            status["walk_ready_duration_s"],
+            status["walk_session_reset_count"],
+            status["heading_target_rad"],
+            status["heading_error_rad"],
         ]
+        row.extend(status["odom_stance_mask"])
+        row.extend(status["odom_velocity_by_foot_m_s"])
         if self.include_path_state:
             row.extend([
                 status["path_lateral_displacement_m"],

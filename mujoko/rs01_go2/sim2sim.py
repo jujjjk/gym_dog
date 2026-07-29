@@ -6,6 +6,7 @@ import argparse
 import csv
 import json
 import math
+import sys
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -13,6 +14,21 @@ from pathlib import Path
 import mujoco
 import numpy as np
 import onnxruntime as ort
+
+
+ROOT = Path(__file__).resolve().parents[2]
+ROS_POLICY_SOURCE = (
+    ROOT / "zhenji/mydog_ros2_ws/src/mydog_policy"
+)
+if str(ROS_POLICY_SOURCE) not in sys.path:
+    sys.path.insert(0, str(ROS_POLICY_SOURCE))
+
+from mydog_policy.rs01_model1850_core import (  # noqa: E402
+    Rs01StraightPathEstimator,
+)
+from mydog_policy.rs01_model930_core import (  # noqa: E402
+    Rs01NewMachineLegOdometry,
+)
 
 
 METADATA_KEY = "rs01_go2_deployment_config"
@@ -218,6 +234,41 @@ class Rs01Go2Sim:
             raise RuntimeError("Policy and physics timing contract is inconsistent")
 
         self.obs_cfg = observations
+        self.use_estimated_observations = (
+            observations.get("base_linear_velocity_source")
+            == "rs01_leg_odometry"
+            and observations.get("straight_path_state_source")
+            == "rs01_leg_odometry_integral"
+        )
+        self.leg_odometry = None
+        self.estimated_path = None
+        self.last_estimated_linear_velocity = np.zeros(
+            3, dtype=np.float64
+        )
+        self.last_estimated_path_state = (0.0, 0.0)
+        if self.use_estimated_observations:
+            odometry = observations.get("rs01_leg_odometry") or {}
+            self.leg_odometry = Rs01NewMachineLegOdometry(
+                nominal_base_height=float(
+                    odometry["nominal_base_height_m"]
+                ),
+                foot_radius=float(odometry["foot_radius_m"]),
+                height_margin=float(odometry["height_margin_m"]),
+                vertical_speed_threshold=float(
+                    odometry["vertical_speed_threshold_m_s"]
+                ),
+                velocity_residual_threshold=float(
+                    odometry["velocity_residual_threshold_m_s"]
+                ),
+                filter_alpha=float(odometry["filter_alpha"]),
+                no_contact_decay=float(odometry["no_contact_decay"]),
+                previous_stance_score_bonus=float(
+                    odometry["previous_stance_score_bonus"]
+                ),
+            )
+            self.estimated_path = Rs01StraightPathEstimator(
+                max_update_gap_s=max(0.10, 2.0 * self.policy_dt)
+            )
         self.gait_cfg = self.cfg["gait"]
         self.qpos_indices = np.asarray(
             [
@@ -324,6 +375,11 @@ class Rs01Go2Sim:
         self.last_motor_torque = np.zeros(len(self.names), dtype=np.float64)
         self.last_applied_torque = np.zeros(len(self.names), dtype=np.float64)
         mujoco.mj_forward(self.model, self.data)
+        if self.use_estimated_observations:
+            self.leg_odometry.reset()
+            self.estimated_path.reset(now=0.0, yaw=0.0)
+            self.last_estimated_linear_velocity.fill(0.0)
+            self.last_estimated_path_state = (0.0, 0.0)
 
     @property
     def phase(self):
@@ -388,6 +444,23 @@ class Rs01Go2Sim:
             1.0,
         )
         angle = 2.0 * math.pi * self.phase
+        path_observation = None
+        if self.use_estimated_observations:
+            odometry = self.leg_odometry.estimate(
+                self.data.qpos[self.qpos_indices],
+                self.data.qvel[self.qvel_indices],
+                angular,
+            )
+            linear = np.asarray(
+                odometry["base_linear_velocity"], dtype=np.float64
+            )
+            path_observation = self.estimated_path.update(
+                now=self.policy_steps * self.policy_dt,
+                yaw=yaw,
+                base_linear_velocity_body=linear,
+            )
+            self.last_estimated_linear_velocity = linear.copy()
+            self.last_estimated_path_state = tuple(path_observation)
         observation_parts = [
             linear * float(self.obs_cfg["lin_vel_scale"]),
             angular * float(self.obs_cfg["ang_vel_scale"]),
@@ -415,7 +488,12 @@ class Rs01Go2Sim:
         else:
             observation_parts.append([heading_error])
         if self.obs_cfg.get("straight_path_state_enabled", False):
-            lateral_error, lateral_velocity = self.straight_path_state()
+            if path_observation is None:
+                lateral_error, lateral_velocity = (
+                    self.straight_path_state()
+                )
+            else:
+                lateral_error, lateral_velocity = path_observation
             observation_parts.append(
                 [
                     np.clip(

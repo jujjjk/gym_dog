@@ -204,6 +204,10 @@ def test_model1850_node_and_launch_default_to_no_send_and_stand_only():
     assert '"gyro_bias_calibration_sec": 5.0' in launch
     assert 'self.declare_parameter("enable_send", False)' in shared_node
     assert 'self.declare_parameter("stand_only", True)' in shared_node
-    assert "self.mode != \"walk\"" in shared_node
+    assert "walk_authorized" in shared_node
+    assert "self.leg_odometry.reset()" in shared_node
+    assert "walk_start_stable_sec" in shared_node
+    assert '"walk_start_stable_sec": 1.0' in launch
+    assert '"walk_start_max_odom_speed_mps": 0.05' in launch
     assert '"require_hardware_torque_limits": True' in shared_node
     assert '"require_verified_hardware_safety_limits": True' in shared_node

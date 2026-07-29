@@ -98,6 +98,19 @@ def test_actual_urdf_fk_reproduces_supplied_default_foot_centers():
         assert np.all(np.isfinite(jacobian))
 
 
+def test_new_machine_odometry_reset_clears_filter_and_stance_history():
+    _, contract = load_contract()
+    estimator = Rs01NewMachineLegOdometry()
+    estimator.estimate(
+        contract.default,
+        np.full(12, 0.1, dtype=np.float32),
+        np.zeros(3, dtype=np.float32),
+    )
+    estimator.reset()
+    np.testing.assert_array_equal(estimator.filtered, 0.0)
+    np.testing.assert_array_equal(estimator.last_stance, False)
+
+
 def test_observation_inference_and_target_limits_are_finite():
     session, contract = load_contract()
     core = Rs01Model930PolicyCore(session, contract)

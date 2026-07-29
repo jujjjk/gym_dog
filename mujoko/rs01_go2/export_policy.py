@@ -45,6 +45,10 @@ from legged_gym.envs.rs01_go2_straight.rs01_go2_path54_sim2sim_config import (  
     Rs01Go2Path54Sim2SimTransferCfg,
     Rs01Go2Path54Sim2SimTransferCfgPPO,
 )
+from legged_gym.envs.rs01_go2_straight.rs01_go2_estimator_parity_config import (  # noqa: E402
+    Rs01Go2EstimatorParityCfg,
+    Rs01Go2EstimatorParityCfgPPO,
+)
 from rsl_rl.modules import ActorCritic  # noqa: E402
 
 
@@ -85,6 +89,10 @@ TASKS = {
     "rs01_go2_path54_sim2sim_transfer": (
         Rs01Go2Path54Sim2SimTransferCfg,
         Rs01Go2Path54Sim2SimTransferCfgPPO,
+    ),
+    "rs01_go2_estimator_parity": (
+        Rs01Go2EstimatorParityCfg,
+        Rs01Go2EstimatorParityCfgPPO,
     ),
 }
 
@@ -246,6 +254,11 @@ def build_contract(task_name, cfg, checkpoint, onnx_path):
         "observe_straight_path_state",
         False,
     ))
+    estimated_observations = bool(getattr(
+        cfg.commands,
+        "use_rs01_estimated_observations",
+        False,
+    ))
     observation_layout = [
         ["base_linear_velocity_body_m_s", 3],
         ["base_angular_velocity_body_rad_s", 3],
@@ -330,6 +343,21 @@ def build_contract(task_name, cfg, checkpoint, onnx_path):
                 "straight_path_lateral_velocity_scale",
                 1.0,
             )),
+            "base_linear_velocity_source": (
+                "rs01_leg_odometry"
+                if estimated_observations
+                else "simulator_root_state"
+            ),
+            "straight_path_state_source": (
+                "rs01_leg_odometry_integral"
+                if estimated_observations
+                else "simulator_root_state"
+            ),
+            "rs01_leg_odometry": (
+                class_to_dict(cfg.rs01_odometry)
+                if estimated_observations
+                else None
+            ),
         },
         "commands": {
             "default": [float(cfg.commands.playback_speed_mps), 0.0, 0.0],

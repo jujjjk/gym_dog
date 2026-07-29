@@ -419,6 +419,8 @@ class Rs01NewMachineLegOdometry:
         vertical_speed_threshold=0.25,
         velocity_residual_threshold=0.35,
         filter_alpha=0.35,
+        no_contact_decay=0.90,
+        previous_stance_score_bonus=0.08,
     ):
         self.nominal_base_height = float(nominal_base_height)
         self.foot_radius = float(foot_radius)
@@ -428,8 +430,17 @@ class Rs01NewMachineLegOdometry:
             velocity_residual_threshold
         )
         self.filter_alpha = float(filter_alpha)
+        self.no_contact_decay = float(no_contact_decay)
+        self.previous_stance_score_bonus = float(
+            previous_stance_score_bonus
+        )
         self.filtered = np.zeros(3, dtype=np.float32)
         self.last_stance = np.zeros(4, dtype=bool)
+
+    def reset(self):
+        """Clear velocity filtering and contact-selection hysteresis."""
+        self.filtered.fill(0.0)
+        self.last_stance.fill(False)
 
     @classmethod
     def foot_position_and_jacobian(cls, leg, q_leg):
@@ -494,7 +505,11 @@ class Rs01NewMachineLegOdometry:
                 height_gap / max(self.height_margin, 1.0e-6)
                 + vertical_speed
                 / max(self.vertical_speed_threshold, 1.0e-6)
-                - (0.08 if self.last_stance[leg_index] else 0.0)
+                - (
+                    self.previous_stance_score_bonus
+                    if self.last_stance[leg_index]
+                    else 0.0
+                )
             )
             candidates.append((score, leg_index))
 
@@ -552,7 +567,7 @@ class Rs01NewMachineLegOdometry:
             ).astype(np.float32)
         else:
             confidence = 0.0
-            self.filtered *= 0.90
+            self.filtered *= self.no_contact_decay
         self.filtered[2] = 0.0
         return {
             "base_linear_velocity": self.filtered.copy(),
@@ -560,6 +575,7 @@ class Rs01NewMachineLegOdometry:
             "stance_mask": stance,
             "foot_position": foot_position,
             "foot_velocity": foot_velocity,
+            "velocity_by_foot": velocity_by_foot,
             "base_height_proxy": base_height_proxy,
         }
 

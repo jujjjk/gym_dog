@@ -22,6 +22,7 @@ SUPPORTED_TASKS = {
     "rs01_go2_model930_drift_repair",
     "rs01_go2_model1425_path54",
     "rs01_go2_path54_sim2sim_transfer",
+    "rs01_go2_estimator_parity",
 }
 
 

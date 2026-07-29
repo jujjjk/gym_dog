@@ -57,6 +57,10 @@ from legged_gym.envs.rs01_go2_straight.rs01_go2_path54_sim2sim_config import (
     Rs01Go2Path54Sim2SimTransferCfg,
     Rs01Go2Path54Sim2SimTransferCfgPPO,
 )
+from legged_gym.envs.rs01_go2_straight.rs01_go2_estimator_parity_config import (
+    Rs01Go2EstimatorParityCfg,
+    Rs01Go2EstimatorParityCfgPPO,
+)
 from legged_gym.utils.checkpoint_adapter import (
     adapt_observation_input_state,
 )
@@ -666,6 +670,34 @@ def test_path54_sim2sim_transfer_restores_only_narrow_dynamics_spread():
     assert ppo.algorithm.learning_rate == 5.0e-6
     assert ppo.runner.action_std_value == 0.025
     assert ppo.runner.load_optimizer is False
+    assert ppo.runner.adapt_observation_input is False
+    assert ppo.runner.reference_policy_coef == 0.05
+
+
+def test_estimator_parity_task_changes_observation_source_only():
+    cfg = Rs01Go2EstimatorParityCfg
+    base = Rs01Go2Path54Sim2SimTransferCfg
+    ppo = Rs01Go2EstimatorParityCfgPPO
+    assert cfg.env.num_observations == 54
+    assert cfg.env.num_actions == 12
+    assert cfg.commands.use_rs01_estimated_observations is True
+    assert cfg.commands.observe_straight_path_state is True
+    assert cfg.init_state.reset_path_lateral_error_noise_m == 0.0
+    assert cfg.init_state.reset_heading_noise_rad == 0.0
+    assert cfg.init_state.reset_yaw_rate_noise_rad_s == 0.0
+    assert cfg.control.stiffness == base.control.stiffness
+    assert cfg.control.damping == base.control.damping
+    assert (
+        cfg.control.action_scale_by_joint
+        == base.control.action_scale_by_joint
+    )
+    assert cfg.rewards.gait_period_s == base.rewards.gait_period_s
+    assert cfg.rewards.gait_stance_ratio == base.rewards.gait_stance_ratio
+    assert cfg.rewards.scales.lateral_path_recovery == (
+        base.rewards.scales.lateral_path_recovery
+    )
+    assert cfg.rs01_actuator.peak_torque_limit_nm == 17.0
+    assert ppo.algorithm.learning_rate == 2.0e-6
     assert ppo.runner.adapt_observation_input is False
     assert ppo.runner.reference_policy_coef == 0.05
 

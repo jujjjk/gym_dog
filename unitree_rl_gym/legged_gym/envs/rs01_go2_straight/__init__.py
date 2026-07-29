@@ -45,6 +45,10 @@ from .rs01_go2_path54_sim2sim_config import (
     Rs01Go2Path54Sim2SimTransferCfg,
     Rs01Go2Path54Sim2SimTransferCfgPPO,
 )
+from .rs01_go2_estimator_parity_config import (
+    Rs01Go2EstimatorParityCfg,
+    Rs01Go2EstimatorParityCfgPPO,
+)
 
 __all__ = [
     "Rs01Go2Kp40Cfg",
@@ -73,6 +77,8 @@ __all__ = [
     "Rs01Go2Model1425Path54CfgPPO",
     "Rs01Go2Path54Sim2SimTransferCfg",
     "Rs01Go2Path54Sim2SimTransferCfgPPO",
+    "Rs01Go2EstimatorParityCfg",
+    "Rs01Go2EstimatorParityCfgPPO",
     "Rs01Go2StraightCfg",
     "Rs01Go2StraightCfgPPO",
     "Rs01Go2StraightRobot",
