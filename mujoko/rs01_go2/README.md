@@ -22,6 +22,11 @@ The actor output is used directly. There is no `tanh`, CPG offset, compensation
 controller or ideal motor. The 17 N.m limit applies to electromagnetic motor
 torque; friction is then applied separately without a second hidden clip.
 
+The 54-observation path task appends signed lateral displacement from the
+reset line and path-frame lateral velocity after the 52-observation heading
+layout. MuJoCo snapshots the same reset position and computes both quantities
+in the initial-heading world frame; they are not filled with zeros.
+
 Body-frame linear and angular velocity are computed from MuJoCo world-frame
 object velocity using the floating-base quaternion. Do not use
 `mj_objectVelocity(..., flg_local=1)` as the policy frame for this imported
@@ -56,6 +61,44 @@ mujoko/rs01_go2/sim2sim.py \
 ```
 
 Add `--viewer` to the last command for real-time visualization.
+
+For the 54-D model_1725 path policy:
+
+```bash
+cd /home/nszb/gym
+
+PATH=/home/nszb/gym/unitree-rl/bin:$PATH \
+/home/nszb/gym/unitree-rl/bin/python \
+mujoko/rs01_go2/export_policy.py \
+  --task rs01_go2_model1425_path54 \
+  unitree_rl_gym/logs/rs01_go2_straight_phase_load/\
+Jul29_10-13-17_path54_from1425_023/model_1725.pt \
+  artifacts/rs01_go2_sim2sim/path54_model1725/model_1725_path54.onnx
+```
+
+The nominal path stage intentionally disabled dynamics randomization. Continue
+from model_1725 with the narrow transfer task before selecting a final
+cross-simulator checkpoint:
+
+```bash
+cd /home/nszb/gym/unitree_rl_gym
+
+PATH=/home/nszb/gym/unitree-rl/bin:$PATH \
+PYTHONPATH=/home/nszb/gym/isaacgym/python:/home/nszb/gym/unitree_rl_gym:/home/nszb/gym/rsl_rl \
+/home/nszb/gym/unitree-rl/bin/python \
+legged_gym/scripts/train.py \
+  --task=rs01_go2_path54_sim2sim_transfer \
+  --headless \
+  --resume \
+  --load_run=Jul29_10-13-17_path54_from1425_023 \
+  --checkpoint=1725 \
+  --max_iterations=150 \
+  --run_name=path54_sim2sim_transfer_from1725
+```
+
+Do not select the final iteration automatically. Export checkpoints every
+25 iterations with `--task rs01_go2_path54_sim2sim_transfer`, then compare
+them in the same generated MuJoCo scene at 0.23 m/s for 30 seconds.
 
 For a checkpoint trained by the bridge task, select its exact contract during
 export:

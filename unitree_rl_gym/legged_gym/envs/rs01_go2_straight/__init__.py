@@ -33,6 +33,18 @@ from .rs01_go2_sim2sim_config import (
     Rs01Go2Heading52Cfg,
     Rs01Go2Heading52CfgPPO,
 )
+from .rs01_go2_drift_repair_config import (
+    Rs01Go2Model930DriftRepairCfg,
+    Rs01Go2Model930DriftRepairCfgPPO,
+)
+from .rs01_go2_path54_config import (
+    Rs01Go2Model1425Path54Cfg,
+    Rs01Go2Model1425Path54CfgPPO,
+)
+from .rs01_go2_path54_sim2sim_config import (
+    Rs01Go2Path54Sim2SimTransferCfg,
+    Rs01Go2Path54Sim2SimTransferCfgPPO,
+)
 
 __all__ = [
     "Rs01Go2Kp40Cfg",
@@ -55,6 +67,12 @@ __all__ = [
     "Rs01Go2MatchedTransferCfgPPO",
     "Rs01Go2Heading52Cfg",
     "Rs01Go2Heading52CfgPPO",
+    "Rs01Go2Model930DriftRepairCfg",
+    "Rs01Go2Model930DriftRepairCfgPPO",
+    "Rs01Go2Model1425Path54Cfg",
+    "Rs01Go2Model1425Path54CfgPPO",
+    "Rs01Go2Path54Sim2SimTransferCfg",
+    "Rs01Go2Path54Sim2SimTransferCfgPPO",
     "Rs01Go2StraightCfg",
     "Rs01Go2StraightCfgPPO",
     "Rs01Go2StraightRobot",

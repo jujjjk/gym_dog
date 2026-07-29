@@ -22,6 +22,9 @@ from legged_gym.envs.rs01_go2_straight.rs01_go2_sim2sim_config import (  # noqa:
     Rs01Go2Heading52Cfg,
     Rs01Go2Sim2SimRobustCfg,
 )
+from legged_gym.envs.rs01_go2_straight.rs01_go2_path54_config import (  # noqa: E402
+    Rs01Go2Model1425Path54Cfg,
+)
 
 
 def test_export_contract_binds_exact_new_rs01_urdf_and_physx_timing():
@@ -112,6 +115,24 @@ def test_heading52_export_contract_uses_sin_cos_layout():
     assert observations["layout"][-1] == ["heading_error_sin_cos", 2]
 
 
+def test_path54_export_contract_appends_exact_training_path_state():
+    contract = build_contract(
+        "rs01_go2_model1425_path54",
+        Rs01Go2Model1425Path54Cfg,
+        ROOT / "dummy_checkpoint.pt",
+        ROOT / "dummy_policy.onnx",
+    )
+    observations = contract["observations"]
+    assert contract["dimensions"]["observations"] == 54
+    assert observations["straight_path_state_enabled"] is True
+    assert observations["straight_path_lateral_position_scale"] == 2.0
+    assert observations["straight_path_lateral_velocity_scale"] == 2.0
+    assert observations["layout"][-2:] == [
+        ["straight_path_lateral_displacement_scaled", 1],
+        ["straight_path_lateral_velocity_scaled", 1],
+    ]
+
+
 def test_scene_metadata_loader_exposes_rs01_machine_binding(tmp_path):
     scene = tmp_path / "scene.xml"
     scene.write_text(
@@ -178,3 +199,23 @@ def test_mujoco_world_velocity_is_rotated_into_policy_body_frame():
 
     assert np.allclose(linear, [0.2, -0.1, 0.03])
     assert np.allclose(angular, [0.01, -0.02, 0.4])
+
+
+def test_mujoco_path_state_uses_world_velocity_and_initial_heading_frame():
+    sim = object.__new__(Rs01Go2Sim)
+    sim.heading_target = np.pi / 2.0
+    sim.path_origin_xy = np.array([1.0, 2.0])
+    sim.data = type(
+        "Data",
+        (),
+        {"qpos": np.array([0.8, 2.0, 0.316, 1.0, 0.0, 0.0, 0.0])},
+    )()
+    sim.base_velocity_world = lambda: (
+        np.array([0.1, 0.0, 0.0]),
+        np.zeros(3),
+    )
+
+    error, velocity = sim.straight_path_state()
+
+    assert np.isclose(error, 0.2)
+    assert np.isclose(velocity, -0.1)

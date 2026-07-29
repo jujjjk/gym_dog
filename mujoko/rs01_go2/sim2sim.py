@@ -1,4 +1,4 @@
-"""Run the 51-observation RS01 Go2 policy in an independent MuJoCo model."""
+"""Run an RS01 Go2 policy in an independent MuJoCo model."""
 
 from __future__ import annotations
 
@@ -317,6 +317,9 @@ class Rs01Go2Sim:
         )
         self.policy_steps = 0
         self.heading_target = 0.0
+        # Match Isaac Gym's straight_path_origin_xy snapshot. This is a
+        # navigation state, not a hidden stabilizing controller.
+        self.path_origin_xy = self.data.qpos[:2].copy()
         self.last_raw_torque = np.zeros(len(self.names), dtype=np.float64)
         self.last_motor_torque = np.zeros(len(self.names), dtype=np.float64)
         self.last_applied_torque = np.zeros(len(self.names), dtype=np.float64)
@@ -330,7 +333,7 @@ class Rs01Go2Sim:
             / float(self.gait_cfg["period_s"])
         ) % 1.0
 
-    def base_velocity_body(self):
+    def base_velocity_world(self):
         velocity = np.zeros(6, dtype=np.float64)
         mujoco.mj_objectVelocity(
             self.model,
@@ -340,15 +343,36 @@ class Rs01Go2Sim:
             velocity,
             0,
         )
+        # World-frame object velocity is angular, then linear.
+        return velocity[3:].copy(), velocity[:3].copy()
+
+    def base_velocity_body(self):
         # World-frame mj_objectVelocity is ordered angular, then linear.
         # Convert explicitly with the floating-base quaternion, matching
         # Isaac Gym's quat_rotate_inverse. MuJoCo's flg_local=1 convention for
         # this imported free body has a fixed axis permutation and must not be
         # used as the policy body frame.
+        linear_world, angular_world = self.base_velocity_world()
         rotation = quaternion_rotation_matrix(self.data.qpos[3:7])
         return (
-            rotation.T @ velocity[3:],
-            rotation.T @ velocity[:3],
+            rotation.T @ linear_world,
+            rotation.T @ angular_world,
+        )
+
+    def straight_path_state(self):
+        """Match the 54-D task's world/path-frame lateral state."""
+        lateral_axis = np.asarray(
+            [
+                -math.sin(self.heading_target),
+                math.cos(self.heading_target),
+            ],
+            dtype=np.float64,
+        )
+        displacement = self.data.qpos[:2] - self.path_origin_xy
+        linear_world, _ = self.base_velocity_world()
+        return (
+            float(np.dot(displacement, lateral_axis)),
+            float(np.dot(linear_world[:2], lateral_axis)),
         )
 
     def observation(self):
@@ -390,6 +414,32 @@ class Rs01Go2Sim:
             )
         else:
             observation_parts.append([heading_error])
+        if self.obs_cfg.get("straight_path_state_enabled", False):
+            lateral_error, lateral_velocity = self.straight_path_state()
+            observation_parts.append(
+                [
+                    np.clip(
+                        lateral_error
+                        * float(
+                            self.obs_cfg[
+                                "straight_path_lateral_position_scale"
+                            ]
+                        ),
+                        -1.0,
+                        1.0,
+                    ),
+                    np.clip(
+                        lateral_velocity
+                        * float(
+                            self.obs_cfg[
+                                "straight_path_lateral_velocity_scale"
+                            ]
+                        ),
+                        -1.0,
+                        1.0,
+                    ),
+                ]
+            )
         observation = np.concatenate(observation_parts).astype(np.float32)
         expected = int(self.cfg["dimensions"]["observations"])
         if observation.size != expected:
@@ -566,6 +616,8 @@ def run(args):
             "yaw_rad",
             "base_vx_body_m_s",
             "base_vy_body_m_s",
+            "path_lateral_error_m",
+            "path_lateral_velocity_m_s",
             "yaw_rate_body_rad_s",
             "unwrapped_yaw_rad",
             "gait_phase",
@@ -605,6 +657,7 @@ def run(args):
 
     start_xy = sim.data.qpos[:2].copy()
     path_y = []
+    path_velocities = []
     velocities = []
     yaw_rates = []
     rolls = []
@@ -640,6 +693,7 @@ def run(args):
             wall_start = time.time()
             sim.control_step()
             linear, angular = sim.base_velocity_body()
+            path_error, path_velocity = sim.straight_path_state()
             roll, pitch, yaw = roll_pitch_yaw(sim.data.qpos[3:7])
             force, illegal_count, illegal_names = sim.contact_diagnostics()
             contact = force >= float(sim.gait_cfg["contact_threshold_n"])
@@ -652,7 +706,8 @@ def run(args):
             wrapped_yaws.append(yaw)
             unwrapped_yaw = float(np.unwrap(wrapped_yaws)[-1])
 
-            path_y.append(float(sim.data.qpos[1] - start_xy[1]))
+            path_y.append(path_error)
+            path_velocities.append(path_velocity)
             velocities.append(linear.copy())
             yaw_rates.append(float(angular[2]))
             rolls.append(roll)
@@ -689,6 +744,8 @@ def run(args):
                         yaw,
                         linear[0],
                         linear[1],
+                        path_error,
+                        path_velocity,
                         angular[2],
                         unwrapped_yaw,
                         sim.phase,
@@ -764,6 +821,9 @@ def run(args):
         "speed_error_m_s": float(velocity[:, 0].mean() - sim.command[0]),
         "forward_displacement_m": float(displacement[0]),
         "lateral_path_rms_m": float(np.sqrt(np.mean(np.square(path_y)))),
+        "lateral_path_velocity_rms_m_s": float(
+            np.sqrt(np.mean(np.square(path_velocities)))
+        ),
         "final_lateral_displacement_m": float(displacement[1]),
         "final_yaw_rad": float(final_yaw),
         "final_unwrapped_yaw_rad": float(unwrapped_yaw[-1]),
