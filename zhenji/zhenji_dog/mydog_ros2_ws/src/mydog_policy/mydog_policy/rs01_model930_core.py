@@ -8,6 +8,7 @@ import hashlib
 import json
 import math
 from pathlib import Path
+from typing import ClassVar
 
 import numpy as np
 
@@ -68,6 +69,49 @@ def wrap_pi(angle: float) -> float:
     return math.atan2(math.sin(angle), math.cos(angle))
 
 
+def estimate_stationary_gyro_bias(
+    gyro_samples_rad_s,
+    rpy_samples_rad,
+    max_std_rad_s,
+    max_rpy_span_rad,
+    max_abs_bias_rad_s,
+):
+    """Validate a stationary sample window and return its gyro mean."""
+    gyro = np.asarray(gyro_samples_rad_s, dtype=np.float64)
+    rpy = np.asarray(rpy_samples_rad, dtype=np.float64)
+    if (
+        gyro.ndim != 2
+        or rpy.ndim != 2
+        or gyro.shape[1:] != (3,)
+        or rpy.shape != gyro.shape
+        or gyro.shape[0] < 2
+    ):
+        raise RuntimeError(
+            "Gyro calibration samples must both have shape (N, 3)"
+        )
+    if not np.all(np.isfinite(gyro)) or not np.all(np.isfinite(rpy)):
+        raise RuntimeError("Gyro calibration samples contain NaN/Inf")
+    standard_deviation = np.std(gyro, axis=0)
+    orientation_span = np.ptp(np.unwrap(rpy, axis=0), axis=0)
+    if float(np.max(standard_deviation)) > float(max_std_rad_s):
+        raise RuntimeError(
+            "Robot moved during gyro calibration: std="
+            f"{standard_deviation.tolist()} rad/s"
+        )
+    if float(np.max(orientation_span)) > float(max_rpy_span_rad):
+        raise RuntimeError(
+            "Robot orientation changed during gyro calibration: span="
+            f"{orientation_span.tolist()} rad"
+        )
+    bias = np.mean(gyro, axis=0).astype(np.float32)
+    if float(np.max(np.abs(bias))) > float(max_abs_bias_rad_s):
+        raise RuntimeError(
+            "Gyro bias exceeds configured safety bound: "
+            f"{bias.tolist()} rad/s"
+        )
+    return bias
+
+
 def _joint_type(name: str) -> str:
     matches = [
         joint_type
@@ -81,6 +125,10 @@ def _joint_type(name: str) -> str:
 
 @dataclass(frozen=True)
 class Model930Contract:
+    expected_task: ClassVar[str] = EXPECTED_TASK
+    expected_observations: ClassVar[int] = 52
+    model_label: ClassVar[str] = "model_930"
+
     raw: dict
     joint_names: tuple[str, ...]
     default: np.ndarray
@@ -113,7 +161,7 @@ class Model930Contract:
         actual_sha256 = sha256_file(onnx_path)
         if expected_sha256 and actual_sha256 != expected_sha256:
             raise RuntimeError(
-                "model_930 ONNX SHA256 mismatch: "
+                f"{cls.model_label} ONNX SHA256 mismatch: "
                 f"expected {expected_sha256}, got {actual_sha256}"
             )
         metadata = session.get_modelmeta().custom_metadata_map
@@ -125,18 +173,30 @@ class Model930Contract:
             raise RuntimeError(
                 f"Unsupported RS01 contract schema {raw.get('schema_version')}"
             )
-        if raw.get("task") != EXPECTED_TASK:
+        if raw.get("task") != cls.expected_task:
             raise RuntimeError(
-                f"Expected task {EXPECTED_TASK!r}, got {raw.get('task')!r}"
+                f"Expected task {cls.expected_task!r}, "
+                f"got {raw.get('task')!r}"
             )
         dimensions = raw.get("dimensions", {})
-        if int(dimensions.get("observations", -1)) != 52:
-            raise RuntimeError("model_930 must have exactly 52 observations")
+        if (
+            int(dimensions.get("observations", -1))
+            != cls.expected_observations
+        ):
+            raise RuntimeError(
+                f"{cls.model_label} must have exactly "
+                f"{cls.expected_observations} observations"
+            )
         if int(dimensions.get("actions", -1)) != 12:
-            raise RuntimeError("model_930 must have exactly 12 actions")
+            raise RuntimeError(
+                f"{cls.model_label} must have exactly 12 actions"
+            )
         input_shape = session.get_inputs()[0].shape
         output_shape = session.get_outputs()[0].shape
-        if input_shape[1] != 52 or output_shape[1] != 12:
+        if (
+            input_shape[1] != cls.expected_observations
+            or output_shape[1] != 12
+        ):
             raise RuntimeError(
                 f"ONNX graph dimensions disagree: {input_shape} -> {output_shape}"
             )
@@ -175,7 +235,9 @@ class Model930Contract:
         control = raw["control"]
         observations = raw["observations"]
         if observations.get("heading_representation") != "sin_cos":
-            raise RuntimeError("model_930 requires sin/cos heading observations")
+            raise RuntimeError(
+                f"{cls.model_label} requires sin/cos heading observations"
+            )
         policy_dt = float(control["policy_dt_s"])
         if abs(policy_dt - 0.02) > 1.0e-9:
             raise RuntimeError(f"Expected 50 Hz policy, got dt={policy_dt}")

@@ -26,21 +26,35 @@ from .rs01_model930_core import (
     Rs01ContinuousTorqueGuard,
     Rs01Model930PolicyCore,
     Rs01NewMachineLegOdometry,
+    estimate_stationary_gyro_bias,
 )
 
 
 class Rs01Model930Node(Node):
     """Run model_930 with exact observation and motor-routing semantics."""
 
+    node_name = "rs01_model930_node"
+    model_label = "model_930"
+    model_filename = "model_930_rs01_heading52.onnx"
+    expected_onnx_sha256 = EXPECTED_ONNX_SHA256
+    contract_type = Model930Contract
+    policy_core_type = Rs01Model930PolicyCore
+    observation_count = 52
+    topic_namespace = "/mydog/model930"
+    include_path_state = False
+    calibrate_gyro_bias = False
+
     def __init__(self):
-        super().__init__("rs01_model930_node")
+        super().__init__(self.node_name)
         default_onnx = str(
             Path(get_package_share_directory("mydog_policy"))
             / "models"
-            / "model_930_rs01_heading52.onnx"
+            / self.model_filename
         )
         self.declare_parameter("onnx_path", default_onnx)
-        self.declare_parameter("expected_onnx_sha256", EXPECTED_ONNX_SHA256)
+        self.declare_parameter(
+            "expected_onnx_sha256", self.expected_onnx_sha256
+        )
         self.declare_parameter(
             "motor_base_url", "http://127.0.0.1:8000"
         )
@@ -52,6 +66,12 @@ class Rs01Model930Node(Node):
         self.declare_parameter("require_online", True)
         self.declare_parameter("max_motor_age_ms", 100.0)
         self.declare_parameter("max_imu_age_sec", 0.10)
+        self.declare_parameter("gyro_bias_calibration_sec", 5.0)
+        self.declare_parameter("gyro_bias_max_abs_rad_s", 0.35)
+        self.declare_parameter("gyro_calibration_max_std_rad_s", 0.05)
+        self.declare_parameter(
+            "gyro_calibration_max_rpy_span_rad", 0.08
+        )
         self.declare_parameter("max_temperature_c", 70.0)
         self.declare_parameter("max_abs_roll_rad", 0.60)
         self.declare_parameter("max_abs_pitch_rad", 0.60)
@@ -100,6 +120,22 @@ class Rs01Model930Node(Node):
         )
         self.max_imu_age_sec = float(
             self.get_parameter("max_imu_age_sec").value
+        )
+        self.gyro_bias_calibration_sec = float(
+            self.get_parameter("gyro_bias_calibration_sec").value
+        )
+        self.gyro_bias_max_abs = float(
+            self.get_parameter("gyro_bias_max_abs_rad_s").value
+        )
+        self.gyro_calibration_max_std = float(
+            self.get_parameter(
+                "gyro_calibration_max_std_rad_s"
+            ).value
+        )
+        self.gyro_calibration_max_rpy_span = float(
+            self.get_parameter(
+                "gyro_calibration_max_rpy_span_rad"
+            ).value
         )
         self.max_temperature_c = float(
             self.get_parameter("max_temperature_c").value
@@ -159,12 +195,12 @@ class Rs01Model930Node(Node):
         self.session = ort.InferenceSession(
             str(self.onnx_path), providers=providers
         )
-        self.contract = Model930Contract.from_onnx_session(
+        self.contract = self.contract_type.from_onnx_session(
             self.session,
             self.onnx_path,
             expected_sha256=self.expected_sha256,
         )
-        self.core = Rs01Model930PolicyCore(
+        self.core = self.policy_core_type(
             self.session, self.contract
         )
         self.mapper = self.core.mapper
@@ -182,10 +218,14 @@ class Rs01Model930Node(Node):
             port=str(self.get_parameter("imu_port").value),
             read_hz=100.0,
         )
-        self.get_logger().info("Starting model_930 IMU...")
+        self.get_logger().info(f"Starting {self.model_label} IMU...")
         self.imu.start()
         if not self.imu.wait_until_ready(timeout=3.0):
             raise RuntimeError("IMU is not ready")
+        self.gyro_bias_rad_s = np.zeros(3, dtype=np.float32)
+        if self.calibrate_gyro_bias:
+            self.gyro_bias_rad_s = self._calibrate_gyro_bias()
+        self.corrected_gyro_rad_s = np.zeros(3, dtype=np.float32)
 
         self.kp_real = self.mapper.policy_values_to_real(
             self.contract.kp
@@ -291,16 +331,24 @@ class Rs01Model930Node(Node):
         self.last_loop_time = None
 
         self.pub_obs = self.create_publisher(
-            Float32MultiArray, "/mydog/model930/observation", 10
+            Float32MultiArray,
+            f"{self.topic_namespace}/observation",
+            10,
         )
         self.pub_action = self.create_publisher(
-            Float32MultiArray, "/mydog/model930/action", 10
+            Float32MultiArray,
+            f"{self.topic_namespace}/action",
+            10,
         )
         self.pub_target = self.create_publisher(
-            Float32MultiArray, "/mydog/model930/target_real", 10
+            Float32MultiArray,
+            f"{self.topic_namespace}/target_real",
+            10,
         )
         self.pub_status = self.create_publisher(
-            String, "/mydog/model930/status", 10
+            String,
+            f"{self.topic_namespace}/status",
+            10,
         )
         self.sub_cmd = self.create_subscription(
             Twist, "/cmd_vel", self.command_callback, 10
@@ -316,7 +364,7 @@ class Rs01Model930Node(Node):
             self._configure_verified_hardware_limits()
             self.get_logger().warn(
                 "MOTOR SEND ENABLED: startup will prime live positions, "
-                "then ramp softly to the model_930 standing pose."
+                f"then ramp softly to the {self.model_label} standing pose."
             )
         else:
             self.get_logger().warn(
@@ -331,8 +379,9 @@ class Rs01Model930Node(Node):
             self.contract.policy_dt, self.control_loop
         )
         self.get_logger().info(
-            "RS01 model_930 node ready | "
-            f"onnx={self.onnx_path} | 52->12 | "
+            f"RS01 {self.model_label} node ready | "
+            f"onnx={self.onnx_path} | "
+            f"{self.observation_count}->12 | "
             f"policy_order={list(self.contract.joint_names)} | "
             f"reversed_ids={[hex(x) for x in (0x11,0x13,0x21,0x22,0x32,0x43)]} | "
             f"torque_limit={self.active_torque_limit:.1f}Nm"
@@ -352,7 +401,8 @@ class Rs01Model930Node(Node):
             return
         if abs(float(values[1])) > 0.01 or abs(float(values[2])) > 0.01:
             self.get_logger().error(
-                "model_930 is straight-only: linear.y and angular.z must be zero"
+                f"{self.model_label} is straight-only: "
+                "linear.y and angular.z must be zero"
             )
             return
         requested = float(values[0])
@@ -374,6 +424,65 @@ class Rs01Model930Node(Node):
             and now - self.last_command_time <= self.command_timeout_sec
             and self.cmd_vx >= self.command_min_vx
         )
+
+    def _calibrate_gyro_bias(self):
+        duration = self.gyro_bias_calibration_sec
+        if duration < 1.0:
+            raise RuntimeError(
+                "gyro_bias_calibration_sec must be at least 1 second"
+            )
+        self.get_logger().warn(
+            f"Hold robot stationary for {duration:.1f}s gyro calibration; "
+            "no motor command is sent during calibration."
+        )
+        deadline = time.monotonic() + duration
+        gyro_samples = []
+        rpy_samples = []
+        last_stamp = None
+        while time.monotonic() < deadline:
+            snapshot = self.imu.get_latest()
+            stamp = float(snapshot.stamp)
+            age = time.time() - stamp
+            if (
+                snapshot.valid
+                and snapshot.backend_alive
+                and np.isfinite(age)
+                and age <= self.max_imu_age_sec
+                and stamp != last_stamp
+            ):
+                gyro = np.asarray(
+                    snapshot.gyro_rad_s, dtype=np.float64
+                ).reshape(3)
+                rpy = np.radians(
+                    np.asarray(
+                        snapshot.rpy_deg, dtype=np.float64
+                    ).reshape(3)
+                )
+                if np.all(np.isfinite(gyro)) and np.all(
+                    np.isfinite(rpy)
+                ):
+                    gyro_samples.append(gyro)
+                    rpy_samples.append(rpy)
+                    last_stamp = stamp
+            time.sleep(0.005)
+        minimum_samples = max(20, int(duration * 20.0))
+        if len(gyro_samples) < minimum_samples:
+            raise RuntimeError(
+                "Insufficient fresh IMU samples for gyro calibration: "
+                f"{len(gyro_samples)} < {minimum_samples}"
+            )
+        bias = estimate_stationary_gyro_bias(
+            gyro_samples,
+            rpy_samples,
+            max_std_rad_s=self.gyro_calibration_max_std,
+            max_rpy_span_rad=self.gyro_calibration_max_rpy_span,
+            max_abs_bias_rad_s=self.gyro_bias_max_abs,
+        )
+        self.get_logger().info(
+            "Gyro bias calibrated: "
+            f"{bias.tolist()} rad/s from {len(gyro_samples)} samples"
+        )
+        return bias
 
     def _configure_verified_hardware_limits(self):
         items = []
@@ -564,22 +673,38 @@ class Rs01Model930Node(Node):
         now = time.monotonic()
         try:
             motor, imu, roll, pitch, yaw = self._fresh_state()
+            self.corrected_gyro_rad_s = (
+                np.asarray(imu.gyro_rad_s, dtype=np.float32)
+                - self.gyro_bias_rad_s
+            )
+            if not np.all(np.isfinite(self.corrected_gyro_rad_s)):
+                raise RuntimeError(
+                    "bias-corrected gyro contains NaN/Inf"
+                )
             q_policy, dq_policy = self.mapper.real_to_policy_abs(
                 motor.q_real, motor.dq_real
             )
             odometry = self.leg_odometry.estimate(
-                q_policy, dq_policy, imu.gyro_rad_s
+                q_policy, dq_policy, self.corrected_gyro_rad_s
             )
             if not self.initialized:
                 self._initialize_from_feedback(now, q_policy, yaw)
 
             command_active = self.command_active(now)
-            if command_active and not self.command_active_last:
+            # A command can arrive while the soft stand ramp is still active.
+            # Keep the gait/path origin fresh until the node can actually enter
+            # walk mode, otherwise a path-aware policy would start from a stale
+            # integration timestamp and immediately trip its stale-state guard.
+            if command_active and (
+                not self.command_active_last or self.mode != "walk"
+            ):
                 self.core.reset(now, yaw, q_policy=q_policy)
             self.command_active_last = command_active
 
             action = np.zeros(12, dtype=np.float32)
-            observation = np.zeros(52, dtype=np.float32)
+            observation = np.zeros(
+                self.observation_count, dtype=np.float32
+            )
             if self.mode == "startup_hold":
                 target_policy = q_policy.copy()
                 torque_info = {
@@ -615,7 +740,7 @@ class Rs01Model930Node(Node):
                     base_linear_velocity=odometry[
                         "base_linear_velocity"
                     ],
-                    base_angular_velocity=imu.gyro_rad_s,
+                    base_angular_velocity=self.corrected_gyro_rad_s,
                     projected_gravity=imu.projected_gravity,
                     command=np.asarray(
                         [self.cmd_vx, 0.0, 0.0], dtype=np.float32
@@ -721,6 +846,34 @@ class Rs01Model930Node(Node):
                 np.min(self.active_limit_policy)
             ),
         }
+        if self.include_path_state:
+            status.update({
+                "path_lateral_displacement_m": float(
+                    self.core.last_path_lateral_displacement_m
+                ),
+                "path_lateral_velocity_m_s": float(
+                    self.core.last_path_lateral_velocity_m_s
+                ),
+            })
+        if self.calibrate_gyro_bias:
+            status.update({
+                "raw_gyro_z_rad_s": float(
+                    self.corrected_gyro_rad_s[2]
+                    + self.gyro_bias_rad_s[2]
+                ),
+                "corrected_gyro_z_rad_s": float(
+                    self.corrected_gyro_rad_s[2]
+                ),
+                "gyro_bias_x_rad_s": float(
+                    self.gyro_bias_rad_s[0]
+                ),
+                "gyro_bias_y_rad_s": float(
+                    self.gyro_bias_rad_s[1]
+                ),
+                "gyro_bias_z_rad_s": float(
+                    self.gyro_bias_rad_s[2]
+                ),
+            })
         message = String()
         message.data = json_dumps_compact(status)
         self.pub_status.publish(message)
@@ -758,6 +911,19 @@ class Rs01Model930Node(Node):
             "max_thermal_rms_nm",
             "min_active_torque_limit_nm",
         ]
+        if self.include_path_state:
+            headers.extend([
+                "path_lateral_displacement_m",
+                "path_lateral_velocity_m_s",
+            ])
+        if self.calibrate_gyro_bias:
+            headers.extend([
+                "raw_gyro_z_rad_s",
+                "corrected_gyro_z_rad_s",
+                "gyro_bias_x_rad_s",
+                "gyro_bias_y_rad_s",
+                "gyro_bias_z_rad_s",
+            ])
         for prefix in (
             "observation",
             "action",
@@ -768,7 +934,11 @@ class Rs01Model930Node(Node):
             "raw_pd_torque_nm",
             "safe_pd_torque_nm",
         ):
-            count = 52 if prefix == "observation" else 12
+            count = (
+                self.observation_count
+                if prefix == "observation"
+                else 12
+            )
             headers.extend(
                 f"{prefix}_{index}" for index in range(count)
             )
@@ -802,6 +972,19 @@ class Rs01Model930Node(Node):
             status["max_thermal_rms_nm"],
             status["min_active_torque_limit_nm"],
         ]
+        if self.include_path_state:
+            row.extend([
+                status["path_lateral_displacement_m"],
+                status["path_lateral_velocity_m_s"],
+            ])
+        if self.calibrate_gyro_bias:
+            row.extend([
+                status["raw_gyro_z_rad_s"],
+                status["corrected_gyro_z_rad_s"],
+                status["gyro_bias_x_rad_s"],
+                status["gyro_bias_y_rad_s"],
+                status["gyro_bias_z_rad_s"],
+            ])
         for values in (
             observation,
             action,

@@ -1,0 +1,440 @@
+{
+  "schema_version": 2,
+  "task": "rs01_go2_path54_sim2sim_transfer",
+  "checkpoint": "/home/nszb/gym/unitree_rl_gym/logs/rs01_go2_straight_phase_load/Jul29_11-08-16_path54_sim2sim_transfer_from1725/model_1850.pt",
+  "onnx": "/home/nszb/gym/zhenji/zhenji_dog/mydog_ros2_ws/src/mydog_policy/resource/model_1850_rs01_path54.onnx",
+  "dimensions": {
+    "observations": 54,
+    "actions": 12
+  },
+  "joint_names": [
+    "FL_hip_joint",
+    "FL_thigh_joint",
+    "FL_calf_joint",
+    "FR_hip_joint",
+    "FR_thigh_joint",
+    "FR_calf_joint",
+    "RL_hip_joint",
+    "RL_thigh_joint",
+    "RL_calf_joint",
+    "RR_hip_joint",
+    "RR_thigh_joint",
+    "RR_calf_joint"
+  ],
+  "joint_order_note": "Authoritative Isaac Gym runtime DOF order for dog_rs01.urdf: FL, FR, RL, RR and hip, thigh, calf. URDF declaration order is different and must never be used for actor I/O routing.",
+  "motor_mapping": [
+    {
+      "action_index": 0,
+      "joint_name": "FL_hip_joint",
+      "urdf_actuator_name": "FL_hip_motor",
+      "motor_id": "0x21",
+      "real_feedback_index": 3,
+      "real_to_policy_sign": -1.0
+    },
+    {
+      "action_index": 1,
+      "joint_name": "FL_thigh_joint",
+      "urdf_actuator_name": "FL_thigh_motor",
+      "motor_id": "0x22",
+      "real_feedback_index": 4,
+      "real_to_policy_sign": -1.0
+    },
+    {
+      "action_index": 2,
+      "joint_name": "FL_calf_joint",
+      "urdf_actuator_name": "FL_calf_motor",
+      "motor_id": "0x23",
+      "real_feedback_index": 5,
+      "real_to_policy_sign": 1.0
+    },
+    {
+      "action_index": 3,
+      "joint_name": "FR_hip_joint",
+      "urdf_actuator_name": "FR_hip_motor",
+      "motor_id": "0x11",
+      "real_feedback_index": 0,
+      "real_to_policy_sign": -1.0
+    },
+    {
+      "action_index": 4,
+      "joint_name": "FR_thigh_joint",
+      "urdf_actuator_name": "FR_thigh_motor",
+      "motor_id": "0x12",
+      "real_feedback_index": 1,
+      "real_to_policy_sign": 1.0
+    },
+    {
+      "action_index": 5,
+      "joint_name": "FR_calf_joint",
+      "urdf_actuator_name": "FR_calf_motor",
+      "motor_id": "0x13",
+      "real_feedback_index": 2,
+      "real_to_policy_sign": -1.0
+    },
+    {
+      "action_index": 6,
+      "joint_name": "RL_hip_joint",
+      "urdf_actuator_name": "RL_hip_motor",
+      "motor_id": "0x31",
+      "real_feedback_index": 6,
+      "real_to_policy_sign": 1.0
+    },
+    {
+      "action_index": 7,
+      "joint_name": "RL_thigh_joint",
+      "urdf_actuator_name": "RL_thigh_motor",
+      "motor_id": "0x32",
+      "real_feedback_index": 7,
+      "real_to_policy_sign": -1.0
+    },
+    {
+      "action_index": 8,
+      "joint_name": "RL_calf_joint",
+      "urdf_actuator_name": "RL_calf_motor",
+      "motor_id": "0x33",
+      "real_feedback_index": 8,
+      "real_to_policy_sign": 1.0
+    },
+    {
+      "action_index": 9,
+      "joint_name": "RR_hip_joint",
+      "urdf_actuator_name": "RR_hip_motor",
+      "motor_id": "0x41",
+      "real_feedback_index": 9,
+      "real_to_policy_sign": 1.0
+    },
+    {
+      "action_index": 10,
+      "joint_name": "RR_thigh_joint",
+      "urdf_actuator_name": "RR_thigh_motor",
+      "motor_id": "0x42",
+      "real_feedback_index": 10,
+      "real_to_policy_sign": 1.0
+    },
+    {
+      "action_index": 11,
+      "joint_name": "RR_calf_joint",
+      "urdf_actuator_name": "RR_calf_motor",
+      "motor_id": "0x43",
+      "real_feedback_index": 11,
+      "real_to_policy_sign": -1.0
+    }
+  ],
+  "real_motor_order": [
+    "0x11",
+    "0x12",
+    "0x13",
+    "0x21",
+    "0x22",
+    "0x23",
+    "0x31",
+    "0x32",
+    "0x33",
+    "0x41",
+    "0x42",
+    "0x43"
+  ],
+  "real_motor_order_note": "Physical feedback/CAN order is FR, FL, RL, RR. Route actor outputs by joint name or action_index; never send the actor array directly in this real-motor order.",
+  "default_joint_angles_rad": [
+    0.0,
+    -0.32987297,
+    1.31853104,
+    0.0,
+    -0.32987297,
+    1.31853104,
+    0.0,
+    -0.32987297,
+    1.31853104,
+    0.0,
+    -0.32987297,
+    1.31853104
+  ],
+  "initial_state": {
+    "base_position_m": [
+      0.0,
+      0.0,
+      0.316
+    ],
+    "base_quaternion_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "observations": {
+    "layout": [
+      [
+        "base_linear_velocity_body_m_s",
+        3
+      ],
+      [
+        "base_angular_velocity_body_rad_s",
+        3
+      ],
+      [
+        "projected_gravity_body",
+        3
+      ],
+      [
+        "command_scaled",
+        3
+      ],
+      [
+        "joint_position_error_rad_scaled",
+        12
+      ],
+      [
+        "joint_velocity_rad_s_scaled",
+        12
+      ],
+      [
+        "previous_action",
+        12
+      ],
+      [
+        "gait_phase_sin_cos",
+        2
+      ],
+      [
+        "heading_error_sin_cos",
+        2
+      ],
+      [
+        "straight_path_lateral_displacement_scaled",
+        1
+      ],
+      [
+        "straight_path_lateral_velocity_scaled",
+        1
+      ]
+    ],
+    "heading_representation": "sin_cos",
+    "clip": 100.0,
+    "lin_vel_scale": 2.0,
+    "ang_vel_scale": 0.25,
+    "dof_pos_scale": 1.0,
+    "dof_vel_scale": 0.05,
+    "command_scale": [
+      2.0,
+      2.0,
+      0.25
+    ],
+    "straight_heading_error_scale": 2.0,
+    "straight_path_state_enabled": true,
+    "straight_path_lateral_position_scale": 2.0,
+    "straight_path_lateral_velocity_scale": 2.0
+  },
+  "commands": {
+    "default": [
+      0.23,
+      0.0,
+      0.0
+    ],
+    "ranges": {
+      "lin_vel_x": [
+        0.23,
+        0.23
+      ],
+      "lin_vel_y": [
+        0.0,
+        0.0
+      ],
+      "ang_vel_yaw": [
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "gait": {
+    "period_s": 0.6,
+    "stance_ratio": 0.65,
+    "phase_offsets": {
+      "FL": 0.0,
+      "FR": 0.5,
+      "RL": 0.5,
+      "RR": 0.0
+    },
+    "contact_threshold_n": 2.0
+  },
+  "control": {
+    "physics_dt_s": 0.005,
+    "policy_dt_s": 0.02,
+    "decimation": 4,
+    "action_output": "raw actor mean; no tanh; clipped to normalization.clip_actions",
+    "action_clip": 1.0,
+    "action_scale_rad": [
+      0.18,
+      0.18,
+      0.14,
+      0.18,
+      0.18,
+      0.14,
+      0.18,
+      0.18,
+      0.14,
+      0.18,
+      0.18,
+      0.14
+    ],
+    "kp_nm_per_rad": [
+      40.0,
+      40.0,
+      40.0,
+      40.0,
+      40.0,
+      40.0,
+      40.0,
+      40.0,
+      40.0,
+      40.0,
+      40.0,
+      40.0
+    ],
+    "kd_nm_per_rad_s": [
+      1.0,
+      1.0,
+      0.5,
+      1.0,
+      1.0,
+      0.5,
+      1.0,
+      1.0,
+      0.5,
+      1.0,
+      1.0,
+      0.5
+    ],
+    "target_rate_limit_rad_s": [
+      2.0,
+      2.6,
+      2.6,
+      2.0,
+      2.6,
+      2.6,
+      2.0,
+      2.6,
+      2.6,
+      2.0,
+      2.6,
+      2.6
+    ],
+    "target_acceleration_limit_rad_s2": [
+      60.0,
+      78.0,
+      72.0,
+      60.0,
+      78.0,
+      72.0,
+      60.0,
+      78.0,
+      72.0,
+      60.0,
+      78.0,
+      72.0
+    ],
+    "response_gain": [
+      0.9820176769446501,
+      0.8766154442027798,
+      1.0140210101567217,
+      0.927855661680751,
+      1.0486707533878392,
+      0.8901892350113182,
+      0.9033451910468997,
+      0.9197254975107978,
+      0.84931465736209,
+      0.927855661680751,
+      0.947289846573121,
+      0.992130005156902
+    ],
+    "time_constant_s": [
+      0.03157265316505583,
+      0.02524139288123714,
+      0.038017615155043115,
+      0.03185165908596266,
+      0.03324038786959833,
+      0.0349193070801588,
+      0.03773075858427813,
+      0.027781445421318836,
+      0.030792107301988197,
+      0.03185165908596266,
+      0.019269694387369536,
+      0.03454611495612375
+    ],
+    "observed_closed_loop_delay_s": [
+      0.04210807646841948,
+      0.0485772301146227,
+      0.040431084377084446,
+      0.04231169551050045,
+      0.04366661031515827,
+      0.03949328236918313,
+      0.040563384905597216,
+      0.048059893495805577,
+      0.04352540237277155,
+      0.04231169551050045,
+      0.05617128701672144,
+      0.04017254586680312
+    ],
+    "coulomb_friction_nm": [
+      0.12278653063604661,
+      0.1470226303215849,
+      0.170176017952754,
+      0.15602040281564622,
+      0.14562686751879023,
+      0.1574945718465066,
+      0.17658300576584962,
+      0.15454623378478588,
+      0.20610088046732755,
+      0.15602040281564622,
+      0.16198549951689997,
+      0.14495521234045125
+    ],
+    "friction_smoothing_rad_s": 0.05,
+    "continuous_torque_nm": 6.0,
+    "peak_torque_limit_nm": 17.0
+  },
+  "simulator": {
+    "source": "Isaac Gym / PhysX",
+    "target": "MuJoCo",
+    "urdf": "/home/nszb/gym/dog_urdf/urdf/dog_rs01.urdf",
+    "urdf_sha256": "48b177e9977cc3644dd7a84433d82c3b6d9293e9fdc40c33daa35b4194dd11f4",
+    "self_collision": false,
+    "ground_friction": 1.0,
+    "physx": {
+      "physics_step_s": 0.005,
+      "contact_substeps": 2,
+      "contact_substep_s": 0.0025,
+      "solver_type": 1,
+      "position_iterations": 8,
+      "velocity_iterations": 2,
+      "contact_offset_m": 0.003,
+      "rest_offset_m": 0.0,
+      "max_depenetration_velocity_m_s": 0.25
+    },
+    "mujoco": {
+      "integration_timestep_s": 0.0025,
+      "integration_substeps_per_motor_step": 2,
+      "integrator": "implicitfast",
+      "solver": "Newton",
+      "contact_solref": [
+        0.0065,
+        1.0
+      ],
+      "contact_solimp": [
+        0.99,
+        0.999,
+        0.0001,
+        0.5,
+        2.0
+      ],
+      "contact_margin_m": 0.0,
+      "contact_gap_m": 0.0,
+      "contact_dimension": 3,
+      "friction": [
+        1.0,
+        0.005,
+        0.0001
+      ]
+    }
+  }
+}
