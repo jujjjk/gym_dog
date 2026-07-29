@@ -21,6 +21,12 @@ from legged_gym.envs.rs01_go2_straight import (
     Rs01Go2MatchedTransferCfgPPO,
     Rs01Go2Heading52Cfg,
     Rs01Go2Heading52CfgPPO,
+    Rs01Go2Model930DriftRepairCfg,
+    Rs01Go2Model930DriftRepairCfgPPO,
+    Rs01Go2Model1425Path54Cfg,
+    Rs01Go2Model1425Path54CfgPPO,
+    Rs01Go2Path54Sim2SimTransferCfg,
+    Rs01Go2Path54Sim2SimTransferCfgPPO,
     Rs01Go2StraightCfg,
     Rs01Go2StraightCfgPPO,
     Rs01Go2StraightRobot,
@@ -216,6 +222,24 @@ task_registry.register(
     Rs01Go2StraightRobot,
     Rs01Go2Heading52Cfg(),
     Rs01Go2Heading52CfgPPO(),
+)
+task_registry.register(
+    "rs01_go2_model930_drift_repair",
+    Rs01Go2StraightRobot,
+    Rs01Go2Model930DriftRepairCfg(),
+    Rs01Go2Model930DriftRepairCfgPPO(),
+)
+task_registry.register(
+    "rs01_go2_model1425_path54",
+    Rs01Go2StraightRobot,
+    Rs01Go2Model1425Path54Cfg(),
+    Rs01Go2Model1425Path54CfgPPO(),
+)
+task_registry.register(
+    "rs01_go2_path54_sim2sim_transfer",
+    Rs01Go2StraightRobot,
+    Rs01Go2Path54Sim2SimTransferCfg(),
+    Rs01Go2Path54Sim2SimTransferCfgPPO(),
 )
 task_registry.register(
     "dog_rs01_trot", DogRs01Robot, DogRs01TrotCfg(), DogRs01TrotCfgPPO()

@@ -1,4 +1,4 @@
-"""Export the RS01 Go2 Kp40 actor and its complete Sim2Sim contract."""
+"""Export an RS01 Go2 actor and its complete Sim2Sim contract."""
 
 from __future__ import annotations
 
@@ -37,6 +37,14 @@ from legged_gym.envs.rs01_go2_straight.rs01_go2_sim2sim_config import (  # noqa:
     Rs01Go2Heading52Cfg,
     Rs01Go2Heading52CfgPPO,
 )
+from legged_gym.envs.rs01_go2_straight.rs01_go2_path54_config import (  # noqa: E402
+    Rs01Go2Model1425Path54Cfg,
+    Rs01Go2Model1425Path54CfgPPO,
+)
+from legged_gym.envs.rs01_go2_straight.rs01_go2_path54_sim2sim_config import (  # noqa: E402
+    Rs01Go2Path54Sim2SimTransferCfg,
+    Rs01Go2Path54Sim2SimTransferCfgPPO,
+)
 from rsl_rl.modules import ActorCritic  # noqa: E402
 
 
@@ -69,6 +77,14 @@ TASKS = {
     "rs01_go2_sim2sim_heading52": (
         Rs01Go2Heading52Cfg,
         Rs01Go2Heading52CfgPPO,
+    ),
+    "rs01_go2_model1425_path54": (
+        Rs01Go2Model1425Path54Cfg,
+        Rs01Go2Model1425Path54CfgPPO,
+    ),
+    "rs01_go2_path54_sim2sim_transfer": (
+        Rs01Go2Path54Sim2SimTransferCfg,
+        Rs01Go2Path54Sim2SimTransferCfgPPO,
     ),
 }
 
@@ -225,6 +241,11 @@ def build_contract(task_name, cfg, checkpoint, onnx_path):
         "observe_straight_heading_sin_cos",
         False,
     ))
+    straight_path_state = bool(getattr(
+        cfg.commands,
+        "observe_straight_path_state",
+        False,
+    ))
     observation_layout = [
         ["base_linear_velocity_body_m_s", 3],
         ["base_angular_velocity_body_rad_s", 3],
@@ -241,6 +262,13 @@ def build_contract(task_name, cfg, checkpoint, onnx_path):
     else:
         observation_layout.append(["wrapped_heading_error_scaled", 1])
         heading_representation = "scaled_wrapped_scalar"
+    if straight_path_state:
+        observation_layout.extend(
+            [
+                ["straight_path_lateral_displacement_scaled", 1],
+                ["straight_path_lateral_velocity_scaled", 1],
+            ]
+        )
 
     return {
         # Version 2 fixes the actor I/O joint order to the verified Isaac Gym
@@ -291,6 +319,17 @@ def build_contract(task_name, cfg, checkpoint, onnx_path):
             "straight_heading_error_scale": float(
                 cfg.commands.straight_heading_observation_scale
             ),
+            "straight_path_state_enabled": straight_path_state,
+            "straight_path_lateral_position_scale": float(getattr(
+                cfg.commands,
+                "straight_path_lateral_position_scale",
+                1.0,
+            )),
+            "straight_path_lateral_velocity_scale": float(getattr(
+                cfg.commands,
+                "straight_path_lateral_velocity_scale",
+                1.0,
+            )),
         },
         "commands": {
             "default": [float(cfg.commands.playback_speed_mps), 0.0, 0.0],

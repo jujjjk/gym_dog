@@ -45,6 +45,21 @@ from legged_gym.envs.rs01_go2_straight.rs01_go2_sim2sim_config import (
     Rs01Go2Heading52Cfg,
     Rs01Go2Heading52CfgPPO,
 )
+from legged_gym.envs.rs01_go2_straight.rs01_go2_drift_repair_config import (
+    Rs01Go2Model930DriftRepairCfg,
+    Rs01Go2Model930DriftRepairCfgPPO,
+)
+from legged_gym.envs.rs01_go2_straight.rs01_go2_path54_config import (
+    Rs01Go2Model1425Path54Cfg,
+    Rs01Go2Model1425Path54CfgPPO,
+)
+from legged_gym.envs.rs01_go2_straight.rs01_go2_path54_sim2sim_config import (
+    Rs01Go2Path54Sim2SimTransferCfg,
+    Rs01Go2Path54Sim2SimTransferCfgPPO,
+)
+from legged_gym.utils.checkpoint_adapter import (
+    adapt_observation_input_state,
+)
 
 
 def test_task_contract_is_minimal_go2_shape_and_real_stand():
@@ -453,6 +468,282 @@ def test_heading52_replaces_saturated_scalar_without_changing_motor_contract():
     assert migration["source_width"] == 51
     assert migration["destination_width"] == 52
     assert migration["copy_prefix"] == 50
+
+
+def test_model930_drift_repair_is_nominal_52d_fixed_speed_continuation():
+    cfg = Rs01Go2Model930DriftRepairCfg
+    ppo = Rs01Go2Model930DriftRepairCfgPPO
+    assert cfg.env.num_observations == 52
+    assert cfg.env.num_actions == 12
+    assert cfg.commands.ranges.lin_vel_x == [0.23, 0.23]
+    assert cfg.commands.ranges.lin_vel_y == [0.0, 0.0]
+    assert cfg.commands.ranges.ang_vel_yaw == [0.0, 0.0]
+    assert cfg.commands.observe_straight_heading_sin_cos is True
+    assert cfg.noise.add_noise is False
+    assert cfg.domain_rand.randomize_friction is False
+    assert cfg.domain_rand.randomize_base_mass is False
+    assert cfg.domain_rand.randomize_rs01_actuator is False
+    assert cfg.domain_rand.push_robots is False
+    assert cfg.rs01_actuator.joint_to_motor_id["RL_hip_joint"] == "0x31"
+    assert cfg.rs01_actuator.joint_to_motor_id["RR_hip_joint"] == "0x41"
+    scales = cfg.rewards.scales
+    assert scales.tracking_lin_vel == 0.0
+    assert scales.tracking_forward_velocity > 0.0
+    assert scales.lateral_velocity < 0.0
+    assert scales.heading_recovery < 0.0
+    assert scales.near_heading_yaw_rate < 0.0
+    assert scales.roll_posture < 0.0
+    assert scales.left_right_foot_force_balance < 0.0
+    assert scales.rear_motor_torque_balance < 0.0
+    assert scales.lateral_foot_slip < 0.0
+    assert scales.action_saturation < 0.0
+    assert scales.diagonal_contact_sync < 0.0
+    assert ppo.algorithm.learning_rate == 1.0e-5
+    assert ppo.runner.save_interval == 5
+    assert ppo.runner.load_optimizer is False
+    assert ppo.runner.adapt_observation_input is False
+    assert ppo.runner.reference_policy_coef == 0.03
+
+
+def test_drift_repair_rewards_separate_forward_and_lateral_errors():
+    robot = object.__new__(Rs01Go2StraightRobot)
+    robot.commands = torch.tensor(
+        [[0.23, 0.0, 0.0, 0.0], [0.23, 0.0, 0.0, 0.0]]
+    )
+    robot.base_lin_vel = torch.tensor(
+        [[0.23, 0.0, 0.0], [0.23, 0.08, 0.0]]
+    )
+    robot.cfg = SimpleNamespace(
+        rewards=SimpleNamespace(
+            tracking_sigma=0.015,
+            lateral_velocity_scale_mps=0.08,
+        )
+    )
+    forward = robot._reward_tracking_forward_velocity()
+    lateral = robot._reward_lateral_velocity()
+    assert torch.allclose(forward, torch.ones(2))
+    assert torch.allclose(lateral, torch.tensor([0.0, 1.0]))
+
+
+def test_model1425_path54_preserves_gait_and_adds_only_path_feedback():
+    cfg = Rs01Go2Model1425Path54Cfg
+    ppo = Rs01Go2Model1425Path54CfgPPO
+    assert cfg.env.num_observations == 54
+    assert cfg.env.num_actions == 12
+    assert cfg.commands.observe_straight_heading_sin_cos is True
+    assert cfg.commands.observe_straight_path_state is True
+    assert cfg.commands.ranges.lin_vel_x == [0.23, 0.23]
+    assert (
+        cfg.control.action_scale_by_joint
+        == Rs01Go2Model930DriftRepairCfg.control.action_scale_by_joint
+    )
+    assert (
+        cfg.rewards.gait_period_s
+        == Rs01Go2Model930DriftRepairCfg.rewards.gait_period_s
+    )
+    assert (
+        cfg.rewards.gait_stance_ratio
+        == Rs01Go2Model930DriftRepairCfg.rewards.gait_stance_ratio
+    )
+    assert cfg.rewards.scales.lateral_velocity == 0.0
+    assert cfg.rewards.scales.lateral_path_recovery < 0.0
+    assert cfg.rs01_actuator.peak_torque_limit_nm == 17.0
+    assert (
+        cfg.rs01_actuator.runtime_dof_order
+        == Rs01Go2Model930DriftRepairCfg.rs01_actuator.runtime_dof_order
+    )
+    assert ppo.algorithm.learning_rate == 1.0e-5
+    assert ppo.runner.load_optimizer is False
+    assert ppo.runner.adapt_observation_input is True
+    migration = ppo.runner.observation_column_migration
+    assert migration == {
+        "source_width": 52,
+        "destination_width": 54,
+        "copy_prefix": 52,
+        "column_mappings": [],
+    }
+
+
+def test_path_state_and_recovery_target_use_the_initial_heading_frame():
+    robot = object.__new__(Rs01Go2StraightRobot)
+    robot.straight_heading_target_rad = torch.tensor(
+        [0.0, torch.pi / 2.0]
+    )
+    robot.straight_path_origin_xy = torch.zeros(2, 2)
+    robot.root_states = torch.zeros(2, 13)
+    # At heading 0 the lateral axis is +y. At heading pi/2 it is -x.
+    robot.root_states[0, 1] = 0.10
+    robot.root_states[0, 8] = -0.06
+    robot.root_states[1, 0] = -0.20
+    robot.root_states[1, 7] = 0.10
+    robot.commands = torch.tensor([[0.23, 0.0, 0.0, 0.0]] * 2)
+    robot.cfg = SimpleNamespace(
+        rewards=SimpleNamespace(
+            lateral_path_recovery_gain_per_s=0.60,
+            lateral_path_recovery_max_velocity_mps=0.10,
+            lateral_path_recovery_velocity_scale_mps=0.08,
+        )
+    )
+
+    lateral_error, lateral_velocity = robot._straight_path_state()
+    target_velocity = robot._lateral_path_target_velocity()
+    penalty = robot._reward_lateral_path_recovery()
+
+    assert torch.allclose(
+        lateral_error, torch.tensor([0.10, 0.20]), atol=1.0e-6
+    )
+    assert torch.allclose(
+        lateral_velocity, torch.tensor([-0.06, -0.10]), atol=1.0e-6
+    )
+    assert torch.allclose(
+        target_velocity, torch.tensor([-0.06, -0.10]), atol=1.0e-6
+    )
+    assert torch.allclose(penalty, torch.zeros(2), atol=1.0e-6)
+
+
+def test_model1425_checkpoint_columns_widen_from_52_to_54_without_aliasing():
+    old_actor = torch.arange(
+        512 * 52, dtype=torch.float
+    ).reshape(512, 52)
+    old_critic = old_actor + 1.0
+    loaded = {
+        "actor.0.weight": old_actor,
+        "critic.0.weight": old_critic,
+    }
+    current = {
+        "actor.0.weight": torch.full((512, 54), -1.0),
+        "critic.0.weight": torch.full((512, 54), -1.0),
+    }
+    adapted, changes = adapt_observation_input_state(
+        loaded,
+        current,
+        column_migration=(
+            Rs01Go2Model1425Path54CfgPPO.runner
+            .observation_column_migration
+        ),
+    )
+
+    assert len(changes) == 2
+    for key, source in (
+        ("actor.0.weight", old_actor),
+        ("critic.0.weight", old_critic),
+    ):
+        assert torch.equal(adapted[key][:, :52], source)
+        assert torch.count_nonzero(adapted[key][:, 52:]) == 0
+        assert adapted[key].data_ptr() != current[key].data_ptr()
+        assert adapted[key].data_ptr() != source.data_ptr()
+
+
+def test_path54_sim2sim_transfer_restores_only_narrow_dynamics_spread():
+    cfg = Rs01Go2Path54Sim2SimTransferCfg
+    ppo = Rs01Go2Path54Sim2SimTransferCfgPPO
+    assert cfg.env.num_observations == 54
+    assert cfg.env.num_actions == 12
+    assert cfg.commands.observe_straight_path_state is True
+    assert cfg.commands.ranges.lin_vel_x == [0.23, 0.23]
+    assert cfg.noise.add_noise is False
+    domain = cfg.domain_rand
+    assert domain.randomize_friction is True
+    assert domain.friction_range == [0.90, 1.10]
+    assert domain.randomize_base_mass is True
+    assert domain.added_mass_range == [-0.20, 0.20]
+    assert domain.randomize_rs01_actuator is True
+    assert domain.rs01_response_gain_scale_range == [0.97, 1.03]
+    assert domain.rs01_time_constant_scale_range == [0.95, 1.05]
+    assert domain.rs01_friction_scale_range == [0.95, 1.05]
+    assert domain.rs01_delay_step_offset_range == [-1, 1]
+    assert domain.rs01_independent_motor_randomization is True
+    assert domain.rs01_independent_delay_randomization is True
+    assert domain.push_robots is False
+    assert (
+        cfg.control.action_scale_by_joint
+        == Rs01Go2Model1425Path54Cfg.control.action_scale_by_joint
+    )
+    assert (
+        cfg.rewards.gait_period_s
+        == Rs01Go2Model1425Path54Cfg.rewards.gait_period_s
+    )
+    assert ppo.algorithm.learning_rate == 5.0e-6
+    assert ppo.runner.action_std_value == 0.025
+    assert ppo.runner.load_optimizer is False
+    assert ppo.runner.adapt_observation_input is False
+    assert ppo.runner.reference_policy_coef == 0.05
+
+
+def test_near_heading_yaw_cost_does_not_fight_large_heading_recovery():
+    robot = object.__new__(Rs01Go2StraightRobot)
+    robot.commands = torch.tensor([[0.23, 0.0, 0.0, 0.0]] * 3)
+    robot.straight_heading_target_rad = torch.zeros(3)
+    robot.rpy = torch.tensor(
+        [
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.10],
+            [0.0, 0.0, 0.25],
+        ]
+    )
+    robot.base_ang_vel = torch.tensor(
+        [[0.0, 0.0, 0.60]] * 3
+    )
+    robot.cfg = SimpleNamespace(
+        rewards=SimpleNamespace(
+            near_heading_window_rad=0.20,
+            yaw_rate_scale_rad_s=0.60,
+        )
+    )
+    penalty = robot._reward_near_heading_yaw_rate()
+    assert torch.allclose(
+        penalty,
+        torch.tensor([1.0, 0.5, 0.0]),
+        atol=1.0e-6,
+    )
+
+
+def test_left_right_load_and_cycle_rear_torque_balance_are_normalized():
+    robot = object.__new__(Rs01Go2StraightRobot)
+    robot.commands = torch.tensor([[0.23, 0.0, 0.0, 0.0]] * 2)
+    robot.feet_indices = torch.arange(4)
+    robot.foot_slot_by_leg = {"FL": 0, "FR": 1, "RL": 2, "RR": 3}
+    robot.contact_forces = torch.zeros(2, 4, 3)
+    robot.contact_forces[:, :, 2] = torch.tensor(
+        [
+            [30.0, 30.0, 30.0, 30.0],
+            [45.0, 15.0, 45.0, 15.0],
+        ]
+    )
+    robot.cfg = SimpleNamespace(
+        rewards=SimpleNamespace(
+            foot_contact_force_threshold=2.0,
+            gait_period_s=0.60,
+        )
+    )
+    load_penalty = robot._reward_left_right_foot_force_balance()
+    assert torch.allclose(load_penalty, torch.tensor([0.0, 0.25]))
+
+    robot.rear_motor_torque_abs_ema_nm = torch.tensor(
+        [
+            [[3.0, 6.0, 9.0], [3.0, 6.0, 9.0]],
+            [[6.0, 6.0, 6.0], [2.0, 2.0, 2.0]],
+        ]
+    )
+    robot.episode_length_buf = torch.tensor([30, 30])
+    robot.dt = 0.02
+    torque_penalty = robot._reward_rear_motor_torque_balance()
+    assert torch.allclose(torque_penalty, torch.tensor([0.0, 0.25]))
+
+
+def test_lateral_slip_penalizes_only_contacting_feet():
+    robot = object.__new__(Rs01Go2StraightRobot)
+    robot.commands = torch.tensor([[0.23, 0.0, 0.0, 0.0]])
+    robot.feet_state = torch.zeros(1, 4, 13)
+    robot.feet_state[0, :, 8] = torch.tensor([0.20, 1.0, -0.20, -1.0])
+    robot.foot_contact_mask = torch.tensor(
+        [[True, False, True, False]]
+    )
+    robot.cfg = SimpleNamespace(
+        rewards=SimpleNamespace(lateral_foot_slip_scale_mps=0.20)
+    )
+    penalty = robot._reward_lateral_foot_slip()
+    assert torch.allclose(penalty, torch.tensor([1.0]))
 
 
 def test_calf_repair_uses_measured_kd_sweep_and_direct_feasibility_terms():
