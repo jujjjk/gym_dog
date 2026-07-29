@@ -1,1 +1,0 @@
-/home/nszb/gym/zhenji/zhenji_dog/mydog_ros2_ws/build/mydog_policy/launch/sim2real_force_coord_5280.launch.py

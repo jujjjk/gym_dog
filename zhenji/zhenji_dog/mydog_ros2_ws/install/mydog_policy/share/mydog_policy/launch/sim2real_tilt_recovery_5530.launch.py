@@ -1,1 +1,0 @@
-/home/nszb/gym/zhenji/zhenji_dog/mydog_ros2_ws/build/mydog_policy/launch/sim2real_tilt_recovery_5530.launch.py

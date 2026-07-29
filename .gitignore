@@ -47,3 +47,8 @@ isaacgym/
 .venv/
 isaacgym/
 .venv/
+**/build/
+**/install/
+**/log/
+**/__pycache__/
+*.pyc
