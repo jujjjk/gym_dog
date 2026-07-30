@@ -29,7 +29,8 @@ setup(
             + glob("resource/fanfan_hardware_balance_5530_best.*")
             + glob("resource/fanfan_realdata_best.*")
             + glob("resource/model_930_rs01_heading52.*")
-            + glob("resource/model_1850_rs01_path54.*"),
+            + glob("resource/model_1850_rs01_path54.*")
+            + glob("resource/model_1950_rs01_estimator_parity.*"),
         ),
     ],
     install_requires=["setuptools"],
@@ -109,6 +110,14 @@ setup(
             (
                 "mydog_validate_rs01_model1850 = "
                 "mydog_policy.validate_rs01_model1850:main"
+            ),
+            (
+                "mydog_rs01_model1950_node = "
+                "mydog_policy.rs01_model1950_node:main"
+            ),
+            (
+                "mydog_validate_rs01_model1950 = "
+                "mydog_policy.validate_rs01_model1950:main"
             ),
         ],
     },
