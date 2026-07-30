@@ -43,6 +43,11 @@ def generate_launch_description():
             "hip_current_limit_amp": 12.0,
             "thigh_current_limit_amp": 12.0,
             "calf_current_limit_amp": 16.0,
+            # Loaded rear calf joints settle about 0.108 rad from the
+            # geometric target on this RS01. Require a two-second hold with
+            # a small measured margin before declaring the stand ready.
+            "startup_ready_error_rad": 0.12,
+            "startup_ready_hold_sec": 2.0,
             "walk_start_stable_sec": 1.0,
             "walk_start_max_abs_roll_rad": 0.10,
             "walk_start_max_abs_pitch_rad": 0.10,
