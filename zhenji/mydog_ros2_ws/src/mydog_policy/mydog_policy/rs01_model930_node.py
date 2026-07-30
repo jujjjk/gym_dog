@@ -26,6 +26,7 @@ from .rs01_model930_core import (
     Rs01ContinuousTorqueGuard,
     Rs01Model930PolicyCore,
     Rs01NewMachineLegOdometry,
+    Rs01YawGyroConsistencyMonitor,
     estimate_stationary_gyro_bias,
 )
 
@@ -43,6 +44,9 @@ class Rs01Model930Node(Node):
     topic_namespace = "/mydog/model930"
     include_path_state = False
     calibrate_gyro_bias = False
+    strict_diagonal_odometry = False
+    heading_consistency_enabled = False
+    soft_inhibit_enabled = False
 
     def __init__(self):
         super().__init__(self.node_name)
@@ -100,6 +104,24 @@ class Rs01Model930Node(Node):
         self.declare_parameter("walk_start_max_odom_speed_mps", 0.05)
         self.declare_parameter("walk_start_min_odom_confidence", 0.5)
         self.declare_parameter("low_odom_confidence_timeout_sec", 0.60)
+        self.declare_parameter(
+            "heading_consistency_max_mean_error_rad_s", 0.06
+        )
+        self.declare_parameter(
+            "heading_consistency_rate_filter_tau_sec", 0.10
+        )
+        self.declare_parameter(
+            "heading_consistency_error_filter_tau_sec", 0.60
+        )
+        self.declare_parameter(
+            "heading_consistency_warmup_sec", 1.0
+        )
+        self.declare_parameter(
+            "heading_consistency_bad_hold_sec", 0.60
+        )
+        self.declare_parameter(
+            "heading_consistency_max_update_gap_sec", 0.10
+        )
         self.declare_parameter("http_timeout_sec", 0.08)
         self.declare_parameter("debug_csv_path", "")
 
@@ -208,6 +230,11 @@ class Rs01Model930Node(Node):
         self.low_odom_timeout = float(
             self.get_parameter("low_odom_confidence_timeout_sec").value
         )
+        self.heading_consistency_bad_hold_sec = float(
+            self.get_parameter(
+                "heading_consistency_bad_hold_sec"
+            ).value
+        )
         if not 0.0 < self.active_torque_limit <= 17.0:
             raise RuntimeError(
                 "hardware_torque_limit_nm must be in (0, 17]"
@@ -216,6 +243,13 @@ class Rs01Model930Node(Node):
             0.0 < self.command_min_vx <= self.command_max_vx
         ):
             raise RuntimeError("Invalid positive command speed range")
+        if (
+            self.low_odom_timeout <= 0.0
+            or self.heading_consistency_bad_hold_sec <= 0.0
+        ):
+            raise RuntimeError(
+                "Walk-inhibit hold durations must be positive"
+            )
 
         providers = ["CPUExecutionProvider"]
         self.session = ort.InferenceSession(
@@ -230,7 +264,42 @@ class Rs01Model930Node(Node):
             self.session, self.contract
         )
         self.mapper = self.core.mapper
+        # Preserve the estimator distribution used to train this checkpoint.
+        # A separate strict estimator authorizes walking; directly feeding its
+        # intermittent output to model_1950 is out-of-distribution.
         self.leg_odometry = Rs01NewMachineLegOdometry()
+        self.walk_guard_odometry = (
+            Rs01NewMachineLegOdometry(strict_diagonal_pairs=True)
+            if self.strict_diagonal_odometry
+            else self.leg_odometry
+        )
+        self.heading_consistency = Rs01YawGyroConsistencyMonitor(
+            max_abs_mean_error_rad_s=float(
+                self.get_parameter(
+                    "heading_consistency_max_mean_error_rad_s"
+                ).value
+            ),
+            rate_filter_time_constant_s=float(
+                self.get_parameter(
+                    "heading_consistency_rate_filter_tau_sec"
+                ).value
+            ),
+            error_filter_time_constant_s=float(
+                self.get_parameter(
+                    "heading_consistency_error_filter_tau_sec"
+                ).value
+            ),
+            warmup_sec=float(
+                self.get_parameter(
+                    "heading_consistency_warmup_sec"
+                ).value
+            ),
+            max_update_gap_s=float(
+                self.get_parameter(
+                    "heading_consistency_max_update_gap_sec"
+                ).value
+            ),
+        )
         self.http = requests.Session()
         self.motor = MotorStateHttpInterface(
             base_url=self.motor_base_url,
@@ -354,6 +423,13 @@ class Rs01Model930Node(Node):
         self.faulted = False
         self.stop_sent = False
         self.low_odom_since = None
+        self.heading_bad_since = None
+        self.walk_inhibit_latched = False
+        self.walk_inhibit_reason = ""
+        self.walk_inhibit_count = 0
+        self.heading_consistency_state = (
+            self.heading_consistency.snapshot()
+        )
         self.stand_target_policy = self.contract.default.copy()
         self.last_log_time = 0.0
         self.last_send_time = None
@@ -611,6 +687,12 @@ class Rs01Model930Node(Node):
         self.mode_start = now
         self.initialized = True
         self.leg_odometry.reset()
+        if self.walk_guard_odometry is not self.leg_odometry:
+            self.walk_guard_odometry.reset()
+        self.heading_consistency.reset(now, yaw)
+        self.heading_consistency_state = (
+            self.heading_consistency.snapshot()
+        )
 
     def _walk_start_is_stable(self, roll, pitch, odometry):
         """Require a quiet, supported pose before latching a walk origin."""
@@ -625,6 +707,17 @@ class Rs01Model930Node(Node):
                 )[:2]
             )
         )
+        heading_consistent = bool(
+            not self.heading_consistency_enabled
+            or (
+                self.heading_consistency_state["ready"]
+                and self.heading_consistency_state["healthy"]
+            )
+        )
+        diagonal_support_valid = bool(
+            not self.strict_diagonal_odometry
+            or odometry.get("legal_diagonal_support", False)
+        )
         return bool(
             abs(float(roll)) <= self.walk_start_max_abs_roll
             and abs(float(pitch)) <= self.walk_start_max_abs_pitch
@@ -632,13 +725,85 @@ class Rs01Model930Node(Node):
             and odom_speed <= self.walk_start_max_odom_speed
             and float(odometry["confidence"])
             >= self.walk_start_min_odom_confidence
+            and heading_consistent
+            and diagonal_support_valid
         )
 
     def _reset_walk_session(self, now, yaw, q_policy):
         """Clear estimator memory before defining a new path/phase origin."""
         self.leg_odometry.reset()
+        if self.walk_guard_odometry is not self.leg_odometry:
+            self.walk_guard_odometry.reset()
         self.core.reset(now, yaw, q_policy=q_policy)
         self.walk_session_reset_count += 1
+
+    def _enter_soft_hold(self, reason, now, q_policy):
+        """Latch a walk rejection and ramp from the live pose to stand."""
+        if not self.soft_inhibit_enabled:
+            raise RuntimeError(reason)
+        if not self.walk_inhibit_latched:
+            self.walk_inhibit_count += 1
+            self.get_logger().error(
+                "WALK INHIBITED (soft stand, no /api/stop): "
+                f"{reason}"
+            )
+        self.walk_inhibit_latched = True
+        self.walk_inhibit_reason = str(reason)
+        self.mode = "soft_hold"
+        self.mode_start = float(now)
+        self.ready_since = None
+        self.walk_ready_since = None
+        self.low_odom_since = None
+        self.heading_bad_since = None
+        self.stand_target_policy = np.asarray(
+            q_policy, dtype=np.float32
+        ).copy()
+        self.core.limiter.reset(self.stand_target_policy)
+        self.core.previous_action.fill(0.0)
+
+    def _update_walk_inhibitors(self, now, odometry, q_policy):
+        """Return True after changing walk into a latched soft hold."""
+        if self.mode != "walk" or not self.soft_inhibit_enabled:
+            return False
+        if float(odometry["confidence"]) < (
+            self.walk_start_min_odom_confidence
+        ):
+            if self.low_odom_since is None:
+                self.low_odom_since = now
+            elif now - self.low_odom_since > self.low_odom_timeout:
+                self._enter_soft_hold(
+                    "legal diagonal odometry confidence remained below "
+                    f"{self.walk_start_min_odom_confidence:.2f}",
+                    now,
+                    q_policy,
+                )
+                return True
+        else:
+            self.low_odom_since = None
+
+        heading_bad = bool(
+            self.heading_consistency_enabled
+            and self.heading_consistency_state["ready"]
+            and not self.heading_consistency_state["healthy"]
+        )
+        if heading_bad:
+            if self.heading_bad_since is None:
+                self.heading_bad_since = now
+            elif (
+                now - self.heading_bad_since
+                > self.heading_consistency_bad_hold_sec
+            ):
+                self._enter_soft_hold(
+                    "yaw/gyro signed-rate mismatch "
+                    f"{self.heading_consistency_state['mean_error_rad_s']:+.3f}"
+                    " rad/s",
+                    now,
+                    q_policy,
+                )
+                return True
+        else:
+            self.heading_bad_since = None
+        return False
 
     def _stand_target(self, q_policy, dq_policy):
         max_step = self.startup_rate * self.contract.policy_dt
@@ -745,14 +910,32 @@ class Rs01Model930Node(Node):
             odometry = self.leg_odometry.estimate(
                 q_policy, dq_policy, self.corrected_gyro_rad_s
             )
+            guard_odometry = (
+                self.walk_guard_odometry.estimate(
+                    q_policy,
+                    dq_policy,
+                    self.corrected_gyro_rad_s,
+                )
+                if self.walk_guard_odometry is not self.leg_odometry
+                else odometry
+            )
             if not self.initialized:
                 self._initialize_from_feedback(now, q_policy, yaw)
+            self.heading_consistency_state = (
+                self.heading_consistency.update(
+                    now, yaw, self.corrected_gyro_rad_s[2]
+                )
+            )
 
             command_active = self.command_active(now)
             self.command_active_last = command_active
-            walk_authorized = command_active and self.mode == "walk"
+            walk_authorized = bool(
+                command_active
+                and self.mode == "walk"
+                and not self.walk_inhibit_latched
+            )
             self.walk_start_stable = self._walk_start_is_stable(
-                roll, pitch, odometry
+                roll, pitch, guard_odometry
             )
             if command_active and self.mode == "ready":
                 if self.walk_start_stable:
@@ -770,6 +953,16 @@ class Rs01Model930Node(Node):
                             dq_policy,
                             self.corrected_gyro_rad_s,
                         )
+                        guard_odometry = (
+                            self.walk_guard_odometry.estimate(
+                                q_policy,
+                                dq_policy,
+                                self.corrected_gyro_rad_s,
+                            )
+                            if self.walk_guard_odometry
+                            is not self.leg_odometry
+                            else odometry
+                        )
                         self.mode = "walk"
                         self.mode_start = now
                         walk_authorized = True
@@ -777,6 +970,10 @@ class Rs01Model930Node(Node):
                     self.walk_ready_since = None
             elif self.mode != "walk":
                 self.walk_ready_since = None
+            if self._update_walk_inhibitors(
+                now, guard_odometry, q_policy
+            ):
+                walk_authorized = False
 
             action = np.zeros(12, dtype=np.float32)
             observation = np.zeros(
@@ -813,7 +1010,7 @@ class Rs01Model930Node(Node):
                     self.ready_since = None
             elif walk_authorized:
                 self.mode = "walk"
-                observation = self.core.build_observation(
+                observation_arguments = dict(
                     now=now,
                     base_linear_velocity=odometry[
                         "base_linear_velocity"
@@ -827,6 +1024,20 @@ class Rs01Model930Node(Node):
                     dq_policy=dq_policy,
                     yaw=yaw,
                 )
+                if self.include_path_state:
+                    observation_arguments["path_update_enabled"] = bool(
+                        float(guard_odometry["confidence"])
+                        >= self.walk_start_min_odom_confidence
+                        and (
+                            not self.strict_diagonal_odometry
+                            or guard_odometry.get(
+                                "legal_diagonal_support", False
+                            )
+                        )
+                    )
+                observation = self.core.build_observation(
+                    **observation_arguments
+                )
                 result = self.core.step(
                     observation,
                     q_policy,
@@ -836,15 +1047,42 @@ class Rs01Model930Node(Node):
                 action = result["action"]
                 target_policy = result["safe_target_policy"]
                 torque_info = result["torque_info"]
-                if odometry["confidence"] < 0.5:
-                    if self.low_odom_since is None:
-                        self.low_odom_since = now
-                    elif now - self.low_odom_since > self.low_odom_timeout:
-                        raise RuntimeError(
-                            "leg odometry confidence remained below 0.5"
+            elif self.mode == "soft_hold":
+                target_policy, torque_info = self._stand_target(
+                    q_policy, dq_policy
+                )
+                stand_error = float(
+                    np.max(np.abs(q_policy - self.contract.default))
+                )
+                heading_recovered = bool(
+                    not self.heading_consistency_enabled
+                    or (
+                        self.heading_consistency_state["ready"]
+                        and self.heading_consistency_state["healthy"]
+                    )
+                )
+                if (
+                    not command_active
+                    and stand_error <= self.startup_ready_error
+                    and heading_recovered
+                ):
+                    if self.ready_since is None:
+                        self.ready_since = now
+                    elif (
+                        now - self.ready_since
+                        >= self.startup_ready_hold_sec
+                    ):
+                        self.walk_inhibit_latched = False
+                        self.walk_inhibit_reason = ""
+                        self.mode = "ready"
+                        self.mode_start = now
+                        self.ready_since = None
+                        self.leg_odometry.reset()
+                        self.core.reset(
+                            now, yaw, q_policy=q_policy
                         )
                 else:
-                    self.low_odom_since = None
+                    self.ready_since = None
             else:
                 self.mode = "ready"
                 target_policy, torque_info = self._stand_target(
@@ -882,6 +1120,7 @@ class Rs01Model930Node(Node):
                 motor,
                 torque_info,
                 now,
+                guard_odometry,
             )
         except Exception as exc:
             self._emergency_stop(str(exc))
@@ -898,6 +1137,7 @@ class Rs01Model930Node(Node):
         motor,
         torque_info,
         now,
+        guard_odometry,
     ):
         self._publish_array(self.pub_obs, observation)
         self._publish_array(self.pub_action, action)
@@ -911,6 +1151,13 @@ class Rs01Model930Node(Node):
             if self.walk_ready_since is not None
             else 0.0
         )
+        pair_residual = float(
+            guard_odometry.get(
+                "pair_residual_m_s", float("inf")
+            )
+        )
+        if not np.isfinite(pair_residual):
+            pair_residual = -1.0
         status = {
             "mode": self.mode,
             "send": bool(self.enable_send),
@@ -939,8 +1186,42 @@ class Rs01Model930Node(Node):
             "walk_session_reset_count": int(
                 self.walk_session_reset_count
             ),
+            "walk_inhibit_latched": bool(
+                self.walk_inhibit_latched
+            ),
+            "walk_inhibit_reason": self.walk_inhibit_reason,
+            "walk_inhibit_count": int(self.walk_inhibit_count),
             "heading_target_rad": float(self.core.heading_target),
             "heading_error_rad": heading_error,
+            "heading_consistency_ready": bool(
+                self.heading_consistency_state["ready"]
+            ),
+            "heading_consistency_healthy": bool(
+                self.heading_consistency_state["healthy"]
+            ),
+            "yaw_rate_from_yaw_rad_s": float(
+                self.heading_consistency_state[
+                    "filtered_yaw_rate_rad_s"
+                ]
+            ),
+            "yaw_gyro_mean_error_rad_s": float(
+                self.heading_consistency_state["mean_error_rad_s"]
+            ),
+            "yaw_gyro_abs_error_rad_s": float(
+                self.heading_consistency_state["abs_error_rad_s"]
+            ),
+            "odom_selected_pair_index": int(
+                guard_odometry.get("selected_pair_index", -1)
+            ),
+            "odom_guard_confidence": float(
+                guard_odometry["confidence"]
+            ),
+            "odom_pair_residual_m_s": pair_residual,
+            "odom_legal_diagonal_support": bool(
+                guard_odometry.get(
+                    "legal_diagonal_support", False
+                )
+            ),
             "odom_stance_mask": [
                 int(value) for value in odometry["stance_mask"]
             ],
@@ -1015,8 +1296,20 @@ class Rs01Model930Node(Node):
             "walk_start_stable",
             "walk_ready_duration_s",
             "walk_session_reset_count",
+            "walk_inhibit_latched",
+            "walk_inhibit_reason",
+            "walk_inhibit_count",
             "heading_target_rad",
             "heading_error_rad",
+            "heading_consistency_ready",
+            "heading_consistency_healthy",
+            "yaw_rate_from_yaw_rad_s",
+            "yaw_gyro_mean_error_rad_s",
+            "yaw_gyro_abs_error_rad_s",
+            "odom_selected_pair_index",
+            "odom_guard_confidence",
+            "odom_pair_residual_m_s",
+            "odom_legal_diagonal_support",
         ]
         for leg in ("FL", "FR", "RL", "RR"):
             headers.append(f"odom_stance_{leg}")
@@ -1088,8 +1381,20 @@ class Rs01Model930Node(Node):
             int(status["walk_start_stable"]),
             status["walk_ready_duration_s"],
             status["walk_session_reset_count"],
+            int(status["walk_inhibit_latched"]),
+            status["walk_inhibit_reason"],
+            status["walk_inhibit_count"],
             status["heading_target_rad"],
             status["heading_error_rad"],
+            int(status["heading_consistency_ready"]),
+            int(status["heading_consistency_healthy"]),
+            status["yaw_rate_from_yaw_rad_s"],
+            status["yaw_gyro_mean_error_rad_s"],
+            status["yaw_gyro_abs_error_rad_s"],
+            status["odom_selected_pair_index"],
+            status["odom_guard_confidence"],
+            status["odom_pair_residual_m_s"],
+            int(status["odom_legal_diagonal_support"]),
         ]
         row.extend(status["odom_stance_mask"])
         row.extend(status["odom_velocity_by_foot_m_s"])

@@ -54,6 +54,16 @@ def generate_launch_description():
             "walk_start_max_gyro_rad_s": 0.08,
             "walk_start_max_odom_speed_mps": 0.05,
             "walk_start_min_odom_confidence": 0.5,
+            # Refuse walk if the vendor yaw increment and corrected z gyro
+            # describe different sustained turning.  During walk this enters
+            # a latched soft stand; it never calls /api/stop.
+            "heading_consistency_max_mean_error_rad_s": 0.06,
+            "heading_consistency_rate_filter_tau_sec": 0.10,
+            "heading_consistency_error_filter_tau_sec": 0.60,
+            "heading_consistency_warmup_sec": 1.0,
+            "heading_consistency_bad_hold_sec": 0.60,
+            "heading_consistency_max_update_gap_sec": 0.10,
+            "low_odom_confidence_timeout_sec": 0.60,
             "debug_csv_path": LaunchConfiguration("debug_csv_path"),
         }],
     )

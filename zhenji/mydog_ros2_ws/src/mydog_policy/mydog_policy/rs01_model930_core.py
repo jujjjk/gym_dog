@@ -112,6 +112,137 @@ def estimate_stationary_gyro_bias(
     return bias
 
 
+class Rs01YawGyroConsistencyMonitor:
+    """Detect sustained disagreement between vendor yaw and z gyro."""
+
+    def __init__(
+        self,
+        max_abs_mean_error_rad_s=0.06,
+        rate_filter_time_constant_s=0.10,
+        error_filter_time_constant_s=0.60,
+        warmup_sec=1.0,
+        max_update_gap_s=0.10,
+        max_abs_yaw_rate_rad_s=4.0,
+    ):
+        self.max_abs_mean_error_rad_s = float(
+            max_abs_mean_error_rad_s
+        )
+        self.rate_filter_time_constant_s = float(
+            rate_filter_time_constant_s
+        )
+        self.error_filter_time_constant_s = float(
+            error_filter_time_constant_s
+        )
+        self.warmup_sec = float(warmup_sec)
+        self.max_update_gap_s = float(max_update_gap_s)
+        self.max_abs_yaw_rate_rad_s = float(max_abs_yaw_rate_rad_s)
+        if min(
+            self.max_abs_mean_error_rad_s,
+            self.rate_filter_time_constant_s,
+            self.error_filter_time_constant_s,
+            self.warmup_sec,
+            self.max_update_gap_s,
+            self.max_abs_yaw_rate_rad_s,
+        ) <= 0.0:
+            raise ValueError("Yaw/gyro consistency limits must be positive")
+        self.reset()
+
+    def reset(self, now=None, yaw=None):
+        if (now is None) != (yaw is None):
+            raise ValueError("now and yaw must be supplied together")
+        self.last_time_s = None if now is None else float(now)
+        self.last_yaw_rad = None if yaw is None else float(yaw)
+        self.valid_duration_s = 0.0
+        self.filtered_yaw_rate_rad_s = 0.0
+        self.mean_error_rad_s = 0.0
+        self.abs_error_rad_s = 0.0
+        self.last_raw_yaw_rate_rad_s = 0.0
+        self.last_error_rad_s = 0.0
+        self.last_gyro_z_rad_s = 0.0
+
+    @staticmethod
+    def _alpha(dt, time_constant):
+        return 1.0 - math.exp(-max(float(dt), 0.0) / time_constant)
+
+    def update(self, now, yaw, corrected_gyro_z_rad_s):
+        values = np.asarray(
+            [now, yaw, corrected_gyro_z_rad_s], dtype=np.float64
+        )
+        if not np.all(np.isfinite(values)):
+            raise RuntimeError(
+                "Yaw/gyro consistency input contains NaN/Inf"
+            )
+        now = float(now)
+        yaw = float(yaw)
+        gyro_z = float(corrected_gyro_z_rad_s)
+        self.last_gyro_z_rad_s = gyro_z
+        if self.last_time_s is None:
+            self.reset(now, yaw)
+            self.last_gyro_z_rad_s = gyro_z
+            return self.snapshot()
+        dt = now - float(self.last_time_s)
+        if dt < -1.0e-9:
+            raise RuntimeError("Yaw/gyro consistency clock moved backwards")
+        if dt <= 1.0e-9 or dt > self.max_update_gap_s:
+            self.reset(now, yaw)
+            self.last_gyro_z_rad_s = gyro_z
+            return self.snapshot()
+
+        yaw_delta = wrap_pi(yaw - float(self.last_yaw_rad))
+        raw_yaw_rate = float(
+            np.clip(
+                yaw_delta / dt,
+                -self.max_abs_yaw_rate_rad_s,
+                self.max_abs_yaw_rate_rad_s,
+            )
+        )
+        rate_alpha = self._alpha(
+            dt, self.rate_filter_time_constant_s
+        )
+        self.filtered_yaw_rate_rad_s += rate_alpha * (
+            raw_yaw_rate - self.filtered_yaw_rate_rad_s
+        )
+        error = self.filtered_yaw_rate_rad_s - gyro_z
+        error_alpha = self._alpha(
+            dt, self.error_filter_time_constant_s
+        )
+        self.mean_error_rad_s += error_alpha * (
+            error - self.mean_error_rad_s
+        )
+        self.abs_error_rad_s += error_alpha * (
+            abs(error) - self.abs_error_rad_s
+        )
+        self.valid_duration_s += dt
+        self.last_time_s = now
+        self.last_yaw_rad = yaw
+        self.last_raw_yaw_rate_rad_s = raw_yaw_rate
+        self.last_error_rad_s = error
+        return self.snapshot()
+
+    def snapshot(self):
+        ready = self.valid_duration_s >= self.warmup_sec
+        healthy = bool(
+            ready
+            and abs(self.mean_error_rad_s)
+            <= self.max_abs_mean_error_rad_s
+        )
+        return {
+            "ready": bool(ready),
+            "healthy": healthy,
+            "valid_duration_s": float(self.valid_duration_s),
+            "raw_yaw_rate_rad_s": float(
+                self.last_raw_yaw_rate_rad_s
+            ),
+            "filtered_yaw_rate_rad_s": float(
+                self.filtered_yaw_rate_rad_s
+            ),
+            "gyro_z_rad_s": float(self.last_gyro_z_rad_s),
+            "instant_error_rad_s": float(self.last_error_rad_s),
+            "mean_error_rad_s": float(self.mean_error_rad_s),
+            "abs_error_rad_s": float(self.abs_error_rad_s),
+        }
+
+
 def _joint_type(name: str) -> str:
     matches = [
         joint_type
@@ -379,6 +510,7 @@ class Rs01NewMachineLegOdometry:
     """Body velocity estimator using the actual dog_rs01 URDF geometry."""
 
     LEG_ORDER = ("FL", "FR", "RL", "RR")
+    LEGAL_DIAGONAL_PAIRS = ((0, 3), (1, 2))
     AXES = (
         np.asarray([1.0, 0.0, 0.0]),
         np.asarray([0.0, 1.0, 0.0]),
@@ -421,6 +553,7 @@ class Rs01NewMachineLegOdometry:
         filter_alpha=0.35,
         no_contact_decay=0.90,
         previous_stance_score_bonus=0.08,
+        strict_diagonal_pairs=False,
     ):
         self.nominal_base_height = float(nominal_base_height)
         self.foot_radius = float(foot_radius)
@@ -434,6 +567,7 @@ class Rs01NewMachineLegOdometry:
         self.previous_stance_score_bonus = float(
             previous_stance_score_bonus
         )
+        self.strict_diagonal_pairs = bool(strict_diagonal_pairs)
         self.filtered = np.zeros(3, dtype=np.float32)
         self.last_stance = np.zeros(4, dtype=bool)
 
@@ -514,7 +648,43 @@ class Rs01NewMachineLegOdometry:
             candidates.append((score, leg_index))
 
         selected = []
-        if candidates:
+        pair_residual = float("inf")
+        selected_pair_index = -1
+        if self.strict_diagonal_pairs:
+            score_by_index = {
+                index: score for score, index in candidates
+            }
+            legal_pairs = []
+            for pair_index, pair in enumerate(
+                self.LEGAL_DIAGONAL_PAIRS
+            ):
+                if not all(index in score_by_index for index in pair):
+                    continue
+                residual = float(
+                    np.linalg.norm(
+                        (
+                            velocity_by_foot[pair[0]]
+                            - velocity_by_foot[pair[1]]
+                        )[:2]
+                    )
+                )
+                if residual > self.velocity_residual_threshold:
+                    continue
+                score = (
+                    score_by_index[pair[0]]
+                    + score_by_index[pair[1]]
+                    + residual
+                    / max(self.velocity_residual_threshold, 1.0e-6)
+                )
+                legal_pairs.append(
+                    (score, residual, pair_index, pair)
+                )
+            if legal_pairs:
+                _, pair_residual, selected_pair_index, pair = min(
+                    legal_pairs, key=lambda item: item[0]
+                )
+                selected = list(pair)
+        elif candidates:
             candidates.sort()
             preselected = candidates[: min(3, len(candidates))]
             velocities = np.asarray(
@@ -552,6 +722,15 @@ class Rs01NewMachineLegOdometry:
                 ]
             accepted.sort()
             selected = [item[2] for item in accepted[:2]]
+            if len(selected) == 2:
+                pair_residual = float(
+                    np.linalg.norm(
+                        (
+                            velocity_by_foot[selected[0]]
+                            - velocity_by_foot[selected[1]]
+                        )[:2]
+                    )
+                )
 
         stance = np.zeros(4, dtype=bool)
         stance[selected] = True
@@ -560,7 +739,15 @@ class Rs01NewMachineLegOdometry:
             raw = np.mean(velocity_by_foot[selected], axis=0)
             raw[:2] = np.clip(raw[:2], -1.0, 1.0)
             raw[2] = 0.0
-            confidence = len(selected) / 2.0
+            if self.strict_diagonal_pairs:
+                confidence = max(
+                    0.0,
+                    1.0
+                    - pair_residual
+                    / max(self.velocity_residual_threshold, 1.0e-6),
+                )
+            else:
+                confidence = len(selected) / 2.0
             alpha = self.filter_alpha * confidence
             self.filtered = (
                 (1.0 - alpha) * self.filtered + alpha * raw
@@ -577,6 +764,11 @@ class Rs01NewMachineLegOdometry:
             "foot_velocity": foot_velocity,
             "velocity_by_foot": velocity_by_foot,
             "base_height_proxy": base_height_proxy,
+            "selected_pair_index": int(selected_pair_index),
+            "pair_residual_m_s": float(pair_residual),
+            "legal_diagonal_support": bool(
+                self.strict_diagonal_pairs and selected
+            ),
         }
 
 

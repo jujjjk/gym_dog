@@ -97,7 +97,8 @@ ONNX是数据文件，不是ROS可执行程序。
 - `|pitch| <= 0.10 rad`
 - 校正后三轴角速度范数不超过 `0.08 rad/s`
 - 腿里程计平面速度不超过 `0.05 m/s`
-- 腿里程计置信度不低于 `0.5`
+- 合法对角支撑（FL+RR或FR+RL）里程计置信度不低于 `0.5`
+- vendor yaw角增量与校正后z轴陀螺仪的低频差不超过 `0.06 rad/s`
 
 真正进入 `walk` 时，节点会同时清零腿里程计滤波、支撑腿历史、策略相位、
 动作历史、目标限速器和横向路径积分，并将此刻IMU yaw锁定为本次直行方向。
@@ -163,6 +164,13 @@ walk_start_stable=true
 `ready`切换到`walk`。因此发出命令后的最初约1秒仍处于安全门控阶段，
 这是正常现象。
 
+若合法对角里程计低置信度或yaw/gyro不一致持续超过`0.60 s`，节点会锁存
+`mode=soft_hold`和`walk_inhibit_latched=true`。这条路径不会调用
+`/api/stop`，而是从当前实测关节位置按原站立速率和14 N·m保护柔和回到默认
+站姿；非零速度命令持续存在时也不会重新进入`walk`。必须先停止发布速度命令，
+等待站姿、航向一致性连续恢复2秒，锁存才会解除。硬件掉线、过温、反馈过期、
+姿态越界和节点退出仍保留紧急停机，这是独立的硬安全链。
+
 确认四脚稳定承重、人已完全松手且吊绳不产生侧向拉力后，再发送第一次短命令。
 总发布4秒，其中最初约1秒用于稳定门控，实际进入`walk`约3秒。不要在
 `stand_ramp`阶段提前持续发送：
@@ -178,6 +186,11 @@ timeout 4s ros2 topic pub --rate 20 \
 ## CSV验收重点
 
 每次尝试使用新的CSV文件名，重点检查：
+
+- `walk_inhibit_latched`、`walk_inhibit_reason`、`walk_inhibit_count`
+- `heading_consistency_healthy`、`yaw_gyro_mean_error_rad_s`
+- `odom_guard_confidence`、`odom_selected_pair_index`
+- `odom_pair_residual_m_s`、`odom_legal_diagonal_support`
 
 - `mode`是否按 `startup_hold → stand_ramp → ready → walk`变化；
 - `walk_start_stable`和 `walk_ready_duration_s`是否满足门控；

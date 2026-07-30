@@ -122,6 +122,9 @@ def test_model1950_launch_defaults_to_dry_stand_only():
     assert "observation_count = 54" in node
     assert "include_path_state = True" in node
     assert "calibrate_gyro_bias = True" in node
+    assert "strict_diagonal_odometry = True" in node
+    assert "heading_consistency_enabled = True" in node
+    assert "soft_inhibit_enabled = True" in node
     assert (
         'DeclareLaunchArgument("enable_send", default_value="false")'
         in launch
@@ -134,4 +137,8 @@ def test_model1950_launch_defaults_to_dry_stand_only():
     assert '"startup_ready_error_rad": 0.12' in launch
     assert '"startup_ready_hold_sec": 2.0' in launch
     assert '"walk_start_stable_sec": 1.0' in launch
+    assert (
+        '"heading_consistency_max_mean_error_rad_s": 0.06'
+        in launch
+    )
     assert EXPECTED_ONNX_SHA256 in launch
