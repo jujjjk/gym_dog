@@ -33,6 +33,11 @@ class Rs01Go2EstimatorParityCfg(Rs01Go2Path54Sim2SimTransferCfg):
         filter_alpha = 0.35
         no_contact_decay = 0.90
         previous_stance_score_bonus = 0.08
+        # A trot path update is valid only when one full diagonal support pair
+        # agrees kinematically.  Same-side and one-foot estimates caused the
+        # real robot to integrate false lateral displacement.
+        strict_diagonal_pairs = True
+        path_update_min_confidence = 0.5
 
 
 class Rs01Go2EstimatorParityCfgPPO(

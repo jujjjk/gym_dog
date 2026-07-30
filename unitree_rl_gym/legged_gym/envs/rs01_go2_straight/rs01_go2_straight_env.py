@@ -120,6 +120,9 @@ class Rs01Go2StraightRobot(LeggedRobot):
             previous_stance_score_bonus=(
                 cfg.previous_stance_score_bonus
             ),
+            strict_diagonal_pairs=getattr(
+                cfg, "strict_diagonal_pairs", False
+            ),
         )
         self.rs01_path_estimator = Rs01TorchStraightPathEstimator(
             num_envs=self.num_envs,
@@ -175,6 +178,14 @@ class Rs01Go2StraightRobot(LeggedRobot):
         displacement, velocity = self.rs01_path_estimator.update(
             self.rpy[:, 2],
             self.estimated_base_lin_vel,
+            update_mask=(
+                result["confidence"]
+                >= getattr(
+                    self.cfg.rs01_odometry,
+                    "path_update_min_confidence",
+                    0.0,
+                )
+            ),
         )
         self.estimated_path_lateral_displacement_m.copy_(displacement)
         self.estimated_path_lateral_velocity_m_s.copy_(velocity)

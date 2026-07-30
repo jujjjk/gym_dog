@@ -241,13 +241,30 @@ class Rs01Go2Sim:
             == "rs01_leg_odometry_integral"
         )
         self.leg_odometry = None
+        self.walk_guard_odometry = None
         self.estimated_path = None
         self.last_estimated_linear_velocity = np.zeros(
             3, dtype=np.float64
         )
         self.last_estimated_path_state = (0.0, 0.0)
+        self.strict_diagonal_odometry = False
+        self.actor_uses_strict_diagonal_odometry = False
+        self.path_update_min_confidence = 0.0
         if self.use_estimated_observations:
             odometry = observations.get("rs01_leg_odometry") or {}
+            self.actor_uses_strict_diagonal_odometry = bool(
+                odometry.get("strict_diagonal_pairs", False)
+            )
+            self.strict_diagonal_odometry = bool(
+                self.actor_uses_strict_diagonal_odometry
+                or self.cfg.get("task") == "rs01_go2_estimator_parity"
+            )
+            self.path_update_min_confidence = float(
+                odometry.get(
+                    "path_update_min_confidence",
+                    0.5 if self.strict_diagonal_odometry else 0.0,
+                )
+            )
             self.leg_odometry = Rs01NewMachineLegOdometry(
                 nominal_base_height=float(
                     odometry["nominal_base_height_m"]
@@ -265,6 +282,35 @@ class Rs01Go2Sim:
                 previous_stance_score_bonus=float(
                     odometry["previous_stance_score_bonus"]
                 ),
+                strict_diagonal_pairs=(
+                    self.actor_uses_strict_diagonal_odometry
+                ),
+            )
+            self.walk_guard_odometry = (
+                Rs01NewMachineLegOdometry(
+                    nominal_base_height=float(
+                        odometry["nominal_base_height_m"]
+                    ),
+                    foot_radius=float(odometry["foot_radius_m"]),
+                    height_margin=float(odometry["height_margin_m"]),
+                    vertical_speed_threshold=float(
+                        odometry["vertical_speed_threshold_m_s"]
+                    ),
+                    velocity_residual_threshold=float(
+                        odometry["velocity_residual_threshold_m_s"]
+                    ),
+                    filter_alpha=float(odometry["filter_alpha"]),
+                    no_contact_decay=float(odometry["no_contact_decay"]),
+                    previous_stance_score_bonus=float(
+                        odometry["previous_stance_score_bonus"]
+                    ),
+                    strict_diagonal_pairs=True,
+                )
+                if (
+                    self.strict_diagonal_odometry
+                    and not self.actor_uses_strict_diagonal_odometry
+                )
+                else self.leg_odometry
             )
             self.estimated_path = Rs01StraightPathEstimator(
                 max_update_gap_s=max(0.10, 2.0 * self.policy_dt)
@@ -377,6 +423,8 @@ class Rs01Go2Sim:
         mujoco.mj_forward(self.model, self.data)
         if self.use_estimated_observations:
             self.leg_odometry.reset()
+            if self.walk_guard_odometry is not self.leg_odometry:
+                self.walk_guard_odometry.reset()
             self.estimated_path.reset(now=0.0, yaw=0.0)
             self.last_estimated_linear_velocity.fill(0.0)
             self.last_estimated_path_state = (0.0, 0.0)
@@ -451,6 +499,15 @@ class Rs01Go2Sim:
                 self.data.qvel[self.qvel_indices],
                 angular,
             )
+            guard_odometry = (
+                self.walk_guard_odometry.estimate(
+                    self.data.qpos[self.qpos_indices],
+                    self.data.qvel[self.qvel_indices],
+                    angular,
+                )
+                if self.walk_guard_odometry is not self.leg_odometry
+                else odometry
+            )
             linear = np.asarray(
                 odometry["base_linear_velocity"], dtype=np.float64
             )
@@ -458,6 +515,16 @@ class Rs01Go2Sim:
                 now=self.policy_steps * self.policy_dt,
                 yaw=yaw,
                 base_linear_velocity_body=linear,
+                update_enabled=bool(
+                    float(guard_odometry["confidence"])
+                    >= self.path_update_min_confidence
+                    and (
+                        not self.strict_diagonal_odometry
+                        or guard_odometry.get(
+                            "legal_diagonal_support", False
+                        )
+                    )
+                ),
             )
             self.last_estimated_linear_velocity = linear.copy()
             self.last_estimated_path_state = tuple(path_observation)

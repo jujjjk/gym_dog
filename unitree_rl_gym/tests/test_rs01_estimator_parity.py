@@ -110,6 +110,47 @@ def test_torch_and_deployment_odometry_match_over_stateful_sequence():
             )
 
 
+def test_strict_diagonal_torch_and_deployment_estimators_match():
+    rng = np.random.default_rng(1951)
+    torch_estimator = Rs01TorchLegOdometry(
+        2, "cpu", strict_diagonal_pairs=True
+    )
+    numpy_estimators = [
+        Rs01NewMachineLegOdometry(strict_diagonal_pairs=True),
+        Rs01NewMachineLegOdometry(strict_diagonal_pairs=True),
+    ]
+    for _ in range(30):
+        q = (
+            DEFAULT[None, :]
+            + rng.normal(0.0, 0.015, size=(2, 12))
+        ).astype(np.float32)
+        dq = rng.normal(0.0, 0.08, size=(2, 12)).astype(np.float32)
+        omega = rng.normal(0.0, 0.03, size=(2, 3)).astype(np.float32)
+        torch_result = torch_estimator.estimate(
+            torch.tensor(q), torch.tensor(dq), torch.tensor(omega)
+        )
+        for env_index, numpy_estimator in enumerate(numpy_estimators):
+            numpy_result = numpy_estimator.estimate(
+                q[env_index], dq[env_index], omega[env_index]
+            )
+            np.testing.assert_allclose(
+                torch_result["base_linear_velocity"][
+                    env_index
+                ].numpy(),
+                numpy_result["base_linear_velocity"],
+                atol=3.0e-6,
+            )
+            np.testing.assert_allclose(
+                torch_result["confidence"][env_index].item(),
+                numpy_result["confidence"],
+                atol=3.0e-6,
+            )
+            np.testing.assert_array_equal(
+                torch_result["stance_mask"][env_index].numpy(),
+                numpy_result["stance_mask"],
+            )
+
+
 def test_odometry_and_path_reset_remove_previous_session_memory():
     torch_odometry = Rs01TorchLegOdometry(2, "cpu")
     q = torch.tensor(np.tile(DEFAULT, (2, 1)))

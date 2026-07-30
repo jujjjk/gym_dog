@@ -86,7 +86,13 @@ class Rs01StraightPathEstimator:
         self.lateral_velocity_m_s = 0.0
         self.last_update_s = float(now)
 
-    def update(self, now, yaw, base_linear_velocity_body):
+    def update(
+        self,
+        now,
+        yaw,
+        base_linear_velocity_body,
+        update_enabled=True,
+    ):
         values = np.asarray(
             [
                 now,
@@ -109,18 +115,23 @@ class Rs01StraightPathEstimator:
                 f"Path estimator update gap {dt:.3f}s exceeds "
                 f"{self.max_update_gap_s:.3f}s"
             )
-        velocity_body = values[2:5]
-        relative_yaw = float(yaw) - self.heading_target
-        lateral_velocity = (
-            math.sin(relative_yaw) * float(velocity_body[0])
-            + math.cos(relative_yaw) * float(velocity_body[1])
-        )
-        self.lateral_displacement_m += (
-            0.5
-            * (self.lateral_velocity_m_s + lateral_velocity)
-            * max(dt, 0.0)
-        )
-        self.lateral_velocity_m_s = lateral_velocity
+        if update_enabled:
+            velocity_body = values[2:5]
+            relative_yaw = float(yaw) - self.heading_target
+            lateral_velocity = (
+                math.sin(relative_yaw) * float(velocity_body[0])
+                + math.cos(relative_yaw) * float(velocity_body[1])
+            )
+            self.lateral_displacement_m += (
+                0.5
+                * (self.lateral_velocity_m_s + lateral_velocity)
+                * max(dt, 0.0)
+            )
+            self.lateral_velocity_m_s = lateral_velocity
+        else:
+            # Advance the clock but do not integrate a velocity estimate that
+            # was produced without a legal, agreeing diagonal support pair.
+            self.lateral_velocity_m_s = 0.0
         self.last_update_s = float(now)
         return (
             float(self.lateral_displacement_m),
@@ -153,6 +164,7 @@ class Rs01Model1850PolicyCore(Rs01Model930PolicyCore):
         q_policy,
         dq_policy,
         yaw,
+        path_update_enabled=True,
     ):
         proprioception = super().build_observation(
             now=now,
@@ -169,6 +181,7 @@ class Rs01Model1850PolicyCore(Rs01Model930PolicyCore):
                 now,
                 yaw,
                 base_linear_velocity,
+                update_enabled=path_update_enabled,
             )
         )
         self.last_path_lateral_displacement_m = lateral_displacement

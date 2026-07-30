@@ -26,6 +26,9 @@ class Rs01Model1950Node(Rs01Model930Node):
     topic_namespace = "/mydog/model1950"
     include_path_state = True
     calibrate_gyro_bias = True
+    strict_diagonal_odometry = True
+    heading_consistency_enabled = True
+    soft_inhibit_enabled = True
 
 
 def main(args=None):
