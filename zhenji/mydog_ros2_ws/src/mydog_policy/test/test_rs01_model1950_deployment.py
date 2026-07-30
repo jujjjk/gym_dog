@@ -131,5 +131,7 @@ def test_model1950_launch_defaults_to_dry_stand_only():
         in launch
     )
     assert '"hardware_torque_limit_nm": 14.0' in launch
+    assert '"startup_ready_error_rad": 0.12' in launch
+    assert '"startup_ready_hold_sec": 2.0' in launch
     assert '"walk_start_stable_sec": 1.0' in launch
     assert EXPECTED_ONNX_SHA256 in launch
