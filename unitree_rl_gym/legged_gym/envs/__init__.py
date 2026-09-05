@@ -29,10 +29,55 @@ from legged_gym.envs.rs01_go2_straight import (
     Rs01Go2Path54Sim2SimTransferCfgPPO,
     Rs01Go2EstimatorParityCfg,
     Rs01Go2EstimatorParityCfgPPO,
+    Rs01Go2OmniDiagonalCfg,
+    Rs01Go2OmniDiagonalCfgPPO,
+    Rs01Go2OmniDiagonalRobot,
     Rs01Go2StraightCfg,
     Rs01Go2StraightCfgPPO,
     Rs01Go2StraightRobot,
 )
+from legged_gym.envs.rs01_omni_v2 import (
+    Rs01OmniV2Cfg,
+    Rs01OmniV2CfgPPO,
+    Rs01OmniV2Robot,
+    Rs01OmniV3Contact1Cfg,
+    Rs01OmniV3Contact1CfgPPO,
+    Rs01OmniV3Contact15Cfg,
+    Rs01OmniV3Contact15CfgPPO,
+    Rs01OmniV3Robot,
+    Rs01OmniV4Contact1Cfg,
+    Rs01OmniV4Contact1CfgPPO,
+    Rs01OmniV4Contact15Cfg,
+    Rs01OmniV4Contact15CfgPPO,
+    Rs01OmniV4Robot,
+    Rs01OmniV5Odd05Cfg,
+    Rs01OmniV5Odd05CfgPPO,
+    Rs01OmniV5Odd10Cfg,
+    Rs01OmniV5Odd10CfgPPO,
+    Rs01OmniV5Robot,
+    Rs01OmniV6Seed08Cfg,
+    Rs01OmniV6Seed08CfgPPO,
+    Rs01OmniV6Seed11Cfg,
+    Rs01OmniV6Seed11CfgPPO,
+    Rs01OmniV6Robot,
+    Rs01OmniV7Seed14Cfg,
+    Rs01OmniV7Seed14CfgPPO,
+    Rs01OmniV7Seed18Cfg,
+    Rs01OmniV7Seed18CfgPPO,
+    Rs01OmniV8Clearance2Cfg,
+    Rs01OmniV8Clearance2CfgPPO,
+    Rs01OmniV8Clearance4Cfg,
+    Rs01OmniV8Clearance4CfgPPO,
+    Rs01OmniV9Speed10Cfg,
+    Rs01OmniV9Speed10CfgPPO,
+    Rs01OmniV9Speed14Cfg,
+    Rs01OmniV9Speed14CfgPPO,
+)
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v10_config import (
+    Rs01OmniV10RecoveryCfg, Rs01OmniV10RecoveryCfgPPO,
+    Rs01OmniV10RecoveryStrongCfg, Rs01OmniV10RecoveryStrongCfgPPO,
+)
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v10_env import Rs01OmniV10Robot
 from legged_gym.envs.dog import (
     DogRs01Robot,
     DogRs01TrotCfg,
@@ -250,7 +295,111 @@ task_registry.register(
     Rs01Go2EstimatorParityCfgPPO(),
 )
 task_registry.register(
+    "rs01_go2_omni_diagonal",
+    Rs01Go2OmniDiagonalRobot,
+    Rs01Go2OmniDiagonalCfg(),
+    Rs01Go2OmniDiagonalCfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v2",
+    Rs01OmniV2Robot,
+    Rs01OmniV2Cfg(),
+    Rs01OmniV2CfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v3_contact1",
+    Rs01OmniV3Robot,
+    Rs01OmniV3Contact1Cfg(),
+    Rs01OmniV3Contact1CfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v3_contact15",
+    Rs01OmniV3Robot,
+    Rs01OmniV3Contact15Cfg(),
+    Rs01OmniV3Contact15CfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v4_contact1",
+    Rs01OmniV4Robot,
+    Rs01OmniV4Contact1Cfg(),
+    Rs01OmniV4Contact1CfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v4_contact15",
+    Rs01OmniV4Robot,
+    Rs01OmniV4Contact15Cfg(),
+    Rs01OmniV4Contact15CfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v5_odd05",
+    Rs01OmniV5Robot,
+    Rs01OmniV5Odd05Cfg(),
+    Rs01OmniV5Odd05CfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v5_odd10",
+    Rs01OmniV5Robot,
+    Rs01OmniV5Odd10Cfg(),
+    Rs01OmniV5Odd10CfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v6_seed08",
+    Rs01OmniV6Robot,
+    Rs01OmniV6Seed08Cfg(),
+    Rs01OmniV6Seed08CfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v6_seed11",
+    Rs01OmniV6Robot,
+    Rs01OmniV6Seed11Cfg(),
+    Rs01OmniV6Seed11CfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v7_seed14",
+    Rs01OmniV6Robot,
+    Rs01OmniV7Seed14Cfg(),
+    Rs01OmniV7Seed14CfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v7_seed18",
+    Rs01OmniV6Robot,
+    Rs01OmniV7Seed18Cfg(),
+    Rs01OmniV7Seed18CfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v8_clearance2",
+    Rs01OmniV5Robot,
+    Rs01OmniV8Clearance2Cfg(),
+    Rs01OmniV8Clearance2CfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v8_clearance4",
+    Rs01OmniV5Robot,
+    Rs01OmniV8Clearance4Cfg(),
+    Rs01OmniV8Clearance4CfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v9_speed10",
+    Rs01OmniV5Robot,
+    Rs01OmniV9Speed10Cfg(),
+    Rs01OmniV9Speed10CfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v9_speed14",
+    Rs01OmniV5Robot,
+    Rs01OmniV9Speed14Cfg(),
+    Rs01OmniV9Speed14CfgPPO(),
+)
+task_registry.register(
     "dog_rs01_trot", DogRs01Robot, DogRs01TrotCfg(), DogRs01TrotCfgPPO()
+)
+task_registry.register(
+    "rs01_omni_v10_recovery", Rs01OmniV10Robot,
+    Rs01OmniV10RecoveryCfg(), Rs01OmniV10RecoveryCfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v10_recovery_strong", Rs01OmniV10Robot,
+    Rs01OmniV10RecoveryStrongCfg(), Rs01OmniV10RecoveryStrongCfgPPO(),
 )
 task_registry.register(
     "dog_rs01_balance", DogRs01Robot, DogRs01BalanceCfg(), DogRs01BalanceCfgPPO()
