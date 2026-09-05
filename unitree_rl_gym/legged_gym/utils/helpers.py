@@ -71,18 +71,23 @@ def parse_sim_params(args, cfg):
     return sim_params
 
 def get_load_path(root, load_run=-1, checkpoint=-1):
-    try:
-        runs = os.listdir(root)
-        #TODO sort by date to handle change of month
-        runs.sort()
-        if 'exported' in runs: runs.remove('exported')
-        last_run = os.path.join(root, runs[-1])
-    except:
-        raise ValueError("No runs in this directory: " + root)
-    if load_run==-1:
-        load_run = last_run
+    if load_run != -1 and os.path.isabs(os.fspath(load_run)):
+        # Cross-task warm starts should not require the destination experiment
+        # directory to exist before its first run.
+        load_run = os.fspath(load_run)
     else:
-        load_run = os.path.join(root, load_run)
+        try:
+            runs = os.listdir(root)
+            #TODO sort by date to handle change of month
+            runs.sort()
+            if 'exported' in runs: runs.remove('exported')
+            last_run = os.path.join(root, runs[-1])
+        except Exception as exc:
+            raise ValueError("No runs in this directory: " + str(root)) from exc
+        if load_run == -1:
+            load_run = last_run
+        else:
+            load_run = os.path.join(root, load_run)
 
     if checkpoint==-1:
         models = [file for file in os.listdir(load_run) if 'model' in file]
@@ -97,6 +102,8 @@ def get_load_path(root, load_run=-1, checkpoint=-1):
 def update_cfg_from_args(env_cfg, cfg_train, args):
     # seed
     if env_cfg is not None:
+        if args.seed is not None:
+            env_cfg.seed = args.seed
         # num envs
         if args.num_envs is not None:
             env_cfg.env.num_envs = args.num_envs
@@ -134,6 +141,12 @@ def get_args():
         {"name": "--num_envs", "type": int, "help": "Number of environments to create. Overrides config file if provided."},
         {"name": "--seed", "type": int, "help": "Random seed. Overrides config file if provided."},
         {"name": "--max_iterations", "type": int, "help": "Maximum number of training iterations. Overrides config file if provided."},
+        {"name": "--vx", "type": float, "default": 0.15, "help": "Fixed playback command: body-frame x velocity [m/s]."},
+        {"name": "--vy", "type": float, "default": 0.0, "help": "Fixed playback command: body-frame y velocity [m/s]."},
+        {"name": "--wz", "type": float, "default": 0.0, "help": "Fixed playback command: yaw velocity [rad/s]."},
+        {"name": "--march", "action": "store_true", "default": False, "help": "For tasks with an explicit gait-enable observation, use in-place stepping at a zero velocity command."},
+        {"name": "--duration_s", "type": float, "default": 30.0, "help": "Playback or evaluation duration [s]."},
+        {"name": "--eval_envs", "type": int, "default": 8, "help": "Parallel environments per fixed-command evaluation case."},
     ]
     # parse arguments
     args = gymutil.parse_arguments(

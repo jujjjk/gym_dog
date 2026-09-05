@@ -49,6 +49,11 @@ from .rs01_go2_estimator_parity_config import (
     Rs01Go2EstimatorParityCfg,
     Rs01Go2EstimatorParityCfgPPO,
 )
+from .rs01_go2_omni_config import (
+    Rs01Go2OmniDiagonalCfg,
+    Rs01Go2OmniDiagonalCfgPPO,
+)
+from .rs01_go2_omni_env import Rs01Go2OmniDiagonalRobot
 
 __all__ = [
     "Rs01Go2Kp40Cfg",
@@ -79,6 +84,9 @@ __all__ = [
     "Rs01Go2Path54Sim2SimTransferCfgPPO",
     "Rs01Go2EstimatorParityCfg",
     "Rs01Go2EstimatorParityCfgPPO",
+    "Rs01Go2OmniDiagonalCfg",
+    "Rs01Go2OmniDiagonalCfgPPO",
+    "Rs01Go2OmniDiagonalRobot",
     "Rs01Go2StraightCfg",
     "Rs01Go2StraightCfgPPO",
     "Rs01Go2StraightRobot",
