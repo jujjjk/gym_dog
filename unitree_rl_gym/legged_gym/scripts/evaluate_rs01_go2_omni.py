@@ -10,6 +10,9 @@ from legged_gym.utils import get_args, task_registry
 
 
 SUPPORTED_TASKS = {
+    "rs01_omni_v15_stand_phase",
+    "rs01_omni_v15_support",
+    "rs01_omni_v14_actuator_parity",
     "rs01_omni_v13_direction",
     "rs01_omni_v12_wide",
     "rs01_omni_v11_hard_gate",
@@ -121,6 +124,8 @@ def evaluate(args):
     steps = max(1, int(round(args.duration_s / env.dt)))
     warmup_steps = min(steps - 1, int(round(2.0 / env.dt)))
     reset_count = torch.zeros(total_envs, device=env.device, dtype=torch.long)
+    speed_violation_count = torch.zeros_like(reset_count)
+    max_joint_speed = torch.zeros(total_envs, device=env.device)
     samples = {
         key: []
         for key in (
@@ -161,6 +166,9 @@ def evaluate(args):
             observations = env.get_observations()
             observations, _, _, dones, _ = env.step(policy(observations))
             reset_count += dones.to(dtype=torch.long)
+            if hasattr(env, 'rs01_step_overspeed'):
+                speed_violation_count += env.rs01_step_overspeed.long()
+                max_joint_speed = torch.maximum(max_joint_speed, env.rs01_step_max_speed)
             finite = finite and bool(torch.isfinite(observations).all())
             finite = finite and bool(torch.isfinite(env.rew_buf).all())
             if step < warmup_steps:
@@ -300,6 +308,12 @@ def evaluate(args):
                 "resets_max_per_env": int(reset_count[start:stop].max().item()),
             }
         )
+
+        if hasattr(env, 'rs01_step_overspeed'):
+            results[-1].update({
+                'speed_domain_violations': int(speed_violation_count[start:stop].sum().item()),
+                'max_joint_speed_rad_s': float(max_joint_speed[start:stop].max().item()),
+            })
 
         if audit_contact_gate:
             results[-1].update({
