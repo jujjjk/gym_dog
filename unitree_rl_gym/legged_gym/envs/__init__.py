@@ -78,6 +78,15 @@ from legged_gym.envs.rs01_omni_v2.rs01_omni_v10_config import (
     Rs01OmniV10RecoveryStrongCfg, Rs01OmniV10RecoveryStrongCfgPPO,
 )
 from legged_gym.envs.rs01_omni_v2.rs01_omni_v10_env import Rs01OmniV10Robot
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v11_config import (
+    Rs01OmniV11HardGateCfg, Rs01OmniV11HardGateCfgPPO,
+    Rs01OmniV11ContinuousCfg, Rs01OmniV11ContinuousCfgPPO,
+)
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v11_env import Rs01OmniV11Robot
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v12_config import Rs01OmniV12WideCfg, Rs01OmniV12WideCfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v12_env import Rs01OmniV12Robot
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v13_config import Rs01OmniV13DirectionCfg, Rs01OmniV13DirectionCfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v13_env import Rs01OmniV13Robot
 from legged_gym.envs.dog import (
     DogRs01Robot,
     DogRs01TrotCfg,
@@ -400,6 +409,22 @@ task_registry.register(
 task_registry.register(
     "rs01_omni_v10_recovery_strong", Rs01OmniV10Robot,
     Rs01OmniV10RecoveryStrongCfg(), Rs01OmniV10RecoveryStrongCfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v11_hard_gate", Rs01OmniV11Robot,
+    Rs01OmniV11HardGateCfg(), Rs01OmniV11HardGateCfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v11_continuous", Rs01OmniV11Robot,
+    Rs01OmniV11ContinuousCfg(), Rs01OmniV11ContinuousCfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v12_wide", Rs01OmniV12Robot,
+    Rs01OmniV12WideCfg(), Rs01OmniV12WideCfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v13_direction", Rs01OmniV13Robot,
+    Rs01OmniV13DirectionCfg(), Rs01OmniV13DirectionCfgPPO(),
 )
 task_registry.register(
     "dog_rs01_balance", DogRs01Robot, DogRs01BalanceCfg(), DogRs01BalanceCfgPPO()

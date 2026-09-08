@@ -8,6 +8,10 @@ from legged_gym.utils import get_args, task_registry
 
 
 SUPPORTED_TASKS = {
+    "rs01_omni_v13_direction",
+    "rs01_omni_v12_wide",
+    "rs01_omni_v11_hard_gate",
+    "rs01_omni_v11_continuous",
     "rs01_omni_v10_recovery",
     "rs01_omni_v10_recovery_strong",
     "rs01_go2_omni_diagonal",

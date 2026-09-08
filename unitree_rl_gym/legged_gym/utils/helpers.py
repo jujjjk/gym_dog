@@ -147,6 +147,7 @@ def get_args():
         {"name": "--march", "action": "store_true", "default": False, "help": "For tasks with an explicit gait-enable observation, use in-place stepping at a zero velocity command."},
         {"name": "--duration_s", "type": float, "default": 30.0, "help": "Playback or evaluation duration [s]."},
         {"name": "--eval_envs", "type": int, "default": 8, "help": "Parallel environments per fixed-command evaluation case."},
+        {"name": "--eval_suite", "type": str, "default": "nominal", "choices": ["nominal", "wide"], "help": "Fixed-command evaluation suite; wide adds V12 speed targets."},
     ]
     # parse arguments
     args = gymutil.parse_arguments(
