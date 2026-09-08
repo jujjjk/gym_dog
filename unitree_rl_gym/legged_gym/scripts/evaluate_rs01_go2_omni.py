@@ -10,6 +10,10 @@ from legged_gym.utils import get_args, task_registry
 
 
 SUPPORTED_TASKS = {
+    "rs01_omni_v13_direction",
+    "rs01_omni_v12_wide",
+    "rs01_omni_v11_hard_gate",
+    "rs01_omni_v11_continuous",
     "rs01_omni_v10_recovery",
     "rs01_omni_v10_recovery_strong",
     "rs01_go2_omni_diagonal",
@@ -41,6 +45,22 @@ COMMAND_CASES = (
     ("yaw_right_0p30", 0.00, 0.00, -0.30, True),
     ("combined", 0.15, 0.06, 0.25, True),
 )
+WIDE_COMMAND_CASES = COMMAND_CASES + (
+    ("forward_0p40", 0.40, 0., 0., True),
+    ("forward_0p60", 0.60, 0., 0., True),
+    ("backward_0p20", -0.20, 0., 0., True),
+    ("backward_0p35", -0.35, 0., 0., True),
+    ("left_0p20", 0., 0.20, 0., True),
+    ("right_0p20", 0., -0.20, 0., True),
+    ("left_0p30", 0., 0.30, 0., True),
+    ("right_0p30", 0., -0.30, 0., True),
+    ("yaw_left_0p70", 0., 0., 0.70, True),
+    ("yaw_right_0p70", 0., 0., -0.70, True),
+    ("yaw_left_1p00", 0., 0., 1.00, True),
+    ("yaw_right_1p00", 0., 0., -1.00, True),
+    ("combined_wide", 0.30, 0.10, 0.25, True),
+    ("combined_reverse_wide", -0.30, -0.10, -0.25, True),
+)
 
 
 def _set_nominal_eval_cfg(env_cfg, duration_s, num_envs):
@@ -70,7 +90,9 @@ def evaluate(args):
     if args.duration_s <= 0.0 or args.eval_envs <= 0:
         raise ValueError("--duration_s and --eval_envs must be positive")
 
-    case_count = len(COMMAND_CASES)
+    suite = getattr(args, "eval_suite", "nominal")
+    command_cases = WIDE_COMMAND_CASES if suite == "wide" else COMMAND_CASES
+    case_count = len(command_cases)
     total_envs = case_count * args.eval_envs
     env_cfg, train_cfg = task_registry.get_cfgs(args.task)
     _set_nominal_eval_cfg(env_cfg, args.duration_s, total_envs)
@@ -87,12 +109,12 @@ def evaluate(args):
     policy = runner.get_inference_policy(device=env.device)
 
     commands = torch.tensor(
-        [[vx, vy, wz] for _, vx, vy, wz, _ in COMMAND_CASES],
+        [[vx, vy, wz] for _, vx, vy, wz, _ in command_cases],
         device=env.device,
         dtype=torch.float,
     ).repeat_interleave(args.eval_envs, dim=0)
     gait_enable = torch.tensor(
-        [gait for _, _, _, _, gait in COMMAND_CASES],
+        [gait for _, _, _, _, gait in command_cases],
         device=env.device,
         dtype=torch.float,
     ).repeat_interleave(args.eval_envs)
@@ -118,6 +140,14 @@ def evaluate(args):
         )
     }
     finite = True
+    audit_contact_gate = hasattr(env.cfg.rewards, "tracking_contact_gate")
+    audit_direction = hasattr(env.cfg.commands, "direction_heading_gain")
+    if audit_direction:
+        samples["direction_target"] = []
+    if audit_contact_gate:
+        for key in ("legal_contact_gate", "tracking_accuracy", "tracking_reward_step",
+                    "contact_quality_reward_step"):
+            samples[key] = []
 
     with torch.no_grad():
         for step in range(steps):
@@ -135,6 +165,21 @@ def evaluate(args):
             finite = finite and bool(torch.isfinite(env.rew_buf).all())
             if step < warmup_steps:
                 continue
+
+            if audit_direction:
+                samples["direction_target"].append(env.direction_reward_target.clone())
+
+            if audit_contact_gate:
+                samples["legal_contact_gate"].append(env.v11_legal_contact_gate.clone())
+                samples["tracking_accuracy"].append(env.v11_tracking_accuracy.clone())
+                # reward_scales already include policy dt; these are actual
+                # per-step contributions, not bare configuration weights.
+                samples["tracking_reward_step"].append(
+                    env.v11_tracking_reward * env.reward_scales["tracking_command_velocity"]
+                )
+                samples["contact_quality_reward_step"].append(
+                    env.v11_contact_quality_reward * env.reward_scales["phase_two_contact_quality"]
+                )
 
             contact = env.get_foot_contact_mask()
             desired = env._desired_contact_mask()
@@ -170,7 +215,7 @@ def evaluate(args):
 
     stacked = {key: torch.stack(value) for key, value in samples.items()}
     results = []
-    for case_index, (name, vx, vy, wz, gait) in enumerate(COMMAND_CASES):
+    for case_index, (name, vx, vy, wz, gait) in enumerate(command_cases):
         start = case_index * args.eval_envs
         stop = start + args.eval_envs
         linear = stacked["base_lin_vel"][:, start:stop]
@@ -256,7 +301,33 @@ def evaluate(args):
             }
         )
 
+        if audit_contact_gate:
+            results[-1].update({
+                "legal_contact_gate_zero_ratio": float(
+                    (stacked["legal_contact_gate"][:, start:stop] == 0).float().mean().item()
+                ),
+                "mean_ungated_velocity_accuracy": float(
+                    stacked["tracking_accuracy"][:, start:stop].mean().item()
+                ),
+                "mean_tracking_reward_per_step": float(
+                    stacked["tracking_reward_step"][:, start:stop].mean().item()
+                ),
+                "mean_contact_quality_reward_per_step": float(
+                    stacked["contact_quality_reward_step"][:, start:stop].mean().item()
+                ),
+            })
+
+        if audit_direction:
+            target = stacked["direction_target"][:, start:stop]
+            results[-1].update({
+                "mean_effective_command_vx_vy_wz": target.mean(dim=(0, 1)).tolist(),
+                "effective_vx_rmse_m_s": _rms(linear[:, :, 0] - target[:, :, 0]),
+                "effective_vy_rmse_m_s": _rms(linear[:, :, 1] - target[:, :, 1]),
+                "effective_wz_rmse_rad_s": _rms(yaw_rate - target[:, :, 2]),
+            })
+
     report = {
+        "eval_suite": suite,
         "task": args.task,
         "load_run": args.load_run,
         "checkpoint": args.checkpoint,
