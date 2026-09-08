@@ -886,6 +886,15 @@ class Rs01Go2StraightRobot(LeggedRobot):
     def _initialize_rs01_actuator(self):
         motor_cfg = self.cfg.rs01_actuator
         shape = (self.num_envs, self.num_dof)
+        self.rs01_response_update_dt_s = float(getattr(
+            motor_cfg, "response_update_dt_s", self.sim_params.dt))
+        ratio = self.rs01_response_update_dt_s / float(self.sim_params.dt)
+        self.rs01_response_substeps = int(round(ratio))
+        if self.rs01_response_substeps < 1 or abs(ratio - self.rs01_response_substeps) > 1e-6:
+            raise ValueError("RS01 response period must be an integer number of feedback steps")
+        if self.cfg.control.decimation % self.rs01_response_substeps:
+            raise ValueError("RS01 policy boundary must align with the response clock")
+        self.rs01_feedback_tick = 0
 
         action_scale_by_joint = getattr(
             self.cfg.control,
@@ -922,7 +931,7 @@ class Rs01Go2StraightRobot(LeggedRobot):
             motor_cfg.observed_closed_loop_delay_s
         )
         self.rs01_nominal_delay_steps = torch.round(
-            observed_delay_s / float(self.sim_params.dt)
+            observed_delay_s / self.rs01_response_update_dt_s
         ).to(dtype=torch.long)
         randomize_actuator = bool(getattr(
             self.cfg.domain_rand,
@@ -1103,10 +1112,8 @@ class Rs01Go2StraightRobot(LeggedRobot):
             )
         return super().step(actions)
 
-    def _compute_torques(self, actions):
-        if not self._rs01_actuator_ready:
-            return super()._compute_torques(actions)
-
+    def _advance_rs01_response(self):
+        """Identified slow response clock, independent of PD feedback resolution."""
         self.rs01_target_delay_buffer = torch.roll(
             self.rs01_target_delay_buffer, shifts=1, dims=0
         )
@@ -1135,8 +1142,15 @@ class Rs01Go2StraightRobot(LeggedRobot):
             self.default_dof_pos,
             self.rs01_response_gain,
             self.rs01_time_constant_s,
-            self.sim_params.dt,
+            self.rs01_response_update_dt_s,
         )
+
+    def _compute_torques(self, actions):
+        if not self._rs01_actuator_ready:
+            return super()._compute_torques(actions)
+        if self.rs01_feedback_tick % self.rs01_response_substeps == 0:
+            self._advance_rs01_response()
+        self.rs01_feedback_tick += 1
         (
             self.raw_pd_torques,
             self.motor_electromagnetic_torques,

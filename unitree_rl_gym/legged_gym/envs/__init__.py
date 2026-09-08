@@ -87,6 +87,12 @@ from legged_gym.envs.rs01_omni_v2.rs01_omni_v12_config import Rs01OmniV12WideCfg
 from legged_gym.envs.rs01_omni_v2.rs01_omni_v12_env import Rs01OmniV12Robot
 from legged_gym.envs.rs01_omni_v2.rs01_omni_v13_config import Rs01OmniV13DirectionCfg, Rs01OmniV13DirectionCfgPPO
 from legged_gym.envs.rs01_omni_v2.rs01_omni_v13_env import Rs01OmniV13Robot
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v14_config import Rs01OmniV14ActuatorCfg, Rs01OmniV14ActuatorCfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v14_env import Rs01OmniV14Robot
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v15_config import Rs01OmniV15SupportCfg, Rs01OmniV15SupportCfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v15_env import Rs01OmniV15Robot
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v15_env import Rs01OmniV15StandRobot
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v15_config import Rs01OmniV15StandCfg, Rs01OmniV15StandCfgPPO
 from legged_gym.envs.dog import (
     DogRs01Robot,
     DogRs01TrotCfg,
@@ -211,6 +217,8 @@ from legged_gym.envs.g1.g1_config import G1RoughCfg, G1RoughCfgPPO
 from legged_gym.envs.g1.g1_env import G1Robot
 from .base.legged_robot import LeggedRobot
 from legged_gym.utils.task_registry import task_registry as task_registry
+task_registry.register('rs01_omni_v15_support', Rs01OmniV15Robot, Rs01OmniV15SupportCfg(), Rs01OmniV15SupportCfgPPO())
+task_registry.register('rs01_omni_v15_stand_phase', Rs01OmniV15StandRobot, Rs01OmniV15StandCfg(), Rs01OmniV15StandCfgPPO())
 
 task_registry.register("go2", LeggedRobot, GO2RoughCfg(), GO2RoughCfgPPO())
 task_registry.register(
@@ -425,6 +433,10 @@ task_registry.register(
 task_registry.register(
     "rs01_omni_v13_direction", Rs01OmniV13Robot,
     Rs01OmniV13DirectionCfg(), Rs01OmniV13DirectionCfgPPO(),
+)
+task_registry.register(
+    "rs01_omni_v14_actuator_parity", Rs01OmniV14Robot,
+    Rs01OmniV14ActuatorCfg(), Rs01OmniV14ActuatorCfgPPO(),
 )
 task_registry.register(
     "dog_rs01_balance", DogRs01Robot, DogRs01BalanceCfg(), DogRs01BalanceCfgPPO()
