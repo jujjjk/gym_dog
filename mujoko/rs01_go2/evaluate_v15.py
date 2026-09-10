@@ -16,7 +16,12 @@ def main():
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--full', action='store_true')
     p.add_argument('--transitions', action='store_true')
+    p.add_argument('--sensor-sync', action='store_true')
     args=p.parse_args(); args.output.mkdir(parents=True,exist_ok=True)
+    if args.sensor_sync:
+        from sim2sim_sensor_sync import SensorSyncSim
+        global V15Sim
+        V15Sim = SensorSyncSim
     torch.set_num_threads(1)
     if args.transitions:
         evaluate_transitions(args)
