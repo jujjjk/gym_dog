@@ -30,7 +30,8 @@ setup(
             + glob("resource/fanfan_realdata_best.*")
             + glob("resource/model_930_rs01_heading52.*")
             + glob("resource/model_1850_rs01_path54.*")
-            + glob("resource/model_1950_rs01_estimator_parity.*"),
+            + glob("resource/model_1950_rs01_estimator_parity.*")
+            + glob("resource/stand_only_6850.*"),
         ),
     ],
     install_requires=["setuptools"],
@@ -42,6 +43,7 @@ setup(
     extras_require={"test": ["pytest"]},
     entry_points={
         "console_scripts": [
+            "mydog_rs01_model6850_shadow = mydog_policy.rs01_model6850_shadow_node:main",
             "mydog_policy_node = mydog_policy.mydog_policy_node:main",
             "mydog_check_5100_start_pose = mydog_policy.check_5100_start_pose:main",
             "mydog_check_force_coord_start_pose = mydog_policy.check_force_coord_start_pose:main",
