@@ -49,6 +49,8 @@ class ImuSerialInterface:
     3. 后面 policy_node 或 imu_ros2_node 都可以调用这个接口。
     """
 
+    vendor_type = YbImuSerial
+
     def __init__(
         self,
         port: str = "/dev/myimu",
@@ -109,7 +111,7 @@ class ImuSerialInterface:
         self._install_thread_exception_watchdog()
         before = {thread.ident for thread in threading.enumerate()}
         try:
-            self.imu = YbImuSerial(self.port, debug=self.debug)
+            self.imu = self.vendor_type(self.port, debug=self.debug)
 
             # 厂家串口模式需要后台线程解析数据帧。
             self.imu.create_receive_threading()
