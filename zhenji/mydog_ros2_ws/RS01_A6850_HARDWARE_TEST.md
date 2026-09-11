@@ -53,6 +53,8 @@ python3 -m pytest \
 ```
 
 以上测试把 ROS、HTTP 和串口替换成模拟对象，不实例化真实 ROS 控制节点或操作硬件。
+离线验证器输出的 `motor_send_supported=false` 表示该验证器只做推理；
+真实发送由新的 `rs01_model6850.launch.py` 入口负责，并非由验证器负责。
 原 MuJoCo 550 帧对比测试需要训练仓库场景资产，不能当成 Jetson 部署包独立测试运行。
 
 ## 2. 只读干跑（此步由操作者执行，打开 IMU，不使能电机）

@@ -69,10 +69,11 @@ def make_node(monkeypatch, tmp_path):
         def __init__(self, **kw):
             self.owner = None
             self.stale = self.offline = False
+            self.offset = np.zeros(12)
 
         def get_latest(self):
             n = self.owner
-            q = n.mapper.policy_target_to_real(n.contract.default)
+            q = n.mapper.policy_target_to_real(n.contract.default + self.offset)
             return NS(valid=True, stamp=clock.t - (.1 if self.stale else .001),
                       age_ms=np.ones(12), online=np.full(12, not self.offline),
                       error_code=np.zeros(12), temp=np.full(12, 29.),
@@ -159,12 +160,16 @@ def test_omni_start_and_zero_return_use_live_stand_ramp(make_node, axis, value):
     assert node.core.actor.steps > 0
     idx = {'x': 0, 'y': 1, 'yaw': 2}[axis]
     assert node.core.actor.command[idx] == pytest.approx(value)
+    # Stop from a pose different from both default and the old stand target.
+    node.motor.offset.fill(.05)
     node.command_callback(Twist())
     advance(node, clock, 1)
     assert node.mode == 'soft_hold'
     assert not node.trial.armed
     assert not any('/api/stop' in url for url, _ in calls)
-    np.testing.assert_allclose(node.stand_target_policy, node.contract.default)
+    expected = node.contract.default + .05 - node.startup_rate * node.contract.policy_dt
+    np.testing.assert_allclose(node.stand_target_policy, expected, atol=1e-7)
+    node.motor.offset.fill(0.)
     advance(node, clock, 110)
     assert node.mode == 'ready'
     node.command_callback(msg)
