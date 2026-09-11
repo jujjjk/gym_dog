@@ -43,6 +43,9 @@ setup(
     extras_require={"test": ["pytest"]},
     entry_points={
         "console_scripts": [
+            "mydog_rs01_model6850_node = mydog_policy.rs01_model6850_node:main",
+            "mydog_model6850_command = mydog_policy.rs01_model6850_command:main",
+            "mydog_model6850_omni_sequence = mydog_policy.rs01_model6850_omni_sequence:main",
             "mydog_rs01_model6850_shadow = mydog_policy.rs01_model6850_shadow_node:main",
             "mydog_policy_node = mydog_policy.mydog_policy_node:main",
             "mydog_check_5100_start_pose = mydog_policy.check_5100_start_pose:main",

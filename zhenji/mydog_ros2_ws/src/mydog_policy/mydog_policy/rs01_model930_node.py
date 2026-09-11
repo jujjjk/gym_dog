@@ -47,6 +47,8 @@ class Rs01Model930Node(Node):
     strict_diagonal_odometry = False
     heading_consistency_enabled = False
     soft_inhibit_enabled = False
+    command_topic = "/cmd_vel"
+    imu_interface_type = ImuSerialInterface
 
     def __init__(self):
         super().__init__(self.node_name)
@@ -251,9 +253,13 @@ class Rs01Model930Node(Node):
                 "Walk-inhibit hold durations must be positive"
             )
 
+        self._validate_deployment_parameters()
         providers = ["CPUExecutionProvider"]
+        session_options = ort.SessionOptions()
+        session_options.intra_op_num_threads = 1
+        session_options.inter_op_num_threads = 1
         self.session = ort.InferenceSession(
-            str(self.onnx_path), providers=providers
+            str(self.onnx_path), sess_options=session_options, providers=providers
         )
         self.contract = self.contract_type.from_onnx_session(
             self.session,
@@ -309,7 +315,7 @@ class Rs01Model930Node(Node):
             async_poll=True,
             poll_hz=50.0,
         )
-        self.imu = ImuSerialInterface(
+        self.imu = self.imu_interface_type(
             port=str(self.get_parameter("imu_port").value),
             read_hz=100.0,
         )
@@ -456,7 +462,7 @@ class Rs01Model930Node(Node):
             10,
         )
         self.sub_cmd = self.create_subscription(
-            Twist, "/cmd_vel", self.command_callback, 10
+            Twist, self.command_topic, self.command_callback, 1
         )
         self.csv_handle = None
         self.csv_writer = None
@@ -491,6 +497,15 @@ class Rs01Model930Node(Node):
             f"reversed_ids={[hex(x) for x in (0x11,0x13,0x21,0x22,0x32,0x43)]} | "
             f"torque_limit={self.active_torque_limit:.1f}Nm"
         )
+
+    def _validate_deployment_parameters(self):
+        pass
+
+    def _command_vector(self):
+        return np.asarray([self.cmd_vx, 0.0, 0.0], dtype=np.float32)
+
+    def _extra_status(self):
+        return {}
 
     def command_callback(self, message: Twist):
         values = np.asarray(
@@ -1017,9 +1032,7 @@ class Rs01Model930Node(Node):
                     ],
                     base_angular_velocity=self.corrected_gyro_rad_s,
                     projected_gravity=imu.projected_gravity,
-                    command=np.asarray(
-                        [self.cmd_vx, 0.0, 0.0], dtype=np.float32
-                    ),
+                    command=self._command_vector(),
                     q_policy=q_policy,
                     dq_policy=dq_policy,
                     yaw=yaw,
@@ -1257,6 +1270,7 @@ class Rs01Model930Node(Node):
                     self.gyro_bias_rad_s[2]
                 ),
             })
+        status.update(self._extra_status())
         message = String()
         message.data = json_dumps_compact(status)
         self.pub_status.publish(message)
