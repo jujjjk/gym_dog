@@ -20,9 +20,9 @@ def main(args=None):
     opts = parser.parse_args(args)
     values = (opts.vx, opts.vy, opts.wz)
     if (not all(math.isfinite(v) for v in (*values, opts.seconds)) or
-            not 0 < opts.seconds <= 4. or
-            any(abs(v) > cap for v, cap in zip(values, (.20, .15, .30)))):
-        parser.error('Limits: |vx|<=0.20, |vy|<=0.15, |wz|<=0.30, 0<seconds<=4')
+            not 0 < opts.seconds <= 6. or
+            any(abs(v) > cap for v, cap in zip(values, (.30, .20, .30)))):
+        parser.error('Limits: |vx|<=0.30, |vy|<=0.20, |wz|<=0.30, 0<seconds<=6')
     rclpy.init()
     node = rclpy.create_node('model6850_single_trial')
     pub = node.create_publisher(Twist, '/mydog/model6850/cmd_vel', 1)

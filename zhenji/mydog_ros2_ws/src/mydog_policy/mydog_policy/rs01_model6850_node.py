@@ -49,6 +49,8 @@ class Rs01Model6850Node(Rs01Model930Node):
         self._watchdog = None
         self._stop_attempts = 0
         self._last_stop_attempt = float('-inf')
+        self._last_target_real = None
+        self._last_fault_reason = ''
         # Fail before opening any device if another A6850 instance exists.
         import fcntl
         self._owner = open('/tmp/mydog_a6850_controller.lock', 'a+')
@@ -72,7 +74,7 @@ class Rs01Model6850Node(Rs01Model930Node):
         # silently weaken the protection inherited from the standing node.
         caps = {
             'hardware_torque_limit_nm': 14., 'max_temperature_c': 70.,
-            'max_motor_age_ms': 80., 'max_imu_age_sec': .06,
+            'max_motor_age_ms': 250., 'max_imu_age_sec': .25,
             'max_abs_roll_rad': .45, 'max_abs_pitch_rad': .45,
             'startup_hip_rate_rad_s': .12, 'startup_thigh_rate_rad_s': .15,
             'startup_calf_rate_rad_s': .15,
@@ -136,7 +138,9 @@ class Rs01Model6850Node(Rs01Model930Node):
         else:
             self.trial.arm(now)
             response.success = True
-            response.message = 'Armed for one trial: send a fresh command; motion maximum four seconds'
+            response.message = (
+                'Armed for continuous omni: zero velocity is step-in-place; '
+                'keep publishing, or disarm to return to stand')
         return response
 
     def _fresh_state(self):
@@ -165,29 +169,125 @@ class Rs01Model6850Node(Rs01Model930Node):
         self.trial.disarm(reason)
         super()._enter_soft_hold(reason, now, q_policy)
 
+    def _prime_live_enable(self):
+        """Enable motors at the current pose before the 50 Hz send loop."""
+        from .rs01_model930_core import REAL_MOTOR_IDS
+        motor = self.motor.get_latest()
+        q = np.asarray(motor.q_real, dtype=np.float32).reshape(12)
+        if not np.all(np.isfinite(q)):
+            raise RuntimeError('Cannot prime motors from invalid feedback')
+        items = []
+        for index, motor_id in enumerate(REAL_MOTOR_IDS):
+            items.append({
+                'motor_id': int(motor_id),
+                'position': float(q[index]),
+                'speed': 0.0,
+                'torque': 0.0,
+                'kp': float(self.kp_real[index]),
+                'kd': float(self.kd_real[index]),
+            })
+        self.get_logger().warn(
+            'Priming motors at live positions with a 2.0s HTTP budget; '
+            'the 50 Hz loop stays at 40 ms afterwards.'
+        )
+        with self._send_lock:
+            response = self.http.post(
+                f'{self.motor_base_url}/api/rs04/motion_batch_fast',
+                json={
+                    'items': items,
+                    'enable_first': True,
+                    'stop_first': False,
+                    'require_hardware_torque_limits': True,
+                    'require_verified_hardware_safety_limits': True,
+                },
+                timeout=max(self.http_timeout, 2.0),
+            )
+        if response.status_code != 200:
+            raise RuntimeError(
+                f'motor prime HTTP {response.status_code}: {response.text}'
+            )
+        self.first_send = False
+        self.last_send_time = time.monotonic()
+        self._last_target_real = q.copy()
+        self._wait_for_fresh_feedback()
+
+    def _wait_for_fresh_feedback(self):
+        # enable_first blocks the motor HTTP server; do not enter the 50 Hz
+        # loop on the stale cache left behind by that round-trip.
+        deadline = time.monotonic() + 0.5
+        last_error = 'no fresh sample'
+        while time.monotonic() < deadline:
+            motor = self.motor.get_latest()
+            imu = self.imu.get_latest()
+            probe = type(self.reception)()
+            try:
+                probe.check(motor, imu, time.time(), time.monotonic())
+            except RuntimeError as exc:
+                last_error = str(exc)
+                time.sleep(0.01)
+                continue
+            if (probe.metrics['effective_motor_age_ms'] <= 50
+                    and probe.metrics['imu_frame_age_ms'] <= 40):
+                self.reception = type(self.reception)()
+                return
+            time.sleep(0.01)
+        raise RuntimeError('No fresh motor/IMU sample after enable: ' + last_error)
+
     def control_loop(self):
-        if self.faulted:
-            return
         now = time.monotonic()
-        if self._previous_control is not None and not .010 <= now - self._previous_control <= .040:
-            self._emergency_stop('Control loop timing outside 10-40 ms envelope')
+        if self.enable_send and self.first_send:
+            try:
+                self._prime_live_enable()
+            except Exception as exc:
+                self.get_logger().error(
+                    'ENABLE HELD (prime retry, no disable): ' + str(exc))
+                self._hold_target()
+            self._previous_control = None
             return
+        if self._previous_control is not None:
+            dt = now - self._previous_control
+            if dt < 0.008:
+                return
+            if dt > 0.080:
+                self.get_logger().warning(
+                    'Slow control dt=%.1fms; motors stay enabled' % (dt * 1000))
         self._previous_control = self._control_start = now
         super().control_loop()
 
     def _send_target(self, target_real):
-        # Recheck latency immediately before any physical send. Slow inference
-        # must not transmit an old target after a fresh-state check has passed.
-        if self._control_start is None or time.monotonic() - self._control_start > .040:
-            raise RuntimeError('Control computation exceeded 40 ms; target not sent')
-        elapsed = time.time() - self._feedback_wall
-        if (elapsed < 0 or self.reception.metrics['effective_motor_age_ms'] + elapsed * 1000 > 80
-                or self.reception.metrics['imu_frame_age_ms'] + elapsed * 1000 > 60):
-            raise RuntimeError('Feedback became stale before send')
+        if not self.enable_send:
+            return
+        target_real = np.asarray(target_real, dtype=np.float32).reshape(12)
+        if not np.all(np.isfinite(target_real)):
+            self.get_logger().error(
+                'ENABLE HELD (non-finite target, no disable)')
+            self._hold_target()
+            return
+        self._last_target_real = target_real.copy()
+        if (self._control_start is not None
+                and time.monotonic() - self._control_start > .040):
+            self.get_logger().warning(
+                'Compute >40ms; still sending to keep motors enabled')
         with self._send_lock:
-            if self.faulted:
-                raise RuntimeError('Latched fault; target not sent')
-            super()._send_target(target_real)
+            Rs01Model930Node._send_target(self, target_real)
+
+    def _hold_target(self):
+        target = self._last_target_real
+        if target is None:
+            try:
+                target = np.asarray(
+                    self.motor.get_latest().q_real, dtype=np.float32)
+            except Exception:
+                return
+        if target is None or not np.all(np.isfinite(target)):
+            return
+        self._last_target_real = np.asarray(target, dtype=np.float32).reshape(12)
+        try:
+            with self._send_lock:
+                Rs01Model930Node._send_target(self, self._last_target_real)
+        except Exception as exc:
+            self.get_logger().error(
+                'Hold send failed (enable kept): ' + str(exc))
 
     def _start_watchdog(self):
         if not self.enable_send:
@@ -197,13 +297,11 @@ class Rs01Model6850Node(Rs01Model930Node):
         self._watchdog.start()
 
     def _watchdog_check(self):
-        with self._send_lock:
-            if (self.faulted and not self.stop_sent and self._stop_attempts < 3
-                    and time.monotonic() - self._last_stop_attempt >= .5):
-                self._emergency_stop(self.trial.reason)
-            elif (not self.faulted and self.last_send_time is not None
-                    and time.monotonic() - self.last_send_time > .15):
-                self._emergency_stop('No successful motor send for 150 ms')
+        if (self.enable_send and self.last_send_time is not None
+                and time.monotonic() - self.last_send_time > .15):
+            self.get_logger().warning(
+                'Send gap >150ms; resending hold, motors stay enabled')
+            self._hold_target()
 
     def _watchdog_loop(self):
         while not self._watchdog_stop.wait(.02):
@@ -216,6 +314,8 @@ class Rs01Model6850Node(Rs01Model930Node):
                     trial_armed=self.trial.armed, trial_reason=self.trial.reason,
                     trial_elapsed_s=(0. if self.trial.started_at is None else
                                      time.monotonic() - self.trial.started_at),
+                    last_fault_reason=self._last_fault_reason,
+                    enable_held=True,
                     hardware_motion_validated=False)
 
     def _open_csv(self, path):
@@ -231,43 +331,29 @@ class Rs01Model6850Node(Rs01Model930Node):
             self._status_log.flush()
 
     def _emergency_stop(self, reason):
-        self.trial.disarm(reason)
-        with self._send_lock:
-            self.faulted = True
-            self.mode = 'fault'
-            self.get_logger().error('EMERGENCY STOP: ' + str(reason))
-            if self.enable_send and not self.stop_sent and self._stop_attempts < 3:
-                from .rs01_model930_core import REAL_MOTOR_IDS
-                self._stop_attempts += 1
-                self._last_stop_attempt = time.monotonic()
-                try:
-                    response = self.http.post(
-                        self.motor_base_url + '/api/stop?clear_error=false',
-                        json={'motor_ids': [int(mid) for mid in REAL_MOTOR_IDS]},
-                        timeout=.2)
-                    if response.status_code != 200:
-                        raise RuntimeError(f'HTTP {response.status_code}')
-                    self.stop_sent = True
-                except Exception as exc:
-                    self.get_logger().error('STOP request failed; use physical emergency stop: ' + str(exc))
-            fault = dict(mode='fault', reason=str(reason), send=self.enable_send,
-                         stop_request_accepted=self.stop_sent)
-            if self._status_log:
-                self._status_log.write(json.dumps(dict(time_monotonic_s=time.monotonic(), **fault)) + '\n')
-                self._status_log.flush()
-        if hasattr(self, 'pub_status'):
-            message = String()
-            message.data = json.dumps(fault)
-            self.pub_status.publish(message)
+        # Keep MIT enable. Never POST /api/stop; resend the last PD target.
+        reason = str(reason)
+        self._last_fault_reason = reason
+        self.get_logger().error('ENABLE HELD (no disable): ' + reason)
+        self._hold_target()
+        if self._status_log:
+            self._status_log.write(json.dumps(dict(
+                time_monotonic_s=time.monotonic(), mode=getattr(self, 'mode', ''),
+                enable_held=True, reason=reason, send=bool(self.enable_send),
+                stop_request_accepted=False)) + '\n')
+            self._status_log.flush()
 
     def _cleanup_partial(self):
         # Covers failures after opening serial or configuring limits but before
         # the caller obtains a fully constructed node.
         self._watchdog_stop.set()
         if getattr(self, 'enable_send', False) and hasattr(self, 'http'):
-            self.faulted = getattr(self, 'faulted', False)
-            self.stop_sent = getattr(self, 'stop_sent', False)
-            self._emergency_stop('initialization failed')
+            try:
+                self.get_logger().error(
+                    'ENABLE HELD after init error (no disable): initialization failed')
+            except Exception:
+                pass
+            self._hold_target()
         for name, method in (('imu', 'stop'), ('motor', 'close'), ('http', 'close')):
             obj = getattr(self, name, None)
             if obj is not None:

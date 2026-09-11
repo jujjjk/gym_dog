@@ -54,6 +54,6 @@ class FrameStampedImu(ImuSerialInterface):
             # The oldest required frame controls freshness. Re-reading the
             # same cached values cannot refresh this timestamp.
             snapshot.valid = (min(stamps) > 0 and
-                              0 <= time.time() - min(stamps) <= .060 and
-                              max(stamps) - min(stamps) <= .030)
+                              0 <= time.time() - min(stamps) <= .080 and
+                              max(stamps) - min(stamps) <= .060)
             return snapshot

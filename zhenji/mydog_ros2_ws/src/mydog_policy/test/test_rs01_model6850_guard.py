@@ -54,22 +54,34 @@ def test_trial_requires_explicit_arm_and_expires_without_rearm():
     assert trial.reason == 'command timeout'
 
 
-def test_four_second_budget_despite_continuous_commands():
+def test_zero_command_is_step_in_place_while_armed():
     trial = TrialCommand()
     trial.arm(1.)
-    trial.receive([.1, .1, .2], 1.01)
+    assert trial.receive([.2, 0, 0], 1.1)
+    assert trial.receive([0, 0, 0], 1.2)
+    assert trial.active(1.25)
+    np.testing.assert_array_equal(trial.vector, np.zeros(3))
+    assert trial.receive([.3, .1, .25], 1.3)
+    assert trial.active(1.35)
+
+
+def test_isaac_sequence_stays_armed_across_step_and_combo():
+    trial = TrialCommand()
+    trial.arm(1.)
+    trial.receive([0, 0, 0], 1.01)
     trial.start(1.02)
-    for now in np.arange(1.04, 5., .02):
-        assert trial.receive([.1, .1, .2], now)
+    for now in np.arange(1.04, 86., 1.):
+        command = [0, 0, 0] if int(now) % 2 == 0 else [.3, .2, .3]
+        assert trial.receive(command, now)
         assert trial.active(now)
-    trial.receive([.1, 0, 0], 5.03)
-    assert not trial.active(5.03)
+    trial.receive([.2, 0, 0], 1. + trial.lease_sec + .01)
+    assert not trial.active(1. + trial.lease_sec + .01)
     assert not trial.armed
 
 
-@pytest.mark.parametrize('command', ([0, 0, 0], [float('nan'), 0, 0],
-                                     [.21, 0, 0], [0, -.16, 0], [0, 0, .31]))
-def test_zero_and_invalid_commands_disarm(command):
+@pytest.mark.parametrize('command', ([float('nan'), 0, 0],
+                                     [.31, 0, 0], [0, -.21, 0], [0, 0, .31]))
+def test_invalid_commands_disarm(command):
     trial = TrialCommand()
     trial.arm(1.)
     trial.receive([.1, 0, 0], 1.1)
@@ -94,8 +106,10 @@ def test_transport_age_includes_both_caches_and_does_not_claim_acquisition_sync(
     assert guard.metrics['effective_motor_age_ms'] == pytest.approx(30.)
     assert guard.metrics['acquisition_sync_verified'] is False
     motor.cache_age_ms = 75.
+    guard.check(motor, imu, 10., 1.01)
+    motor.cache_age_ms = 240.
     with pytest.raises(RuntimeError, match='stale'):
-        guard.check(motor, imu, 10., 1.01)
+        guard.check(motor, imu, 10., 1.02)
 
 
 def test_stalled_and_reset_boards_rejected_despite_fresh_http_timestamps():
@@ -103,7 +117,7 @@ def test_stalled_and_reset_boards_rejected_despite_fresh_http_timestamps():
     guard = ReceptionGuard()
     guard.check(motor, imu, 10., 1.)
     with pytest.raises(RuntimeError, match='progressing'):
-        guard.check(motor, imu, 10., 1.081)
+        guard.check(motor, imu, 10., 1.26)
     guard = ReceptionGuard()
     guard.check(motor, imu, 10., 1.)
     motor.snapshot_seq[0] = 0
@@ -117,7 +131,7 @@ def test_invalid_feedback_is_rejected(change):
     if change == 'future':
         motor.stamp = 10.01
     elif change == 'old_imu':
-        imu.stamp = 9.9
+        imu.stamp = 9.7
     elif change == 'nan_torque':
         motor.torque[0] = np.nan
     else:

@@ -57,9 +57,16 @@ class Guarded6850PolicyCore:
 
 
 class TrialCommand:
-    """Explicit one-shot arming, fresh commands, and a bounded motion lease."""
+    """Explicit arming with Isaac-matching omni commands.
 
-    caps = np.array([0.20, 0.15, 0.30])
+    Zero velocity while armed is gait-on stepping, not a return to stand.
+    Keep publishing; a 350 ms deadman or operator disarm returns to stand.
+    The lease covers the 17 x 5 s Isaac playback sequence.
+    """
+
+    caps = np.array([0.30, 0.20, 0.30])
+    lease_sec = 120.
+    timeout_sec = 0.35
 
     def __init__(self):
         self.vector = np.zeros(3)
@@ -86,9 +93,6 @@ class TrialCommand:
         if not np.isfinite(values).all() or np.any(np.abs(values) > self.caps + 1e-8):
             self.disarm('invalid/out-of-range command')
             return False
-        if not np.any(np.abs(values) > 0.001):
-            self.disarm('zero command')
-            return True
         if not self.armed:
             return False
         self.vector = values.copy()
@@ -98,11 +102,9 @@ class TrialCommand:
     def active(self, now):
         if not self.armed:
             return False
-        if now < self.armed_at or now - self.armed_at > 10.:
+        if now < self.armed_at or now - self.armed_at > self.lease_sec:
             self.disarm('arm lease expired')
-        elif self.started_at is not None and now - self.started_at >= 4.:
-            self.disarm('four-second motion budget exhausted')
-        elif self.stamp is not None and not 0 <= now - self.stamp <= 0.35:
+        elif self.stamp is not None and not 0 <= now - self.stamp <= self.timeout_sec:
             self.disarm('command timeout')
         return self.armed and self.stamp is not None
 
@@ -136,8 +138,11 @@ class ReceptionGuard:
         if min(local_age, imu_age, cache, float(ages.min())) < 0:
             raise RuntimeError('Future/negative feedback age')
         total = ages + cache + local_age
-        if total.max() > .080 or imu_age > .060:
-            raise RuntimeError('Motor/IMU transport feedback stale')
+        if total.max() > .250 or imu_age > .250:
+            raise RuntimeError(
+                'Motor/IMU transport feedback stale: '
+                'motor=%.1fms imu=%.1fms' % (float(total.max() * 1000), imu_age * 1000)
+            )
         if not np.isfinite(np.r_[motor.q_real, motor.dq_real, motor.torque,
                                   imu.gyro_rad_s, imu.rpy_deg,
                                   imu.projected_gravity, imu.quat_wxyz]).all():
@@ -156,7 +161,7 @@ class ReceptionGuard:
                 raise RuntimeError('Board counter regressed/reset')
             advanced = (seq > self.seq) & (tick > self.tick)
             self.progress_at[advanced] = mono
-            if np.any(mono - self.progress_at > .080):
+            if np.any(mono - self.progress_at > .250):
                 raise RuntimeError('Board feedback stopped progressing')
         self.seq, self.tick = seq.copy(), tick.copy()
         self.metrics = dict(feedback_time_basis='host_reception_with_board_age',

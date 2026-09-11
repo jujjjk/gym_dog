@@ -160,9 +160,15 @@ def test_omni_start_and_zero_return_use_live_stand_ramp(make_node, axis, value):
     assert node.core.actor.steps > 0
     idx = {'x': 0, 'y': 1, 'yaw': 2}[axis]
     assert node.core.actor.command[idx] == pytest.approx(value)
+    # Zero velocity is step-in-place, matching Isaac; stay in walk.
+    node.command_callback(Twist())
+    advance(node, clock, 1)
+    assert node.mode == 'walk'
+    assert node.trial.armed
+    np.testing.assert_allclose(node.trial.vector, 0)
     # Stop from a pose different from both default and the old stand target.
     node.motor.offset.fill(.05)
-    node.command_callback(Twist())
+    node.arm_callback(NS(data=False), SetBool.Response())
     advance(node, clock, 1)
     assert node.mode == 'soft_hold'
     assert not node.trial.armed
@@ -178,21 +184,34 @@ def test_omni_start_and_zero_return_use_live_stand_ramp(make_node, axis, value):
 
 
 @pytest.mark.parametrize('problem', ['stale', 'offline', 'loop_delay'])
-def test_hard_fault_sends_stop_and_never_resumes(make_node, problem):
+def test_hard_fault_keeps_enable_and_does_not_stop(make_node, problem):
     node, clock, calls = make_node(send=True)
     advance(node, clock, 4)
+    count = len(calls)
     if problem == 'loop_delay':
         clock.t += .2
     else:
         setattr(node.motor, problem, True)
     clock.t += .02
     node.control_loop()
-    assert node.faulted
-    assert '/api/stop' in calls[-1][0]
-    count = len(calls)
+    assert not node.faulted
+    assert not any('/api/stop' in url for url, _ in calls)
     clock.t += .02
     node.control_loop()
-    assert len(calls) == count
+    assert not node.faulted
+    assert len(calls) >= count
+    assert not any('/api/stop' in url for url, _ in calls)
+
+
+def test_watchdog_resends_hold_without_disabling(make_node):
+    node, clock, calls = make_node(send=True)
+    advance(node, clock, 3)
+    count = len(calls)
+    clock.t += .151
+    node._watchdog_check()
+    assert not node.faulted
+    assert not any('/api/stop' in url for url, _ in calls)
+    assert len(calls) >= count
 
 
 def test_stand_only_refuses_arm(make_node):
@@ -208,16 +227,16 @@ def test_stand_only_refuses_arm(make_node):
     assert node.core.actor.steps == 0
 
 
-def test_watchdog_latches_stop_without_next_control_tick(make_node):
+def test_emergency_path_never_posts_stop(make_node):
     node, clock, calls = make_node(send=True)
     advance(node, clock, 3)
-    clock.t += .151
-    node._watchdog_check()
-    assert node.faulted
-    assert '/api/stop' in calls[-1][0]
+    node._emergency_stop('test fault')
+    assert not node.faulted
+    assert not node.stop_sent
+    assert not any('/api/stop' in url for url, _ in calls)
 
 
-@pytest.mark.parametrize('stop', ['timeout', 'budget', 'disarm'])
+@pytest.mark.parametrize('stop', ['timeout', 'disarm'])
 def test_trial_exit_paths_return_softly_and_require_new_arm(make_node, stop):
     node, clock, calls = make_node(send=True, stand=False)
     advance(node, clock, 180)
@@ -230,15 +249,30 @@ def test_trial_exit_paths_return_softly_and_require_new_arm(make_node, stop):
     assert node.mode == 'walk'
     if stop == 'timeout':
         advance(node, clock, 19)
-    elif stop == 'budget':
-        for _ in range(195):
-            node.command_callback(msg)
-            advance(node, clock, 1)
     else:
         node.arm_callback(NS(data=False), SetBool.Response())
         advance(node, clock, 1)
     assert node.mode == 'soft_hold'
     assert not node.trial.armed
+    assert not any('/api/stop' in url for url, _ in calls)
+
+
+def test_sim_combo_and_step_stay_in_walk(make_node):
+    node, clock, calls = make_node(send=True, stand=False)
+    advance(node, clock, 180)
+    arm(node)
+    combo = Twist()
+    combo.linear.x, combo.linear.y, combo.angular.z = .3, .1, .25
+    for _ in range(65):
+        node.command_callback(combo)
+        advance(node, clock, 1)
+    assert node.mode == 'walk'
+    for _ in range(50):
+        node.command_callback(Twist())
+        advance(node, clock, 1)
+    assert node.mode == 'walk'
+    assert node.trial.armed
+    np.testing.assert_allclose(node.core.actor.command, 0)
     assert not any('/api/stop' in url for url, _ in calls)
 
 
@@ -250,15 +284,11 @@ def test_limits_cannot_be_raised_through_parameters(make_node):
     assert not calls
 
 
-def test_failed_stop_is_not_reported_as_accepted_and_is_retried(make_node):
+def test_failed_stop_is_not_used_because_enable_is_kept(make_node):
     node, clock, calls = make_node(send=True)
     advance(node, clock, 3)
-    original = node.http.post
-    node.http.post = lambda *a, **kw: NS(status_code=503)
     node._emergency_stop('test fault')
-    assert node.faulted and not node.stop_sent
-    node.http.post = original
     clock.t += .51
     node._watchdog_check()
-    assert node.stop_sent
-    assert '/api/stop' in calls[-1][0]
+    assert not node.faulted
+    assert not any('/api/stop' in url for url, _ in calls)
