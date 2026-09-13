@@ -62,7 +62,7 @@ class Rs01Model6850Core:
         low=1/self.contract.gait_period
         return low+(v['max_frequency_hz']-low)*blend
 
-    def tick(self,q,dq,gyro,gravity,yaw,command,gait=1.):
+    def tick(self,q,dq,gyro,gravity,yaw,command,gait=1.,kinematics=None):
         q=np.asarray(q,dtype=np.float64).reshape(12);dq=np.asarray(dq,dtype=np.float64).reshape(12)
         gyro=np.asarray(gyro,dtype=np.float64).reshape(3);gravity=np.asarray(gravity,dtype=np.float64).reshape(3)
         command=np.asarray(command,dtype=np.float64).reshape(3)
@@ -81,7 +81,7 @@ class Rs01Model6850Core:
         if self.steps:
             self.phase=(self.phase+dt*self.frequency(self.command)*(self.gait>.5))%1
             self.heading=wrap_pi(self.heading+dt*self.command[2])
-            odom=self.odometry.estimate(q,dq,gyro)
+            odom=self.odometry.estimate(q,dq,gyro,kinematics=kinematics)
             velocity=odom['base_linear_velocity'];confidence=odom['confidence']
         else:velocity=np.zeros(3);confidence=0.
         turning=(abs(command[2])>conf['direction_turn_exit_rad_s'] if self.turning

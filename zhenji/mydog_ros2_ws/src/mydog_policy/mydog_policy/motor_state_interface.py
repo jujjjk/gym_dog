@@ -62,6 +62,7 @@ class MotorStateHttpInterface:
         self._latest_snapshot: MotorSnapshot | None = None
         self._latest_error: Exception | None = None
         self._stop_event = threading.Event()
+        self._poll_paused = threading.Event()
         self._thread: threading.Thread | None = None
         self._last_poll_stamp_perf: float | None = None
 
@@ -102,9 +103,19 @@ class MotorStateHttpInterface:
         self._thread = threading.Thread(target=self._poll_loop, name="motor-state-http", daemon=True)
         self._thread.start()
 
+    def pause_async_poll(self):
+        """Stop GET /api/state so a send thread can own the HTTP server."""
+        self._poll_paused.set()
+
+    def resume_async_poll(self):
+        self._poll_paused.clear()
+
     def _poll_loop(self):
         period = 1.0 / max(self.poll_hz, 1.0)
         while not self._stop_event.is_set():
+            if self._poll_paused.is_set():
+                self._stop_event.wait(period)
+                continue
             t0 = time.perf_counter()
             try:
                 snap = self._fetch_latest_sync()
@@ -171,6 +182,29 @@ class MotorStateHttpInterface:
         raise KeyError(f"motor_id 0x{motor_id:02X} not found in /api/state response")
 
     def _fetch_latest_sync(self) -> MotorSnapshot:
+        return self._snapshot_from_all_states(self.get_all_motor_states())
+
+    def refresh_latest(self) -> MotorSnapshot:
+        snap = self._fetch_latest_sync()
+        with self._cache_lock:
+            self._latest_snapshot = snap
+            self._latest_error = None
+        return snap
+
+    def snapshot_from_payload(self, data) -> MotorSnapshot | None:
+        if not isinstance(data, dict):
+            return None
+        try:
+            self._lookup_motor_state(data, self.real_motor_ids[0])
+        except Exception:
+            return None
+        snap = self._snapshot_from_all_states(data)
+        with self._cache_lock:
+            self._latest_snapshot = snap
+            self._latest_error = None
+        return snap
+
+    def _snapshot_from_all_states(self, all_states: dict) -> MotorSnapshot:
         poll_stamp_perf = time.perf_counter()
         if self._last_poll_stamp_perf is None:
             poll_dt_ms = 0.0
@@ -193,7 +227,6 @@ class MotorStateHttpInterface:
         snapshot_seq = []
         board_tick_ms = []
         raw = {}
-        all_states = self.get_all_motor_states()
         meta = all_states.get("__meta__", {}) if isinstance(all_states, dict) else {}
 
         for mid in self.real_motor_ids:
@@ -286,10 +319,15 @@ class MotorStateHttpInterface:
             err = self._latest_error
 
         if snap is None:
+            if self._poll_paused.is_set():
+                raise RuntimeError("motor snapshot missing while poll is paused")
             snap = self._fetch_latest_sync()
             with self._cache_lock:
                 self._latest_snapshot = snap
                 self._latest_error = None
+            return snap
+
+        if self._poll_paused.is_set():
             return snap
 
         age_ms = (time.time() - snap.stamp) * 1000.0

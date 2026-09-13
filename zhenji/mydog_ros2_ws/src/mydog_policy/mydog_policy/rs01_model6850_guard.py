@@ -1,5 +1,7 @@
 """Hardware-independent A6850 guarded-test primitives; no device I/O."""
 
+import threading
+
 import numpy as np
 
 from .rs01_model6850_core import Rs01Model6850Core
@@ -34,11 +36,11 @@ class Guarded6850PolicyCore:
 
     def build_observation(self, now, base_linear_velocity,
                           base_angular_velocity, projected_gravity, command,
-                          q_policy, dq_policy, yaw):
+                          q_policy, dq_policy, yaw, kinematics=None):
         # A6850 runs its own training-compatible odometry from q/dq/gyro.
         self.pending = self.actor.tick(
             q_policy, dq_policy, base_angular_velocity, projected_gravity,
-            yaw, command, gait=1.)
+            yaw, command, gait=1., kinematics=kinematics)
         self.heading_target = self.actor.heading
         return self.pending['observation']
 
@@ -69,6 +71,7 @@ class TrialCommand:
     timeout_sec = 0.35
 
     def __init__(self):
+        self._lock = threading.Lock()
         self.vector = np.zeros(3)
         self.stamp = None
         self.armed_at = None
@@ -80,33 +83,43 @@ class TrialCommand:
         return self.armed_at is not None
 
     def disarm(self, reason):
+        with self._lock:
+            self._disarm_locked(reason)
+
+    def _disarm_locked(self, reason):
         self.vector.fill(0.)
         self.stamp = self.armed_at = self.started_at = None
         self.reason = reason
 
     def arm(self, now):
-        self.disarm('armed; waiting for fresh command')
-        self.armed_at = float(now)
+        with self._lock:
+            self._disarm_locked('armed; waiting for fresh command')
+            self.armed_at = float(now)
 
     def receive(self, values, now):
         values = np.asarray(values, dtype=float).reshape(3)
         if not np.isfinite(values).all() or np.any(np.abs(values) > self.caps + 1e-8):
             self.disarm('invalid/out-of-range command')
             return False
-        if not self.armed:
-            return False
-        self.vector = values.copy()
-        self.stamp = float(now)
-        return True
+        with self._lock:
+            if not self.armed:
+                return False
+            self.vector = values.copy()
+            self.stamp = float(now)
+            return True
 
     def active(self, now):
-        if not self.armed:
-            return False
-        if now < self.armed_at or now - self.armed_at > self.lease_sec:
-            self.disarm('arm lease expired')
-        elif self.stamp is not None and not 0 <= now - self.stamp <= self.timeout_sec:
-            self.disarm('command timeout')
-        return self.armed and self.stamp is not None
+        with self._lock:
+            if not self.armed:
+                return False
+            # A concurrent cmd_vel callback may stamp after this control tick
+            # captured `now`. Negative age means the command is newer, not stale.
+            if self.armed_at is not None and (now - self.armed_at) > self.lease_sec:
+                self._disarm_locked('arm lease expired')
+            elif (self.stamp is not None
+                  and (now - self.stamp) > self.timeout_sec):
+                self._disarm_locked('command timeout')
+            return self.armed and self.stamp is not None
 
     def start(self, now):
         if not self.active(now):

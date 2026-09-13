@@ -88,6 +88,7 @@ def main(args=None):
             raise RuntimeError(
                 'Not ready: require fresh ready, stable and send=true, stand_only=false')
         set_arm(True)
+        publish(0.0, 0.0, 0.0)
         for name, vx, vy, wz in sequence:
             print(f'切换：{name}，vx={vx}, vy={vy}, wz={wz}', flush=True)
             until = time.monotonic() + opts.segment_sec
@@ -106,7 +107,7 @@ def main(args=None):
                     print(note, flush=True)
                     last_note = note
                 publish(vx, vy, wz)
-                rclpy.spin_once(node, timeout_sec=.05)
+                rclpy.spin_once(node, timeout_sec=.02)
     except KeyboardInterrupt:
         print('演示被中断，回站。', flush=True)
     finally:

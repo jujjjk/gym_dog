@@ -599,14 +599,14 @@ class Rs01NewMachineLegOdometry:
             )
         return foot.astype(np.float32), jacobian.astype(np.float32)
 
-    def estimate(self, q_policy, dq_policy, omega_body):
+    def compute_kinematics(self, q_policy, dq_policy, omega_body):
+        """Foot FK/Jacobian once; stance filters may reuse the same geometry."""
         q_policy = np.asarray(q_policy, dtype=np.float32).reshape(12)
         dq_policy = np.asarray(dq_policy, dtype=np.float32).reshape(12)
         omega_body = np.asarray(omega_body, dtype=np.float32).reshape(3)
         foot_position = np.zeros((4, 3), dtype=np.float32)
         foot_velocity = np.zeros((4, 3), dtype=np.float32)
         velocity_by_foot = np.zeros((4, 3), dtype=np.float32)
-        base_height_proxy = np.zeros(4, dtype=np.float32)
         for leg_index, leg in enumerate(self.LEG_ORDER):
             start = leg_index * 3
             position, jacobian = self.foot_position_and_jacobian(
@@ -618,7 +618,24 @@ class Rs01NewMachineLegOdometry:
             )
             foot_position[leg_index] = position
             foot_velocity[leg_index] = relative_velocity
-            base_height_proxy[leg_index] = -position[2] + self.foot_radius
+        return {
+            "foot_position": foot_position,
+            "foot_velocity": foot_velocity,
+            "velocity_by_foot": velocity_by_foot,
+        }
+
+    def estimate(self, q_policy, dq_policy, omega_body, kinematics=None):
+        if kinematics is None:
+            kinematics = self.compute_kinematics(
+                q_policy, dq_policy, omega_body
+            )
+        foot_position = kinematics["foot_position"]
+        foot_velocity = kinematics["foot_velocity"]
+        velocity_by_foot = kinematics["velocity_by_foot"]
+        base_height_proxy = (
+            -np.asarray(foot_position[:, 2], dtype=np.float32)
+            + np.float32(self.foot_radius)
+        )
 
         lowest = float(np.max(base_height_proxy))
         candidates = []
@@ -940,6 +957,7 @@ class Rs01Model930PolicyCore:
         q_policy,
         dq_policy,
         yaw,
+        kinematics=None,
     ):
         phase = (
             (float(now) - self.phase_start) / self.contract.gait_period
