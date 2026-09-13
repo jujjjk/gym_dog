@@ -23,7 +23,7 @@ def evaluate(args):
         ("backward", -0.1, 0.0, 0.0),
         ("march", 0.0, 0.0, 0.0),
     )
-    stage_seconds = 4.0
+    stage_seconds = 5.0 if args.task in ('rs01_omni_v16_guarded_support', 'rs01_omni_v17_balance') else 4.0
     cfg, train_cfg = task_registry.get_cfgs(args.task)
     _set_nominal_eval_cfg(cfg, stage_seconds * len(stages), args.eval_envs)
     env, _ = task_registry.make_env(args.task, args=args, env_cfg=cfg)

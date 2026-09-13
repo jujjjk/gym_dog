@@ -1085,6 +1085,10 @@ class Rs01Go2StraightRobot(LeggedRobot):
             max=self.rs01_target_delay_buffer.shape[0] - 1,
         )
 
+    def _project_rs01_policy_target(self, target):
+        """Identity for existing tasks; optional policy mapping before rate limits."""
+        return target
+
     def step(self, actions):
         if self._rs01_actuator_ready:
             self.policy_actions_unclipped.copy_(
@@ -1099,6 +1103,7 @@ class Rs01Go2StraightRobot(LeggedRobot):
                 self.default_dof_pos
                 + self.rs01_action_scale_rad * clipped_actions
             )
+            desired_target = self._project_rs01_policy_target(desired_target)
             (
                 self.rs01_limited_position_target_rad,
                 self.rs01_target_rate_rad_s,

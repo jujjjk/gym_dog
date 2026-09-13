@@ -93,6 +93,15 @@ from legged_gym.envs.rs01_omni_v2.rs01_omni_v15_config import Rs01OmniV15Support
 from legged_gym.envs.rs01_omni_v2.rs01_omni_v15_env import Rs01OmniV15Robot
 from legged_gym.envs.rs01_omni_v2.rs01_omni_v15_env import Rs01OmniV15StandRobot
 from legged_gym.envs.rs01_omni_v2.rs01_omni_v15_config import Rs01OmniV15StandCfg, Rs01OmniV15StandCfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v16_config import Rs01OmniV16Cfg, Rs01OmniV16CfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v16_env import Rs01OmniV16Robot
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v17_config import Rs01OmniV17Cfg, Rs01OmniV17CfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v17_env import Rs01OmniV17Robot
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v18_config import Rs01OmniV18Cfg, Rs01OmniV18LowCfg, Rs01OmniV18CfgPPO, Rs01OmniV18LowCfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v18_env import Rs01OmniV18Robot
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v19_config import Rs01OmniV19Cfg, Rs01OmniV19SoftCfg, Rs01OmniV19CfgPPO, Rs01OmniV19SoftCfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v19_env import Rs01OmniV19Robot
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v18_config import Rs01OmniV18SoftCfg, Rs01OmniV18SoftCfgPPO
 from legged_gym.envs.dog import (
     DogRs01Robot,
     DogRs01TrotCfg,
@@ -219,6 +228,17 @@ from .base.legged_robot import LeggedRobot
 from legged_gym.utils.task_registry import task_registry as task_registry
 task_registry.register('rs01_omni_v15_support', Rs01OmniV15Robot, Rs01OmniV15SupportCfg(), Rs01OmniV15SupportCfgPPO())
 task_registry.register('rs01_omni_v15_stand_phase', Rs01OmniV15StandRobot, Rs01OmniV15StandCfg(), Rs01OmniV15StandCfgPPO())
+task_registry.register('rs01_omni_v16_guarded_support', Rs01OmniV16Robot, Rs01OmniV16Cfg(), Rs01OmniV16CfgPPO())
+task_registry.register('rs01_omni_v17_balance', Rs01OmniV17Robot, Rs01OmniV17Cfg(), Rs01OmniV17CfgPPO())
+task_registry.register('rs01_omni_v18_balance18', Rs01OmniV18Robot, Rs01OmniV18Cfg(), Rs01OmniV18CfgPPO())
+task_registry.register('rs01_omni_v18_balance14', Rs01OmniV18Robot, Rs01OmniV18LowCfg(), Rs01OmniV18LowCfgPPO())
+task_registry.register('rs01_omni_v18_balance_soft', Rs01OmniV18Robot, Rs01OmniV18SoftCfg(), Rs01OmniV18SoftCfgPPO())
+task_registry.register('rs01_omni_v19_placement', Rs01OmniV19Robot, Rs01OmniV19Cfg(), Rs01OmniV19CfgPPO())
+task_registry.register('rs01_omni_v19_placement_soft', Rs01OmniV19Robot, Rs01OmniV19SoftCfg(), Rs01OmniV19SoftCfgPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v20_config import Rs01OmniV20ACfg, Rs01OmniV20BCfg, Rs01OmniV20ACfgPPO, Rs01OmniV20BCfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v20_env import Rs01OmniV20GeometryRobot, Rs01OmniV20BoundedRobot
+task_registry.register('rs01_omni_v20_geometry', Rs01OmniV20GeometryRobot, Rs01OmniV20ACfg(), Rs01OmniV20ACfgPPO())
+task_registry.register('rs01_omni_v20_bounded_hip', Rs01OmniV20BoundedRobot, Rs01OmniV20BCfg(), Rs01OmniV20BCfgPPO())
 
 task_registry.register("go2", LeggedRobot, GO2RoughCfg(), GO2RoughCfgPPO())
 task_registry.register(
