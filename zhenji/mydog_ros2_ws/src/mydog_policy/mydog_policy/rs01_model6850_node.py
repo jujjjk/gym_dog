@@ -8,6 +8,7 @@ parity with MuJoCo, and does not subscribe to legacy estimator arrays.
 import json
 import threading
 import time
+from types import SimpleNamespace
 
 import numpy as np
 import rclpy
@@ -46,11 +47,28 @@ class Rs01Model6850Node(Rs01Model930Node):
         self._owner = None
         self._send_lock = threading.RLock()
         self._watchdog_stop = threading.Event()
+        self._send_event = threading.Event()
         self._watchdog = None
+        self._send_pump = None
+        self._telemetry_pump = None
+        self._control_thread = None
+        self._pending_target = None
+        self._pending_telemetry = None
+        self._telemetry_lock = threading.Lock()
+        self._telemetry_event = threading.Event()
         self._stop_attempts = 0
         self._last_stop_attempt = float('-inf')
         self._last_target_real = None
         self._last_fault_reason = ''
+        self._control_dt_ms = 0.
+        self._send_dt_ms = 0.
+        self._compute_dt_ms = 0.
+        self._publish_dt_ms = 0.
+        self._status_log_rows = 0
+        self._last_send_perf = None
+        self._loop_hz = 0.
+        self._send_hz = 0.
+        self._q_policy_cached = None
         # Fail before opening any device if another A6850 instance exists.
         import fcntl
         self._owner = open('/tmp/mydog_a6850_controller.lock', 'a+')
@@ -62,6 +80,10 @@ class Rs01Model6850Node(Rs01Model930Node):
             raise RuntimeError('Another A6850 controller owns the robot')
         try:
             super().__init__()
+            # Policy observations use the actor's own filter. The node only
+            # needs the legal-diagonal guard estimator, so do not run a
+            # second non-strict copy of the same four-leg FK.
+            self.leg_odometry = self.walk_guard_odometry
             self.arm_service = self.create_service(
                 SetBool, self.topic_namespace + '/arm', self.arm_callback)
             self._start_watchdog()
@@ -110,7 +132,11 @@ class Rs01Model6850Node(Rs01Model930Node):
         elif self.stand_only:
             self.trial.disarm('stand_only')
         elif not self.trial.receive(values, time.monotonic()):
-            self.get_logger().warning('Command rejected: ' + self.trial.reason)
+            now = time.monotonic()
+            last = getattr(self, '_last_cmd_reject', 0.)
+            if now - last >= 1.0:
+                self._last_cmd_reject = now
+                self.get_logger().warning('Command rejected: ' + self.trial.reason)
         self.cmd_vx = float(self.trial.vector[0])
 
     def command_active(self, now):
@@ -149,12 +175,22 @@ class Rs01Model6850Node(Rs01Model930Node):
         wall, mono = time.time(), time.monotonic()
         self.reception.check(motor, imu, wall, mono)
         q, dq = self.mapper.real_to_policy_abs(motor.q_real, motor.dq_real)
-        if np.any(q < self.contract.lower) or np.any(q > self.contract.upper):
-            raise RuntimeError('Measured joints outside A6850 URDF limits')
+        # Encoder noise at the fence is not a true URDF violation. 0.01 rad
+        # is 0.6 deg; last hang-sag false trip was FR calf 1.920 vs 1.91986.
+        slack = 0.01
+        outside = (q < self.contract.lower - slack) | (q > self.contract.upper + slack)
+        if np.any(outside):
+            names = list(self.contract.joint_names)
+            detail = ', '.join(
+                '%s=%.3f' % (names[i], float(q[i]))
+                for i in np.flatnonzero(outside))
+            raise RuntimeError(
+                'Measured joints outside A6850 URDF limits: ' + detail)
         if np.max(np.abs(dq)) >= self.contract.raw['v14']['speed_validity_limit_rad_s']:
             raise RuntimeError('Motor overspeed')
         self._feedback_wall = wall
         self._feedback_q = q.copy()
+        self._q_policy_cached = (q, dq)
         # The inherited ready fallback retains an old stand target after a
         # walk. Explicitly start the stop ramp at LIVE feedback instead.
         if self.mode == 'walk' and not self.command_active(mono):
@@ -168,6 +204,30 @@ class Rs01Model6850Node(Rs01Model930Node):
     def _enter_soft_hold(self, reason, now, q_policy):
         self.trial.disarm(reason)
         super()._enter_soft_hold(reason, now, q_policy)
+
+    def _update_walk_inhibitors(self, now, odometry, q_policy):
+        # Keep walking while the trial is publishing. Heading/odom observers
+        # remain in /status, but must not latch soft_hold: the sequence keeps
+        # sending, and a latched hold would ignore those commands until it
+        # stops. Command-timeout still returns to stand via _fresh_state.
+        heading_state = getattr(self, 'heading_consistency_state', {}) or {}
+        heading_bad = bool(
+            self.heading_consistency_enabled
+            and heading_state.get('ready')
+            and not heading_state.get('healthy')
+        )
+        odom_bad = float(odometry['confidence']) < self.walk_start_min_odom_confidence
+        if heading_bad or odom_bad:
+            last = getattr(self, '_last_inhibit_note', 0.)
+            if now - last >= 1.0:
+                self._last_inhibit_note = now
+                self.get_logger().warning(
+                    'Walk observer note (policy continues): heading_healthy=%s '
+                    'yaw_gyro_err=%+.3f odom_conf=%.2f' % (
+                        heading_state.get('healthy'),
+                        float(heading_state.get('mean_error_rad_s', 0.)),
+                        float(odometry['confidence'])))
+        return False
 
     def _prime_live_enable(self):
         """Enable motors at the current pose before the 50 Hz send loop."""
@@ -210,6 +270,8 @@ class Rs01Model6850Node(Rs01Model930Node):
         self.last_send_time = time.monotonic()
         self._last_target_real = q.copy()
         self._wait_for_fresh_feedback()
+        if hasattr(self.motor, 'pause_async_poll'):
+            self.motor.pause_async_poll()
 
     def _wait_for_fresh_feedback(self):
         # enable_first blocks the motor HTTP server; do not enter the 50 Hz
@@ -248,11 +310,15 @@ class Rs01Model6850Node(Rs01Model930Node):
             dt = now - self._previous_control
             if dt < 0.008:
                 return
+            self._control_dt_ms = dt * 1000.
+            self._loop_hz = (0. if dt <= 0 else 1. / dt)
             if dt > 0.080:
                 self.get_logger().warning(
                     'Slow control dt=%.1fms; motors stay enabled' % (dt * 1000))
         self._previous_control = self._control_start = now
+        started = time.perf_counter()
         super().control_loop()
+        self._compute_dt_ms = (time.perf_counter() - started) * 1000.
 
     def _send_target(self, target_real):
         if not self.enable_send:
@@ -265,11 +331,64 @@ class Rs01Model6850Node(Rs01Model930Node):
             return
         self._last_target_real = target_real.copy()
         if (self._control_start is not None
-                and time.monotonic() - self._control_start > .040):
+                and time.monotonic() - self._control_start > .012):
             self.get_logger().warning(
-                'Compute >40ms; still sending to keep motors enabled')
+                'Compute >12ms; still queueing send to keep 50 Hz')
+        self._enqueue_send(target_real)
+
+    def _enqueue_send(self, target_real):
         with self._send_lock:
-            Rs01Model930Node._send_target(self, target_real)
+            self._pending_target = np.asarray(
+                target_real, dtype=np.float32).reshape(12).copy()
+        if self._send_pump is None or not self._send_pump.is_alive():
+            self._dispatch_pending_send()
+        else:
+            self._send_event.set()
+
+    def _dispatch_pending_send(self):
+        with self._send_lock:
+            target = self._pending_target
+            self._pending_target = None
+        if target is None:
+            return
+        started = time.perf_counter()
+        try:
+            response = Rs01Model930Node._send_target(self, target)
+            self._ingest_send_feedback(response)
+        except Exception as exc:
+            self.get_logger().error(
+                'Send failed (enable kept): ' + str(exc))
+        elapsed = time.perf_counter() - started
+        self._send_dt_ms = elapsed * 1000.
+        if self._last_send_perf is not None:
+            gap = started - self._last_send_perf
+            self._send_hz = (0. if gap <= 0 else 1. / gap)
+        self._last_send_perf = started
+
+    def _ingest_send_feedback(self, response=None):
+        motor = getattr(self, 'motor', None)
+        if motor is None:
+            return
+        payload = None
+        if response is not None:
+            try:
+                payload = response.json()
+            except Exception:
+                payload = None
+        from_payload = getattr(motor, 'snapshot_from_payload', None)
+        if payload is not None and callable(from_payload):
+            try:
+                if from_payload(payload) is not None:
+                    return
+            except Exception:
+                pass
+        refresh = getattr(motor, 'refresh_latest', None)
+        if callable(refresh):
+            try:
+                refresh()
+            except Exception as exc:
+                self.get_logger().warning(
+                    'Motor refresh after send failed: ' + str(exc))
 
     def _hold_target(self):
         target = self._last_target_real
@@ -282,19 +401,146 @@ class Rs01Model6850Node(Rs01Model930Node):
         if target is None or not np.all(np.isfinite(target)):
             return
         self._last_target_real = np.asarray(target, dtype=np.float32).reshape(12)
-        try:
+        self._enqueue_send(self._last_target_real)
+
+    def _start_send_pump(self):
+        if not self.enable_send:
+            return
+        if self._send_pump is not None and self._send_pump.is_alive():
+            return
+        self._send_pump = threading.Thread(
+            target=self._send_pump_loop, name='a6850-send-pump', daemon=True)
+        self._send_pump.start()
+
+    def _send_pump_loop(self):
+        while not self._watchdog_stop.is_set():
             with self._send_lock:
-                Rs01Model930Node._send_target(self, self._last_target_real)
-        except Exception as exc:
-            self.get_logger().error(
-                'Hold send failed (enable kept): ' + str(exc))
+                pending = self._pending_target is not None
+            if pending:
+                self._dispatch_pending_send()
+                continue
+            self._send_event.wait(.02)
+            self._send_event.clear()
+
+    @staticmethod
+    def _copy_mapping(value):
+        copied = dict(value)
+        for key, item in copied.items():
+            if isinstance(item, np.ndarray):
+                copied[key] = item.copy()
+        return copied
+
+    def _snapshot_telemetry(self, observation, action, target_real, odometry,
+                            roll, pitch, yaw, motor, torque_info, now,
+                            guard_odometry):
+        return dict(
+            observation=np.asarray(observation, dtype=np.float32).copy(),
+            action=np.asarray(action, dtype=np.float32).copy(),
+            target_real=np.asarray(target_real, dtype=np.float32).copy(),
+            odometry=self._copy_mapping(odometry),
+            roll=float(roll),
+            pitch=float(pitch),
+            yaw=float(yaw),
+            motor=SimpleNamespace(
+                age_ms=np.asarray(motor.age_ms, dtype=np.float32).copy(),
+                temp=np.asarray(motor.temp, dtype=np.float32).copy(),
+                q_real=np.asarray(motor.q_real, dtype=np.float32).copy(),
+                dq_real=np.asarray(motor.dq_real, dtype=np.float32).copy(),
+                torque=np.asarray(motor.torque, dtype=np.float32).copy(),
+            ),
+            torque_info=self._copy_mapping(torque_info),
+            now=float(now),
+            guard_odometry=self._copy_mapping(guard_odometry),
+        )
+
+    def _publish(self, observation, action, target_real, odometry, roll, pitch,
+                 yaw, motor, torque_info, now, guard_odometry):
+        payload = self._snapshot_telemetry(
+            observation, action, target_real, odometry, roll, pitch, yaw,
+            motor, torque_info, now, guard_odometry)
+        with self._telemetry_lock:
+            self._pending_telemetry = payload
+        if self._telemetry_pump is None or not self._telemetry_pump.is_alive():
+            self._dispatch_pending_telemetry()
+        else:
+            self._telemetry_event.set()
+
+    def _dispatch_pending_telemetry(self):
+        with self._telemetry_lock:
+            payload = self._pending_telemetry
+            self._pending_telemetry = None
+        if payload is None:
+            return
+        started = time.perf_counter()
+        Rs01Model930Node._publish(
+            self,
+            payload['observation'],
+            payload['action'],
+            payload['target_real'],
+            payload['odometry'],
+            payload['roll'],
+            payload['pitch'],
+            payload['yaw'],
+            payload['motor'],
+            payload['torque_info'],
+            payload['now'],
+            payload['guard_odometry'],
+        )
+        self._publish_dt_ms = (time.perf_counter() - started) * 1000.
+
+    def _start_telemetry_pump(self):
+        if self._telemetry_pump is not None and self._telemetry_pump.is_alive():
+            return
+        self._telemetry_pump = threading.Thread(
+            target=self._telemetry_pump_loop, name='a6850-telemetry', daemon=True)
+        self._telemetry_pump.start()
+
+    def _telemetry_pump_loop(self):
+        while not self._watchdog_stop.is_set():
+            with self._telemetry_lock:
+                pending = self._pending_telemetry is not None
+            if pending:
+                self._dispatch_pending_telemetry()
+                continue
+            self._telemetry_event.wait(.02)
+            self._telemetry_event.clear()
+
+    def _start_control_thread(self):
+        timer = getattr(self, 'timer', None)
+        if timer is not None:
+            try:
+                self.destroy_timer(timer)
+            except Exception:
+                pass
+            self.timer = None
+        if self._control_thread is not None and self._control_thread.is_alive():
+            return
+        self._control_thread = threading.Thread(
+            target=self._control_thread_loop, name='a6850-control', daemon=True)
+        self._control_thread.start()
+
+    def _control_thread_loop(self):
+        period = float(self.contract.policy_dt)
+        next_t = time.perf_counter()
+        while not self._watchdog_stop.is_set():
+            self.control_loop()
+            finished = time.perf_counter()
+            next_t += period
+            if next_t < finished:
+                next_t = finished
+            delay = next_t - time.perf_counter()
+            if delay > 0:
+                self._watchdog_stop.wait(delay)
 
     def _start_watchdog(self):
+        self._start_telemetry_pump()
+        self._start_control_thread()
         if not self.enable_send:
             return
         self._watchdog = threading.Thread(target=self._watchdog_loop,
                                           name='a6850-send-watchdog', daemon=True)
         self._watchdog.start()
+        self._start_send_pump()
 
     def _watchdog_check(self):
         if (self.enable_send and self.last_send_time is not None
@@ -316,7 +562,19 @@ class Rs01Model6850Node(Rs01Model930Node):
                                      time.monotonic() - self.trial.started_at),
                     last_fault_reason=self._last_fault_reason,
                     enable_held=True,
-                    hardware_motion_validated=False)
+                    hardware_motion_validated=False,
+                    loop_dt_ms=float(self._control_dt_ms),
+                    loop_hz=float(self._loop_hz),
+                    compute_dt_ms=float(self._compute_dt_ms),
+                    publish_dt_ms=float(self._publish_dt_ms),
+                    send_dt_ms=float(self._send_dt_ms),
+                    send_hz=float(self._send_hz),
+                    send_pump=bool(self._send_pump is not None
+                                   and self._send_pump.is_alive()),
+                    telemetry_pump=bool(self._telemetry_pump is not None
+                                        and self._telemetry_pump.is_alive()),
+                    control_thread=bool(self._control_thread is not None
+                                        and self._control_thread.is_alive()))
 
     def _open_csv(self, path):
         super()._open_csv(path)
@@ -328,7 +586,9 @@ class Rs01Model6850Node(Rs01Model930Node):
         super()._write_csv(now, status, *args)
         if self._status_log:
             self._status_log.write(json.dumps(dict(time_monotonic_s=now, **status)) + '\n')
-            self._status_log.flush()
+            self._status_log_rows += 1
+            if self._status_log_rows % 50 == 0:
+                self._status_log.flush()
 
     def _emergency_stop(self, reason):
         # Keep MIT enable. Never POST /api/stop; resend the last PD target.
@@ -347,6 +607,17 @@ class Rs01Model6850Node(Rs01Model930Node):
         # Covers failures after opening serial or configuring limits but before
         # the caller obtains a fully constructed node.
         self._watchdog_stop.set()
+        if hasattr(self, '_send_event'):
+            self._send_event.set()
+        if hasattr(self, '_telemetry_event'):
+            self._telemetry_event.set()
+        for thread in (self._send_pump, self._telemetry_pump,
+                       self._control_thread, self._watchdog):
+            if thread is not None:
+                try:
+                    thread.join(timeout=.2)
+                except Exception:
+                    pass
         if getattr(self, 'enable_send', False) and hasattr(self, 'http'):
             try:
                 self.get_logger().error(
@@ -368,12 +639,29 @@ class Rs01Model6850Node(Rs01Model930Node):
 
     def destroy_node(self):
         self._watchdog_stop.set()
+        self._send_event.set()
+        self._telemetry_event.set()
+        if hasattr(self, 'motor') and hasattr(self.motor, 'resume_async_poll'):
+            try:
+                self.motor.resume_async_poll()
+            except Exception:
+                pass
+        if self._send_pump:
+            self._send_pump.join(timeout=.5)
+        if self._telemetry_pump:
+            self._telemetry_pump.join(timeout=.5)
+        if self._control_thread:
+            self._control_thread.join(timeout=.5)
         if self._watchdog:
             self._watchdog.join(timeout=.5)
         try:
             return super().destroy_node()
         finally:
             if self._status_log:
+                try:
+                    self._status_log.flush()
+                except Exception:
+                    pass
                 self._status_log.close()
             if self._owner:
                 self._owner.close()

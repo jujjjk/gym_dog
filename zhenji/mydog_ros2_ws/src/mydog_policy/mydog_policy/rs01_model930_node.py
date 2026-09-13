@@ -258,6 +258,10 @@ class Rs01Model930Node(Node):
         session_options = ort.SessionOptions()
         session_options.intra_op_num_threads = 1
         session_options.inter_op_num_threads = 1
+        session_options.graph_optimization_level = (
+            ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        )
+        session_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
         self.session = ort.InferenceSession(
             str(self.onnx_path), sess_options=session_options, providers=providers
         )
@@ -846,7 +850,7 @@ class Rs01Model930Node(Node):
 
     def _send_target(self, target_real):
         if not self.enable_send:
-            return
+            return None
         target_real = np.asarray(
             target_real, dtype=np.float32
         ).reshape(12)
@@ -881,6 +885,7 @@ class Rs01Model930Node(Node):
             )
         self.first_send = False
         self.last_send_time = time.monotonic()
+        return response
 
     def _emergency_stop(self, reason):
         if self.faulted and self.stop_sent:
@@ -919,17 +924,29 @@ class Rs01Model930Node(Node):
                 raise RuntimeError(
                     "bias-corrected gyro contains NaN/Inf"
                 )
-            q_policy, dq_policy = self.mapper.real_to_policy_abs(
-                motor.q_real, motor.dq_real
+            cached = getattr(self, "_q_policy_cached", None)
+            if cached is not None:
+                q_policy, dq_policy = cached
+                self._q_policy_cached = None
+            else:
+                q_policy, dq_policy = self.mapper.real_to_policy_abs(
+                    motor.q_real, motor.dq_real
+                )
+            kinematics = self.leg_odometry.compute_kinematics(
+                q_policy, dq_policy, self.corrected_gyro_rad_s
             )
             odometry = self.leg_odometry.estimate(
-                q_policy, dq_policy, self.corrected_gyro_rad_s
+                q_policy,
+                dq_policy,
+                self.corrected_gyro_rad_s,
+                kinematics=kinematics,
             )
             guard_odometry = (
                 self.walk_guard_odometry.estimate(
                     q_policy,
                     dq_policy,
                     self.corrected_gyro_rad_s,
+                    kinematics=kinematics,
                 )
                 if self.walk_guard_odometry is not self.leg_odometry
                 else odometry
@@ -967,12 +984,14 @@ class Rs01Model930Node(Node):
                             q_policy,
                             dq_policy,
                             self.corrected_gyro_rad_s,
+                            kinematics=kinematics,
                         )
                         guard_odometry = (
                             self.walk_guard_odometry.estimate(
                                 q_policy,
                                 dq_policy,
                                 self.corrected_gyro_rad_s,
+                                kinematics=kinematics,
                             )
                             if self.walk_guard_odometry
                             is not self.leg_odometry
@@ -1036,6 +1055,7 @@ class Rs01Model930Node(Node):
                     q_policy=q_policy,
                     dq_policy=dq_policy,
                     yaw=yaw,
+                    kinematics=kinematics,
                 )
                 if self.include_path_state:
                     observation_arguments["path_update_enabled"] = bool(

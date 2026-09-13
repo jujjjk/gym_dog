@@ -54,6 +54,25 @@ def test_trial_requires_explicit_arm_and_expires_without_rearm():
     assert trial.reason == 'command timeout'
 
 
+def test_command_newer_than_control_tick_now_is_not_timeout():
+    trial = TrialCommand()
+    trial.arm(1.0)
+    assert trial.receive([0.1, 0.0, 0.0], 1.20)
+    # Control tick captured `now` before the concurrent callback stamped.
+    assert trial.active(1.19)
+    assert trial.armed
+    assert trial.active(1.20)
+    assert not trial.active(1.20 + trial.timeout_sec + 0.01)
+    assert trial.reason == 'command timeout'
+
+
+def test_arm_newer_than_control_tick_now_is_not_lease_expiry():
+    trial = TrialCommand()
+    trial.arm(2.0)
+    assert trial.receive([0.1, 0.0, 0.0], 2.01)
+    assert trial.active(1.99)
+    assert trial.armed
+
 def test_zero_command_is_step_in_place_while_armed():
     trial = TrialCommand()
     trial.arm(1.)
@@ -138,3 +157,29 @@ def test_invalid_feedback_is_rejected(change):
         imu.quat_wxyz = np.zeros(4)
     with pytest.raises(RuntimeError):
         ReceptionGuard().check(motor, imu, 10., 1.)
+
+
+def test_shared_kinematics_match_internal_foot_fk(actor):
+    from mydog_policy.rs01_model930_core import Rs01NewMachineLegOdometry
+    session, contract = actor
+    q = contract.default.copy()
+    dq = np.zeros(12)
+    command = np.array([0.1, 0.0, 0.0])
+    gyro = np.zeros(3)
+    gravity = np.array([0.0, 0.0, -1.0])
+    with_shared = Rs01Model6850Core(session, contract)
+    without = Rs01Model6850Core(session, contract)
+    with_shared.tick(q, dq, gyro, gravity, 0.0, command)
+    without.tick(q, dq, gyro, gravity, 0.0, command)
+    kinematics = with_shared.odometry.compute_kinematics(q, dq, gyro)
+    shared = with_shared.tick(
+        q, dq, gyro, gravity, 0.0, command, kinematics=kinematics)
+    internal = without.tick(q, dq, gyro, gravity, 0.0, command)
+    np.testing.assert_array_equal(shared['observation'], internal['observation'])
+    first = Rs01NewMachineLegOdometry(strict_diagonal_pairs=True)
+    reused = first.estimate(q, dq, gyro, kinematics=kinematics)
+    fresh = Rs01NewMachineLegOdometry(strict_diagonal_pairs=True).estimate(
+        q, dq, gyro)
+    np.testing.assert_allclose(
+        reused['base_linear_velocity'], fresh['base_linear_velocity'])
+    assert reused['confidence'] == pytest.approx(fresh['confidence'])

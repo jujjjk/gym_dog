@@ -20,7 +20,7 @@ from mydog_policy import rs01_model6850_node as mod
 def make_node(monkeypatch, tmp_path):
     clock = NS(t=100.)
     fake_time = NS(time=lambda: clock.t, monotonic=lambda: clock.t,
-                   sleep=lambda seconds: None)
+                   sleep=lambda seconds: None, perf_counter=lambda: clock.t)
     monkeypatch.setattr(base, 'time', fake_time)
     monkeypatch.setattr(mod, 'time', fake_time)
     calls, nodes = [], []
@@ -84,6 +84,18 @@ def make_node(monkeypatch, tmp_path):
 
         def close(self):
             pass
+
+        def pause_async_poll(self):
+            pass
+
+        def resume_async_poll(self):
+            pass
+
+        def refresh_latest(self):
+            return self.get_latest()
+
+        def snapshot_from_payload(self, data):
+            return None
 
     class Imu:
         def __init__(self, **kw):
@@ -291,4 +303,77 @@ def test_failed_stop_is_not_used_because_enable_is_kept(make_node):
     clock.t += .51
     node._watchdog_check()
     assert not node.faulted
+    assert not any('/api/stop' in url for url, _ in calls)
+
+
+def test_send_is_queued_when_pump_is_running(make_node):
+    node, clock, calls = make_node(send=True)
+    advance(node, clock, 2)
+    count = len(calls)
+    node._send_pump = NS(is_alive=lambda: True)
+    clock.t += .02
+    node.control_loop()
+    assert not node.faulted
+    assert len(calls) == count
+    assert node._pending_target is not None
+    node._dispatch_pending_send()
+    assert len(calls) == count + 1
+    assert node._pending_target is None
+    assert 'motion_batch_fast' in calls[-1][0]
+
+
+def test_guard_uses_one_node_estimator(make_node):
+    node, _, _ = make_node()
+    assert node.leg_odometry is node.walk_guard_odometry
+
+
+def test_odometry_kinematics_can_be_reused():
+    from mydog_policy.rs01_model930_core import Rs01NewMachineLegOdometry
+    q = np.array([0.0, -0.33, 1.32] * 4, dtype=np.float32)
+    dq = np.zeros(12, dtype=np.float32)
+    omega = np.zeros(3, dtype=np.float32)
+    first = Rs01NewMachineLegOdometry(strict_diagonal_pairs=True)
+    kinematics = first.compute_kinematics(q, dq, omega)
+    reused = first.estimate(q, dq, omega, kinematics=kinematics)
+    second = Rs01NewMachineLegOdometry(strict_diagonal_pairs=True)
+    fresh = second.estimate(q, dq, omega)
+    np.testing.assert_allclose(
+        reused['base_linear_velocity'], fresh['base_linear_velocity'])
+    assert reused['confidence'] == pytest.approx(fresh['confidence'])
+    np.testing.assert_array_equal(reused['stance_mask'], fresh['stance_mask'])
+
+
+def test_telemetry_is_queued_when_pump_is_running(make_node):
+    node, clock, calls = make_node(send=True)
+    advance(node, clock, 2)
+    before = len(node.messages)
+    node._telemetry_pump = NS(is_alive=lambda: True)
+    clock.t += .02
+    node.control_loop()
+    assert not node.faulted
+    assert node._pending_telemetry is not None
+    assert len(node.messages) == before
+    node._dispatch_pending_telemetry()
+    assert node._pending_telemetry is None
+    assert len(node.messages) > before
+
+
+def test_heading_mismatch_does_not_soft_hold_while_commanded(make_node):
+    node, clock, calls = make_node(send=True, stand=False)
+    advance(node, clock, 180)
+    arm(node)
+    msg = Twist()
+    msg.linear.x = .1
+    for _ in range(65):
+        node.command_callback(msg)
+        advance(node, clock, 1)
+    assert node.mode == 'walk'
+    node.heading_consistency_state = dict(
+        ready=True, healthy=False, mean_error_rad_s=-0.139,
+        abs_error_rad_s=0.139, filtered_yaw_rate_rad_s=0.)
+    for _ in range(40):
+        node.command_callback(msg)
+        advance(node, clock, 1)
+    assert node.mode == 'walk'
+    assert not node.walk_inhibit_latched
     assert not any('/api/stop' in url for url, _ in calls)
