@@ -10,6 +10,15 @@ from legged_gym.utils import get_args, task_registry
 
 
 SUPPORTED_TASKS = {
+    "rs01_omni_v20_geometry",
+    "rs01_omni_v20_bounded_hip",
+    "rs01_omni_v19_placement",
+    "rs01_omni_v19_placement_soft",
+    "rs01_omni_v18_balance_soft",
+    "rs01_omni_v18_balance18",
+    "rs01_omni_v18_balance14",
+    "rs01_omni_v17_balance",
+    "rs01_omni_v16_guarded_support",
     "rs01_omni_v15_stand_phase",
     "rs01_omni_v15_support",
     "rs01_omni_v14_actuator_parity",
@@ -145,6 +154,10 @@ def evaluate(args):
         )
     }
     finite = True
+    guarded_support = hasattr(env.cfg.rs01_actuator, 'guard_time_constant_s')
+    if guarded_support:
+        samples['foot_widths'] = []
+        samples['guard_limits'] = []
     audit_contact_gate = hasattr(env.cfg.rewards, "tracking_contact_gate")
     audit_direction = hasattr(env.cfg.commands, "direction_heading_gain")
     if audit_direction:
@@ -173,6 +186,10 @@ def evaluate(args):
             finite = finite and bool(torch.isfinite(env.rew_buf).all())
             if step < warmup_steps:
                 continue
+
+            if guarded_support:
+                samples['foot_widths'].append(env.v16_foot_widths.clone())
+                samples['guard_limits'].append(env.guard_active_limit.clone())
 
             if audit_direction:
                 samples["direction_target"].append(env.direction_reward_target.clone())
@@ -299,7 +316,7 @@ def evaluate(args):
                     (torch.abs(motor_torque) > 6.0).float().mean().item()
                 ),
                 "peak_saturation_ratio": float(
-                    (torch.abs(motor_torque) >= 17.0 - 1.0e-4)
+                    (torch.abs(motor_torque) >= env.cfg.rs01_actuator.peak_torque_limit_nm - 1.0e-4)
                     .float()
                     .mean()
                     .item()
@@ -313,6 +330,14 @@ def evaluate(args):
             results[-1].update({
                 'speed_domain_violations': int(speed_violation_count[start:stop].sum().item()),
                 'max_joint_speed_rad_s': float(max_joint_speed[start:stop].max().item()),
+            })
+
+        if guarded_support:
+            widths = stacked['foot_widths'][:, start:stop]
+            results[-1].update({
+                'mean_front_rear_width_m': widths.mean(dim=(0, 1)).tolist(),
+                'guard_limit_min_nm': float(stacked['guard_limits'][:, start:stop].min()),
+                'vertical_velocity_rms_m_s': _rms(linear[:, :, 2]),
             })
 
         if audit_contact_gate:

@@ -8,6 +8,8 @@ from legged_gym.utils import get_args, task_registry
 
 
 SUPPORTED_TASKS = {
+    "rs01_omni_v17_balance",
+    "rs01_omni_v16_guarded_support",
     "rs01_omni_v15_stand_phase",
     "rs01_omni_v15_support",
     "rs01_omni_v14_actuator_parity",
