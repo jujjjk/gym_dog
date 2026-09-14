@@ -15,8 +15,10 @@ class Guarded6850PolicyCore:
     The old braking limiter is used ONLY for its PD projection, never step().
     """
 
+    actor_type = Rs01Model6850Core
+
     def __init__(self, session, contract):
-        self.actor = Rs01Model6850Core(session, contract)
+        self.actor = self.actor_type(session, contract)
         self.mapper = self.actor.mapper
         self.limiter = Rs01Model930TargetLimiter(contract)
         self.previous_action = np.zeros(12)
