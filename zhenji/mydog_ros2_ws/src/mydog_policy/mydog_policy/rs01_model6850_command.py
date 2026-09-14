@@ -17,6 +17,8 @@ def main(args=None):
     parser.add_argument('--vy', type=float, default=0.)
     parser.add_argument('--wz', type=float, default=0.)
     parser.add_argument('--seconds', type=float, default=3.)
+    parser.add_argument('--namespace', choices=['/mydog/model6850','/mydog/model18000'], default='/mydog/model6850')
+    parser.add_argument('--march', action='store_true', help='Explicit gait-on zero-speed trial')
     opts = parser.parse_args(args)
     values = (opts.vx, opts.vy, opts.wz)
     if (not all(math.isfinite(v) for v in (*values, opts.seconds)) or
@@ -25,8 +27,8 @@ def main(args=None):
         parser.error('Limits: |vx|<=0.30, |vy|<=0.20, |wz|<=0.30, 0<seconds<=6')
     rclpy.init()
     node = rclpy.create_node('model6850_single_trial')
-    pub = node.create_publisher(Twist, '/mydog/model6850/cmd_vel', 1)
-    client = node.create_client(SetBool, '/mydog/model6850/arm')
+    pub = node.create_publisher(Twist, opts.namespace + '/cmd_vel', 1)
+    client = node.create_client(SetBool, opts.namespace + '/arm')
     status = {}
     status_time = [0.]
 
@@ -38,7 +40,7 @@ def main(args=None):
         except (ValueError, TypeError):
             status.clear()
 
-    sub = node.create_subscription(String, '/mydog/model6850/status', on_status, 1)
+    sub = node.create_subscription(String, opts.namespace + '/status', on_status, 1)
 
     def set_arm(value):
         req = SetBool.Request()
@@ -55,7 +57,7 @@ def main(args=None):
     try:
         if not client.wait_for_service(timeout_sec=5.):
             raise RuntimeError('A6850 hardware node /arm service unavailable')
-        if not any(values):
+        if not any(values) and not opts.march:
             set_arm(False)
             return
         deadline = time.monotonic() + 5.

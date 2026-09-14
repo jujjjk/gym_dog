@@ -17,14 +17,18 @@ from mydog_policy import rs01_model6850_node as mod
 
 
 @pytest.fixture
-def make_node(monkeypatch, tmp_path):
+def make_node(monkeypatch, tmp_path, request):
     clock = NS(t=100.)
     fake_time = NS(time=lambda: clock.t, monotonic=lambda: clock.t,
                    sleep=lambda seconds: None, perf_counter=lambda: clock.t)
     monkeypatch.setattr(base, 'time', fake_time)
     monkeypatch.setattr(mod, 'time', fake_time)
     calls, nodes = [], []
-    resource = Path(__file__).resolve().parents[1] / 'resource/stand_only_6850.onnx'
+    use_b = getattr(request, 'param', None) == 'B18000'
+    if use_b:
+        from mydog_policy import rs01_model18000_node as bmod
+        monkeypatch.setattr(bmod, 'time', fake_time)
+    resource = Path(__file__).resolve().parents[1] / ('resource/B18000.onnx' if use_b else 'resource/stand_only_6850.onnx')
     logger = NS(info=lambda *a: None, warn=lambda *a: None,
                 warning=lambda *a: None, error=lambda *a: None)
     overrides = dict(onnx_path=str(resource), max_motor_age_ms=80., max_imu_age_sec=.06,
@@ -42,7 +46,7 @@ def make_node(monkeypatch, tmp_path):
         self.messages.append((topic, msg))
 
     monkeypatch.setattr(base.Node, '__init__', init_ros)
-    cls = mod.Rs01Model6850Node
+    cls = bmod.Rs01Model18000Node if use_b else mod.Rs01Model6850Node
     monkeypatch.setattr(cls, 'declare_parameter', declare)
     monkeypatch.setattr(cls, 'get_parameter', lambda s, n: NS(value=s.fake_parameters[n]))
     monkeypatch.setattr(cls, 'get_logger', lambda s: logger)

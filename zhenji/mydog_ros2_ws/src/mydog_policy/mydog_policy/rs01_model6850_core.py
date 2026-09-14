@@ -35,6 +35,9 @@ class Model6850Contract(Model930Contract):
 
 
 class Rs01Model6850Core:
+    def project_policy_target(self, target, command):
+        return target
+
     def __init__(self,session,contract):
         self.session=session; self.contract=contract; self.mapper=Rs01Model930Mapper(contract)
         o=contract.raw['observations']['rs01_leg_odometry']
@@ -110,6 +113,7 @@ class Rs01Model6850Core:
         if np.shape(raw)!=(12,) or not np.isfinite(raw).all():raise RuntimeError('Invalid ONNX action')
         action=np.clip(raw,-c.action_clip,c.action_clip).astype(np.float64)
         desired=c.default+c.action_scale*action
+        desired=self.project_policy_target(desired,command)
         # Exact current training/MuJoCo limiter, NOT the old braking-aware
         # model930 deployment limiter. Crossing resets rate as in simulation.
         desired_rate=np.clip((desired-self.target)/dt,-c.rate_limit,c.rate_limit)

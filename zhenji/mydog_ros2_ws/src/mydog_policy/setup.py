@@ -31,7 +31,8 @@ setup(
             + glob("resource/model_930_rs01_heading52.*")
             + glob("resource/model_1850_rs01_path54.*")
             + glob("resource/model_1950_rs01_estimator_parity.*")
-            + glob("resource/stand_only_6850.*"),
+            + glob("resource/stand_only_6850.*")
+            + glob("resource/B18000.*"),
         ),
     ],
     install_requires=["setuptools"],
@@ -44,6 +45,9 @@ setup(
     entry_points={
         "console_scripts": [
             "mydog_rs01_model6850_node = mydog_policy.rs01_model6850_node:main",
+            "mydog_rs01_model18000_node = mydog_policy.rs01_model18000_node:main",
+            "mydog_model18000_command = mydog_policy.rs01_model18000_command:main",
+            "mydog_validate_model18000 = mydog_policy.validate_rs01_model18000:main",
             "mydog_model6850_command = mydog_policy.rs01_model6850_command:main",
             "mydog_model6850_omni_sequence = mydog_policy.rs01_model6850_omni_sequence:main",
             "mydog_rs01_model6850_shadow = mydog_policy.rs01_model6850_shadow_node:main",
