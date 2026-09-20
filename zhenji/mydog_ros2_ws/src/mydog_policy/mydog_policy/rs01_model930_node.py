@@ -848,6 +848,9 @@ class Rs01Model930Node(Node):
         self.core.previous_action.fill(0.0)
         return safe, torque_info
 
+    def _walk_entry_allowed(self):
+        return True
+
     def _send_target(self, target_real):
         if not self.enable_send:
             return None
@@ -970,7 +973,7 @@ class Rs01Model930Node(Node):
                 roll, pitch, guard_odometry
             )
             if command_active and self.mode == "ready":
-                if self.walk_start_stable:
+                if self.walk_start_stable and self._walk_entry_allowed():
                     if self.walk_ready_since is None:
                         self.walk_ready_since = now
                     elif (
