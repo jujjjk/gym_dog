@@ -20,14 +20,14 @@ def test_cache_reads_cannot_refresh_missing_serial_frames(monkeypatch):
     monkeypatch.setattr(module, 'time', NS(time=lambda: clock.t))
     snapshot = interface._read_snapshot()
     assert snapshot.valid and snapshot.stamp == 10.
-    clock.t = 10.061
+    clock.t = 10.091
     snapshot = interface._read_snapshot()
     assert not snapshot.valid and snapshot.stamp == 10.
-    backend.frame_stamps[4] = 10.06
-    backend.frame_stamps[22] = 10.06
+    backend.frame_stamps[4] = 10.09
+    backend.frame_stamps[22] = 10.09
     # Euler must progress too; refreshing gyro alone is insufficient.
     assert not interface._read_snapshot().valid
-    backend.frame_stamps[38] = 10.06
+    backend.frame_stamps[38] = 10.09
     assert interface._read_snapshot().valid
 
 

@@ -44,6 +44,10 @@ def test_b_constructor_dry_run_and_timing_gate(make_node):
     n._b_loop_intervals.clear();n._b_loop_intervals.extend([.04]*50)
     response=n.arm_callback(NS(data=True),NS(success=True,message=''))
     assert not response.success
+    assert 'calibration' in response.message
+    n.imu_calibrated = True
+    response = n.arm_callback(NS(data=True), NS(success=True, message=''))
+    assert not response.success
     assert '50Hz' in response.message
     assert n.arm_callback(NS(data=False),NS(success=False,message='')).success
 
