@@ -24,7 +24,8 @@ def make_node(monkeypatch, tmp_path, request):
     monkeypatch.setattr(base, 'time', fake_time)
     monkeypatch.setattr(mod, 'time', fake_time)
     calls, nodes = [], []
-    use_b = getattr(request, 'param', None) == 'B18000'
+    use_capture = getattr(request, 'param', None) == 'capture61'
+    use_b = use_capture or getattr(request, 'param', None) == 'B18000'
     if use_b:
         from mydog_policy import rs01_model18000_node as bmod
         monkeypatch.setattr(bmod, 'time', fake_time)
@@ -34,6 +35,9 @@ def make_node(monkeypatch, tmp_path, request):
     overrides = dict(onnx_path=str(resource), max_motor_age_ms=80., max_imu_age_sec=.06,
                      http_timeout_sec=.04, max_abs_roll_rad=.45, max_abs_pitch_rad=.45,
                      startup_ready_error_rad=.12, startup_ready_hold_sec=2.)
+
+    if use_capture:
+        overrides['capture_dir']=str(tmp_path/'capture')
 
     def init_ros(self, name):
         self.fake_parameters = {}
@@ -47,6 +51,10 @@ def make_node(monkeypatch, tmp_path, request):
 
     monkeypatch.setattr(base.Node, '__init__', init_ros)
     cls = bmod.Rs01Model18000Node if use_b else mod.Rs01Model6850Node
+    if use_capture:
+        from mydog_policy import capture61_node as capmod
+        monkeypatch.setattr(capmod, 'time', fake_time)
+        cls=capmod.Capture61Node
     monkeypatch.setattr(cls, 'declare_parameter', declare)
     monkeypatch.setattr(cls, 'get_parameter', lambda s, n: NS(value=s.fake_parameters[n]))
     monkeypatch.setattr(cls, 'get_logger', lambda s: logger)
@@ -84,7 +92,7 @@ def make_node(monkeypatch, tmp_path, request):
                       q_real=q, dq_real=np.zeros(12), torque=np.zeros(12),
                       snapshot_seq=np.full(12, int(clock.t * 50)),
                       board_tick_ms=np.full(12, int(clock.t * 1000)),
-                      cache_age_ms=1., poll_dt_ms=20.)
+                      cache_age_ms=1., poll_dt_ms=20., last_update_ts=np.full(12,clock.t-.001))
 
         def close(self):
             pass
@@ -102,6 +110,7 @@ def make_node(monkeypatch, tmp_path, request):
             return None
 
     class Imu:
+        R_BASE_IMU=np.eye(3)
         def __init__(self, **kw):
             pass
 
@@ -116,7 +125,7 @@ def make_node(monkeypatch, tmp_path, request):
 
         def get_latest(self):
             return NS(valid=True, backend_alive=True, backend_error='', stamp=clock.t - .001,
-                      rpy_deg=np.zeros(3), gyro_rad_s=np.zeros(3),
+                      rpy_deg=np.zeros(3), gyro_rad_s=np.zeros(3), acc_g=np.array([0.,0.,1.]), mag_uT=np.zeros(3),
                       projected_gravity=np.array([0., 0., -1.]), quat_wxyz=np.array([1., 0., 0., 0.]))
 
     monkeypatch.setattr(base, 'MotorStateHttpInterface', Motor)
@@ -131,6 +140,7 @@ def make_node(monkeypatch, tmp_path, request):
 
     yield make
     for node in nodes:
+        if getattr(node,"capture",None) is not None:node.capture.close()
         # Constructor lock is real but only an advisory file, not hardware.
         if node._owner:
             node._owner.close()

@@ -250,6 +250,9 @@ class Rs01Model18000Node(Rs01Model6850Node):
                       transport='unix_socket', rt_spi_ms=self._rt_spi_ms,
                       rt_server_ms=self._rt_total_ms,
                       hardware_motion_validated=False,
+                      lateral_feedback_valid=False,
+                      lateral_correction_mps=0.,
+                      extra_compensation_enabled=False,
                       policy_target_mapping='conditional_inward_scale_v1')
         return result
 
