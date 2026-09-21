@@ -44,6 +44,8 @@ setup(
     extras_require={"test": ["pytest"]},
     entry_points={
         "console_scripts": [
+            "mydog_capture61_node = mydog_policy.capture61_node:main",
+            "mydog_capture61_slice = mydog_policy.capture61:main",
             "mydog_model18000_sequence = mydog_policy.rs01_model18000_sequence:main",
             "mydog_rs01_model6850_node = mydog_policy.rs01_model6850_node:main",
             "mydog_rs01_model18000_node = mydog_policy.rs01_model18000_node:main",

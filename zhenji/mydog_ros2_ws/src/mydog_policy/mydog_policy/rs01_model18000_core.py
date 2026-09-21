@@ -1,4 +1,5 @@
 """B18000 deployment contract. Physical delay/FOPDT is NOT simulated on hardware."""
+import math
 from dataclasses import replace
 import numpy as np
 from .rs01_model930_core import Model930Contract
@@ -33,6 +34,10 @@ class Model18000Contract(Model930Contract):
 
 
 class Rs01Model18000Core(Rs01Model6850Core):
+    # Straight translation retains symmetric yaw feedback, with no added bias.
+    straight_heading_deadband_rad = math.radians(2.)
+    straight_yaw_gain_scale = .5
+    straight_lateral_cmd_mps = .02
     def project_policy_target(self, target, command):
         cfg=self.contract.raw['v20']
         ids=[self.contract.joint_names.index(x+'_hip_joint') for x in ('FL','FR','RL','RR')]
@@ -42,6 +47,25 @@ class Rs01Model18000Core(Rs01Model6850Core):
         hip=target[ids];out=target.copy()
         out[ids]=np.where(hip*sides<0,hip*(1-gate*(1-cfg['inward_target_rad']/ranges)),hip)
         return out
+
+    def _mix_direction_command(self, command, error, turning, conf):
+        command=np.asarray(command,dtype=np.float64).reshape(3)
+        operator_straight = (
+            abs(command[1]) < self.straight_lateral_cmd_mps
+            and abs(command[2]) < conf['direction_turn_enter_rad_s'])
+        if not operator_straight:
+            return super()._mix_direction_command(command, error, turning, conf)
+        target=command.copy()
+        blend=float(not turning)
+        deadband=self.straight_heading_deadband_rad
+        adjusted=0. if abs(error) <= deadband else math.copysign(abs(error)-deadband, error)
+        limit=conf['direction_yaw_correction_limit_rad_s']
+        gain=conf['direction_heading_gain']*self.straight_yaw_gain_scale
+        target[2]+=blend*limit*math.tanh(gain*adjusted/limit)
+        ranges=self.contract.raw['commands']['ranges']
+        for i,key in enumerate(('lin_vel_x','lin_vel_y','ang_vel_yaw')):
+            target[i]=np.clip(target[i],*ranges[key])
+        return target
 
 
 class Guarded18000PolicyCore(Guarded6850PolicyCore):

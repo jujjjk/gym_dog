@@ -56,6 +56,22 @@ class Rs01Model6850Core:
         self.target=self.contract.default.astype(np.float64).copy() if q_policy is None else np.asarray(q_policy,dtype=np.float64).reshape(12).copy()
         if not np.isfinite(self.target).all():raise ValueError('Invalid reset target')
         self.rate=np.zeros(12);self.odometry.reset()
+        self.last_capture = None
+
+    def _mix_direction_command(self, command, error, turning, conf):
+        blend=np.clip(1-abs(command[2])/conf['direction_blend_yaw_rad_s'],0,1)*(not turning)
+        angle=np.clip(error,-conf['direction_rotation_limit_rad'],conf['direction_rotation_limit_rad'])
+        rot=np.array([[math.cos(angle),-math.sin(angle)],[math.sin(angle),math.cos(angle)]])
+        correction=(rot@command[:2]-command[:2])*blend
+        correction*=min(1,conf['direction_planar_correction_limit_m_s']/max(np.linalg.norm(correction),1e-6))
+        target=np.asarray(command,dtype=np.float64).reshape(3).copy()
+        target[:2]+=correction
+        limit=conf['direction_yaw_correction_limit_rad_s']
+        target[2]+=blend*limit*math.tanh(conf['direction_heading_gain']*error/limit)
+        ranges=self.contract.raw['commands']['ranges']
+        for i,key in enumerate(('lin_vel_x','lin_vel_y','ang_vel_yaw')):
+            target[i]=np.clip(target[i],*ranges[key])
+        return target
 
     def frequency(self,command):
         v=self.contract.raw['v13'];c=v['commands']
@@ -92,16 +108,7 @@ class Rs01Model6850Core:
         if turning!=self.turning:self.heading=float(yaw)
         self.turning=turning;self.command=command.copy();self.gait=gait
         error=wrap_pi(self.heading-yaw)
-        blend=np.clip(1-abs(command[2])/conf['direction_blend_yaw_rad_s'],0,1)*(not turning)
-        angle=np.clip(error,-conf['direction_rotation_limit_rad'],conf['direction_rotation_limit_rad'])
-        rot=np.array([[math.cos(angle),-math.sin(angle)],[math.sin(angle),math.cos(angle)]])
-        correction=(rot@command[:2]-command[:2])*blend
-        correction*=min(1,conf['direction_planar_correction_limit_m_s']/max(np.linalg.norm(correction),1e-6))
-        target=command.copy();target[:2]+=correction
-        limit=conf['direction_yaw_correction_limit_rad_s']
-        target[2]+=blend*limit*math.tanh(conf['direction_heading_gain']*error/limit)
-        for i,key in enumerate(('lin_vel_x','lin_vel_y','ang_vel_yaw')):
-            target[i]=np.clip(target[i],*c.raw['commands']['ranges'][key])
+        target=self._mix_direction_command(command,error,turning,conf)
         obs=np.r_[velocity*c.lin_vel_scale,gyro*c.ang_vel_scale,gravity,target*c.command_scale,
                   (q-c.default)*c.dof_pos_scale,dq*c.dof_vel_scale,self.action,
                   math.sin(2*math.pi*self.phase),math.cos(2*math.pi*self.phase),
@@ -122,6 +129,9 @@ class Rs01Model6850Core:
         self.target=np.where(cross,desired,nxt);self.rate=np.where(cross,0,rate)
         if np.any(self.target<c.lower) or np.any(self.target>c.upper):raise RuntimeError('Target outside URDF')
         self.action=action;self.steps+=1
+        self.last_capture = dict(raw_action=np.asarray(raw).copy(),
+                                 target_rate=self.rate.copy(), phase=self.phase,
+                                 estimated_velocity=np.asarray(velocity).copy())
         return dict(observation=obs,action=action.copy(),target_policy=self.target.copy(),
                     target_real=self.mapper.policy_target_to_real(self.target),confidence=float(confidence),
                     phase=self.phase,estimated_velocity=np.asarray(velocity).copy())

@@ -86,8 +86,21 @@ def main(args=None):
     parser.add_argument('--print-plan', action='store_true', help='Print only; no ROS/device access')
     parser.add_argument('--action', choices=('march',)+ACTION_KEYS,
                         help='One 15s action, then disarm and wait for stable ready')
+    parser.add_argument('--seconds',type=float,default=15.,help='Single action duration, 1..60 s')
+    parser.add_argument('--speed',type=float,help='Single-axis speed magnitude within existing trial caps')
     opts = parser.parse_args(args)
     plan = build_plan(opts.action)
+    if opts.seconds != 15. or opts.speed is not None:
+        if opts.action not in ACTION_KEYS[:6]+('march',):parser.error('Overrides require a single-axis --action')
+        if not 1 <= opts.seconds <= 60:parser.error('seconds must be 1..60')
+        name,_,vector=plan[0]
+        if opts.speed is not None:
+            if opts.action=='march':parser.error('march does not accept speed')
+            axis=next(i for i,v in enumerate(vector) if v)
+            cap=(.30,.20,.30)[axis]
+            if not 0 < opts.speed <= cap:parser.error('speed exceeds existing trial cap')
+            vector=tuple((opts.speed if v>0 else -opts.speed) if v else 0. for v in vector)
+        plan=[(name,opts.seconds,vector)]
     if opts.print_plan:
         print(json.dumps(dict(segments=plan, total_seconds=sum(s[1] for s in plan)), ensure_ascii=False, indent=2))
         return
