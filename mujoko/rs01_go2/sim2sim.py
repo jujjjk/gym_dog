@@ -85,6 +85,7 @@ def limited_target_step(
     rate_limit,
     acceleration_limit,
     dt,
+    reached_atol=0.0,
 ):
     desired_rate = np.clip(
         (desired - previous) / dt,
@@ -103,6 +104,8 @@ def limited_target_step(
     )
     limited_target = previous + limited_rate * dt
     crossed = (desired - previous) * (desired - limited_target) <= 0.0
+    if reached_atol:
+        crossed |= np.abs(desired - limited_target) <= reached_atol
     limited_target = np.where(crossed, desired, limited_target)
     limited_rate = np.where(crossed, 0.0, limited_rate)
     return limited_target, limited_rate

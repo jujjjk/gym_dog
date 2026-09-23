@@ -7,6 +7,7 @@ from .rs01_model18000_node import Rs01Model18000Node
 from .capture61 import CaptureWriter
 
 class Capture61Node(Rs01Model18000Node):
+    capture_schema = 'b18000_capture61_v1'
     def __init__(self):
         self.capture=None;self.capture_step=0;self.capture_imu=None
         self.wall_minus_mono=time.time()-time.monotonic()
@@ -14,7 +15,7 @@ class Capture61Node(Rs01Model18000Node):
         self.declare_parameter('capture_dir','')
         path=self.get_parameter('capture_dir').value
         if not path:raise ValueError('capture_dir is required and must be a new session directory')
-        metadata=dict(schema='b18000_capture61_v1',created_wall=time.time(),
+        metadata=dict(schema=self.capture_schema,created_wall=time.time(),
             wall_minus_monotonic=self.wall_minus_mono,
             timestamp_basis='policy: host monotonic; imu/motor: host wall snapshot converted with startup offset, NOT device acquisition',
             acquisition_sync_verified=False,units='angles rad; rates rad/s; velocities m/s; torque Nm; temperature C',

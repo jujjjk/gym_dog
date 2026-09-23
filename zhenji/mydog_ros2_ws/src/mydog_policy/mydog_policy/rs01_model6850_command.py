@@ -17,7 +17,7 @@ def main(args=None):
     parser.add_argument('--vy', type=float, default=0.)
     parser.add_argument('--wz', type=float, default=0.)
     parser.add_argument('--seconds', type=float, default=3.)
-    parser.add_argument('--namespace', choices=['/mydog/model6850','/mydog/model18000'], default='/mydog/model6850')
+    parser.add_argument('--namespace', choices=['/mydog/model6850','/mydog/model18000','/mydog/model23500'], default='/mydog/model6850')
     parser.add_argument('--march', action='store_true', help='Explicit gait-on zero-speed trial')
     opts = parser.parse_args(args)
     values = (opts.vx, opts.vy, opts.wz)

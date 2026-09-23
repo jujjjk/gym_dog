@@ -1,0 +1,19 @@
+{
+  "policy": "artifacts/rs01_v22_sim2sim/B23500.onnx",
+  "scene": "artifacts/rs01_v20_sim2sim/scene.xml",
+  "initial_phase": 0.0,
+  "requested_duration_s": 125.0,
+  "completed_duration_s": 125.0,
+  "stop_reason": null,
+  "finite": true,
+  "flight_ratio": 0.0,
+  "roll_rms_deg": 1.82664117588701,
+  "vz_rms_m_s": 0.10682820125629001,
+  "raw_peak_nm": 16.581833949042213,
+  "max_joint_speed_rad_s": 18.021763510705586,
+  "sensor_profile": "normal",
+  "sensor_seed": 20260925,
+  "fast": true,
+  "sensor_model": "shared_training_SensorSnapshot",
+  "host_guard": "policy_sensor_snapshot"
+}

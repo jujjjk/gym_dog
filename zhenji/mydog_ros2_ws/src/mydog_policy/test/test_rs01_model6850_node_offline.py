@@ -24,12 +24,15 @@ def make_node(monkeypatch, tmp_path, request):
     monkeypatch.setattr(base, 'time', fake_time)
     monkeypatch.setattr(mod, 'time', fake_time)
     calls, nodes = [], []
-    use_capture = getattr(request, 'param', None) == 'capture61'
-    use_b = use_capture or getattr(request, 'param', None) == 'B18000'
+    use_capture = getattr(request, 'param', None) in ('capture61', 'capture23500')
+    use_v22 = getattr(request, 'param', None) in ('B23500', 'capture23500')
+    use_b = use_capture or use_v22 or getattr(request, 'param', None) == 'B18000'
     if use_b:
         from mydog_policy import rs01_model18000_node as bmod
         monkeypatch.setattr(bmod, 'time', fake_time)
     resource = Path(__file__).resolve().parents[1] / ('resource/B18000.onnx' if use_b else 'resource/stand_only_6850.onnx')
+    if use_v22:
+        resource = resource.with_name('B23500.onnx')
     logger = NS(info=lambda *a: None, warn=lambda *a: None,
                 warning=lambda *a: None, error=lambda *a: None)
     overrides = dict(onnx_path=str(resource), max_motor_age_ms=80., max_imu_age_sec=.06,
@@ -51,10 +54,16 @@ def make_node(monkeypatch, tmp_path, request):
 
     monkeypatch.setattr(base.Node, '__init__', init_ros)
     cls = bmod.Rs01Model18000Node if use_b else mod.Rs01Model6850Node
+    if use_v22:
+        from mydog_policy.rs01_model23500_node import Rs01Model23500Node
+        cls = Rs01Model23500Node
     if use_capture:
         from mydog_policy import capture61_node as capmod
         monkeypatch.setattr(capmod, 'time', fake_time)
         cls=capmod.Capture61Node
+        if use_v22:
+            from mydog_policy.capture23500_node import Capture23500Node
+            cls = Capture23500Node
     monkeypatch.setattr(cls, 'declare_parameter', declare)
     monkeypatch.setattr(cls, 'get_parameter', lambda s, n: NS(value=s.fake_parameters[n]))
     monkeypatch.setattr(cls, 'get_logger', lambda s: logger)

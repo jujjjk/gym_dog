@@ -35,6 +35,9 @@ class Model6850Contract(Model930Contract):
 
 
 class Rs01Model6850Core:
+    initialize_odometry_on_first_tick = False
+    target_reached_atol = 0.0
+
     def project_policy_target(self, target, command):
         return target
 
@@ -100,6 +103,7 @@ class Rs01Model6850Core:
         if self.steps:
             self.phase=(self.phase+dt*self.frequency(self.command)*(self.gait>.5))%1
             self.heading=wrap_pi(self.heading+dt*self.command[2])
+        if self.steps or self.initialize_odometry_on_first_tick:
             odom=self.odometry.estimate(q,dq,gyro,kinematics=kinematics)
             velocity=odom['base_linear_velocity'];confidence=odom['confidence']
         else:velocity=np.zeros(3);confidence=0.
@@ -126,6 +130,8 @@ class Rs01Model6850Core:
         desired_rate=np.clip((desired-self.target)/dt,-c.rate_limit,c.rate_limit)
         rate=np.clip(self.rate+np.clip(desired_rate-self.rate,-c.accel_limit*dt,c.accel_limit*dt),-c.rate_limit,c.rate_limit)
         nxt=self.target+rate*dt;cross=(desired-self.target)*(desired-nxt)<=0
+        if self.target_reached_atol:
+            cross |= np.abs(desired-nxt) <= self.target_reached_atol
         self.target=np.where(cross,desired,nxt);self.rate=np.where(cross,0,rate)
         if np.any(self.target<c.lower) or np.any(self.target>c.upper):raise RuntimeError('Target outside URDF')
         self.action=action;self.steps+=1

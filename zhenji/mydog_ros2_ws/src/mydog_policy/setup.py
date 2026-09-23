@@ -32,7 +32,8 @@ setup(
             + glob("resource/model_1850_rs01_path54.*")
             + glob("resource/model_1950_rs01_estimator_parity.*")
             + glob("resource/stand_only_6850.*")
-            + glob("resource/B18000.*"),
+            + glob("resource/B18000.*")
+            + glob("resource/B23500.*"),
         ),
     ],
     install_requires=["setuptools"],
@@ -44,6 +45,10 @@ setup(
     extras_require={"test": ["pytest"]},
     entry_points={
         "console_scripts": [
+            "mydog_rs01_model23500_node = mydog_policy.rs01_model23500_node:main",
+            "mydog_model23500_command = mydog_policy.rs01_model23500_command:main",
+            "mydog_validate_model23500 = mydog_policy.validate_rs01_model23500:main",
+            "mydog_capture23500_node = mydog_policy.capture23500_node:main",
             "mydog_capture61_node = mydog_policy.capture61_node:main",
             "mydog_capture61_slice = mydog_policy.capture61:main",
             "mydog_model18000_sequence = mydog_policy.rs01_model18000_sequence:main",
