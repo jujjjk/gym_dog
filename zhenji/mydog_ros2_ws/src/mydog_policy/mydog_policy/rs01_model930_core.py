@@ -752,6 +752,7 @@ class Rs01NewMachineLegOdometry:
         stance = np.zeros(4, dtype=bool)
         stance[selected] = True
         self.last_stance = stance
+        raw = np.full(3, np.nan)
         if selected:
             raw = np.mean(velocity_by_foot[selected], axis=0)
             raw[:2] = np.clip(raw[:2], -1.0, 1.0)
@@ -774,6 +775,7 @@ class Rs01NewMachineLegOdometry:
             self.filtered *= self.no_contact_decay
         self.filtered[2] = 0.0
         return {
+            "raw_base_velocity": raw.copy(),
             "base_linear_velocity": self.filtered.copy(),
             "confidence": float(confidence),
             "stance_mask": stance,

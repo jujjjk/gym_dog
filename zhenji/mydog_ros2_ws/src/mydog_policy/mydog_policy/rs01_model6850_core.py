@@ -61,6 +61,9 @@ class Rs01Model6850Core:
         self.rate=np.zeros(12);self.odometry.reset()
         self.last_capture = None
 
+    def _direction_heading_error(self, error):
+        return error
+
     def _mix_direction_command(self, command, error, turning, conf):
         blend=np.clip(1-abs(command[2])/conf['direction_blend_yaw_rad_s'],0,1)*(not turning)
         angle=np.clip(error,-conf['direction_rotation_limit_rad'],conf['direction_rotation_limit_rad'])
@@ -111,7 +114,7 @@ class Rs01Model6850Core:
                  else abs(command[2])>=conf['direction_turn_enter_rad_s'])
         if turning!=self.turning:self.heading=float(yaw)
         self.turning=turning;self.command=command.copy();self.gait=gait
-        error=wrap_pi(self.heading-yaw)
+        error=self._direction_heading_error(wrap_pi(self.heading-yaw))
         target=self._mix_direction_command(command,error,turning,conf)
         obs=np.r_[velocity*c.lin_vel_scale,gyro*c.ang_vel_scale,gravity,target*c.command_scale,
                   (q-c.default)*c.dof_pos_scale,dq*c.dof_vel_scale,self.action,
@@ -135,7 +138,7 @@ class Rs01Model6850Core:
         self.target=np.where(cross,desired,nxt);self.rate=np.where(cross,0,rate)
         if np.any(self.target<c.lower) or np.any(self.target>c.upper):raise RuntimeError('Target outside URDF')
         self.action=action;self.steps+=1
-        self.last_capture = dict(raw_action=np.asarray(raw).copy(),
+        self.last_capture = dict(odometry=odom if (self.steps > 1 or self.initialize_odometry_on_first_tick) else None, raw_action=np.asarray(raw).copy(),
                                  target_rate=self.rate.copy(), phase=self.phase,
                                  estimated_velocity=np.asarray(velocity).copy())
         return dict(observation=obs,action=action.copy(),target_policy=self.target.copy(),

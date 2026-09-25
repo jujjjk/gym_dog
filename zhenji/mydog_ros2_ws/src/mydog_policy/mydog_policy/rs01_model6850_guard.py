@@ -168,13 +168,25 @@ class ReceptionGuard:
         tick = np.asarray(motor.board_tick_ms, dtype=np.int64)
         if np.any(seq < 0) or np.any(tick < 0):
             raise RuntimeError('Missing board counters')
+        if np.any(seq > 0xffff):
+            raise RuntimeError('Invalid 16-bit board sequence')
         if self.seq is None:
             self.progress_at = np.full(12, mono)
         else:
-            # Board reboot/counter wrap requires a new calibration/start.
-            if np.any(seq < self.seq) or np.any(tick < self.tick):
-                raise RuntimeError('Board counter regressed/reset')
-            advanced = (seq > self.seq) & (tick > self.tick)
+            # SPI snapshot_seq is uint16, independently wrapping on each board.
+            # Only forward modular progress with a continuing board clock is
+            # accepted. Clock reset/wrap still requires a new calibration/start.
+            seq_delta = (seq - self.seq) & 0xffff
+            wrapped = seq < self.seq
+            bad = ((seq_delta >= 0x8000) | (tick < self.tick)
+                   | (wrapped & (tick <= self.tick)))
+            if np.any(bad):
+                indices = np.flatnonzero(bad).tolist()
+                raise RuntimeError(
+                    'Board counter regressed/reset: motor_indices=%s seq=%s->%s tick=%s->%s'
+                    % (indices, self.seq[bad].tolist(), seq[bad].tolist(),
+                       self.tick[bad].tolist(), tick[bad].tolist()))
+            advanced = (seq_delta > 0) & (tick > self.tick)
             self.progress_at[advanced] = mono
             if np.any(mono - self.progress_at > .250):
                 raise RuntimeError('Board feedback stopped progressing')

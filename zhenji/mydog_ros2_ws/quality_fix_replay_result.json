@@ -1,0 +1,13 @@
+{
+  "replay_rows": 32,
+  "old_stop_times": [
+    2397.561891661
+  ],
+  "new_stop_times": [],
+  "max_independent_bad_sec": {
+    "timing": 0.02299943300022278,
+    "odometry": 0.08799310399990645,
+    "heading": 0.1548983650000082
+  },
+  "note": "Recorded pre-stop window only; not a hardware walking validation"
+}

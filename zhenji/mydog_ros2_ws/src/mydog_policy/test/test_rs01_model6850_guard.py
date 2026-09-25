@@ -159,6 +159,51 @@ def test_invalid_feedback_is_rejected(change):
         ReceptionGuard().check(motor, imu, 10., 1.)
 
 
+@pytest.mark.parametrize('new_seq', [0, 3])
+def test_uint16_wrap_on_one_board_refreshes_progress(new_seq):
+    motor, imu = snapshots()
+    motor.snapshot_seq[:6] = 65514
+    motor.snapshot_seq[6:] = 65535
+    guard = ReceptionGuard()
+    guard.check(motor, imu, 10., 1.)
+    motor.snapshot_seq[:6] += 1
+    motor.snapshot_seq[6:] = new_seq
+    motor.board_tick_ms += 20
+    guard.check(motor, imu, 10., 1.20)
+    # More than 250ms since initialization, but wrap was valid progress.
+    guard.check(motor, imu, 10., 1.30)
+    with pytest.raises(RuntimeError, match='progressing'):
+        guard.check(motor, imu, 10., 1.46)
+
+
+@pytest.mark.parametrize('old_seq,new_seq,old_tick,new_tick', [
+    (100, 99, 1000, 1020),       # stale/out-of-order frame
+    (65535, 0, 1000, 0),        # reboot at sequence boundary
+    (65535, 0, 1000, 1000),     # wrapping sequence without clock progress
+    (100, 101, 1000, 0),        # clock reset despite forward sequence
+    (0, 32768, 1000, 1020),     # ambiguous half-range jump
+])
+def test_counter_reset_or_regression_still_rejected(old_seq, new_seq, old_tick, new_tick):
+    motor, imu = snapshots()
+    motor.snapshot_seq[:] = old_seq
+    motor.board_tick_ms[:] = old_tick
+    guard = ReceptionGuard()
+    guard.check(motor, imu, 10., 1.)
+    motor.snapshot_seq[0] = new_seq
+    motor.board_tick_ms[0] = new_tick
+    with pytest.raises(RuntimeError, match='regressed/reset: motor_indices='):
+        guard.check(motor, imu, 10., 1.02)
+    assert guard.seq[0] == old_seq
+    assert guard.tick[0] == old_tick
+
+
+def test_out_of_range_board_sequence_rejected():
+    motor, imu = snapshots()
+    motor.snapshot_seq[0] = 65536
+    with pytest.raises(RuntimeError, match='16-bit'):
+        ReceptionGuard().check(motor, imu, 10., 1.)
+
+
 def test_shared_kinematics_match_internal_foot_fk(actor):
     from mydog_policy.rs01_model930_core import Rs01NewMachineLegOdometry
     session, contract = actor

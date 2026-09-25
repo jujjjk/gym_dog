@@ -30,6 +30,7 @@ class Rs01Model6850Node(Rs01Model930Node):
     policy_core_type = Guarded6850PolicyCore
     imu_interface_type = FrameStampedImu
     observation_count = 61
+    telemetry_period_sec = 0.0
     topic_namespace = '/mydog/model6850'
     command_topic = '/mydog/model6850/cmd_vel'
     calibrate_gyro_bias = True
@@ -332,8 +333,12 @@ class Rs01Model6850Node(Rs01Model930Node):
         self._last_target_real = target_real.copy()
         if (self._control_start is not None
                 and time.monotonic() - self._control_start > .012):
-            self.get_logger().warning(
-                'Compute >12ms; still queueing send to keep 50 Hz')
+            # Rate-limit console I/O; keep every-cycle timing in telemetry.
+            now = time.monotonic()
+            if now - getattr(self, '_last_compute_warning', float('-inf')) >= 1.:
+                self._last_compute_warning = now
+                self.get_logger().warning(
+                    'Compute >12ms; still queueing send to keep 50 Hz')
         self._enqueue_send(target_real)
 
     def _enqueue_send(self, target_real):
@@ -455,6 +460,16 @@ class Rs01Model6850Node(Rs01Model930Node):
 
     def _publish(self, observation, action, target_real, odometry, roll, pitch,
                  yaw, motor, torque_info, now, guard_odometry):
+        # Capture61 has already queued the full-rate cycle before this call.
+        # Reduce ROS/JSON/secondary CSV GIL contention without slowing control,
+        # capture, fault checks, or successful motor sends.
+        signature = (self.mode, self.trial.armed, self.walk_inhibit_reason,
+                     self._last_fault_reason)
+        due = now - getattr(self, '_last_telemetry_tick', float('-inf')) >= self.telemetry_period_sec
+        if not due and signature == getattr(self, '_last_telemetry_signature', None):
+            return
+        self._last_telemetry_tick = now
+        self._last_telemetry_signature = signature
         payload = self._snapshot_telemetry(
             observation, action, target_real, odometry, roll, pitch, yaw,
             motor, torque_info, now, guard_odometry)

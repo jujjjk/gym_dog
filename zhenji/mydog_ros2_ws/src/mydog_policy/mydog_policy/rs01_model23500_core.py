@@ -46,6 +46,11 @@ class Rs01Model23500Core(Rs01Model18000Core):
     # the later B18000-only deadband / half-gain / disabled planar correction.
     _mix_direction_command = Rs01Model6850Core._mix_direction_command
 
+    def _direction_heading_error(self, error):
+        # Apply the same confidence to direction mixing AND actor sin/cos
+        # heading channels. Keep measured yaw and the original target intact.
+        return error * getattr(self, 'heading_correction_weight', 1.)
+
 
 class Guarded23500PolicyCore(Guarded6850PolicyCore):
     actor_type = Rs01Model23500Core

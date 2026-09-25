@@ -639,6 +639,9 @@ class Rs01Model930Node(Node):
                 f"RS01 safety handshake incomplete: {payload}"
             )
 
+    def _observation_state(self, motor, imu):
+        return motor, imu
+
     def _fresh_state(self):
         motor = self.motor.get_latest()
         if not motor.valid:
@@ -681,6 +684,7 @@ class Rs01Model930Node(Node):
                 f"IMU invalid/stale: age={imu_age:.3f}s "
                 f"error={imu.backend_error!r}"
             )
+        motor, imu = self._observation_state(motor, imu)
         roll = math.radians(float(imu.rpy_deg[0]))
         pitch = math.radians(float(imu.rpy_deg[1]))
         yaw = math.radians(float(imu.rpy_deg[2]))
