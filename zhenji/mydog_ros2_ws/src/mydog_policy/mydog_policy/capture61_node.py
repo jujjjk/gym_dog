@@ -27,6 +27,21 @@ class Capture61Node(Rs01Model18000Node):
             observation_semantics='exact controller observation; policy_evaluated=false means no policy ran (stand/startup placeholders)',
             raw_action_semantics='unclipped ONNX output only when policy_evaluated=true',
             contract=self.contract.raw)
+        pipeline = getattr(self, 'observation_pipeline', None)
+        if pipeline is not None:
+            metadata['imu_rotation_base_from_imu'] = pipeline.rotation.tolist()
+            metadata['observation_pipeline'] = dict(
+                time_basis='host_reception_and_board_age_estimate', acquisition_sync_verified=False,
+                motor_acquisition_timestamp=None, imu_acquisition_timestamp=None,
+                alignment='latest IMU in reception mode; nearest history only in strict_host_alignment',
+                observation_timing_mode=pipeline.timing_mode,
+                reception_age_limit_ms=40., imu_internal_receive_span_limit_ms=60.,
+                skew_is_hard_gate=pipeline.timing_mode=='strict_host_alignment',
+                age_limit_ms=40., skew_limit_ms=10., quality_bad_hold_sec=.20,
+                filters='preview only; not applied to policy or PD',
+                gyro_bias='base frame; calibrated separately after mounting rotation',
+                quaternion_frame='raw IMU to world', rpy_frame='base to world',
+                euler_source='quaternion', required_imu_frames=['RAW','QUAT'])
         self.capture=CaptureWriter(path,metadata)
 
     def _fresh_state(self):
@@ -66,7 +81,9 @@ class Capture61Node(Rs01Model18000Node):
             vec('cmd_',command,['vx','vy','wz']);vec('effective_target_',effective,['vx','vy','wz'])
             vec('est_v',vel,axes);vec('gyro_',self.corrected_gyro_rad_s,axes)
             vec('gyro_uncalibrated_base_',imu.gyro_rad_s,axes)
-            vec('gyro_sensor_',np.asarray(self.imu.R_BASE_IMU).T@imu.gyro_rad_s,axes)
+            pipeline = getattr(self, 'observation_pipeline', None)
+            sensor_gyro = pipeline.diagnostics['raw_gyro'] if pipeline is not None else np.asarray(self.imu.R_BASE_IMU).T@imu.gyro_rad_s
+            vec('gyro_sensor_',sensor_gyro,axes)
             vec('gyro_bias_',self.gyro_bias_rad_s,axes)
             vec('projected_gravity_',imu.projected_gravity,axes)
             vec('acc_sensor_g_',imu.acc_g,axes);vec('mag_sensor_uT_',imu.mag_uT,axes)
@@ -86,6 +103,23 @@ class Capture61Node(Rs01Model18000Node):
             for name in ['foot_position','foot_velocity','velocity_by_foot']:
                 vec(name+'_',odometry[name],[leg+'_'+axis for leg in legs for axis in axes])
             row['estimated_vx_minus_target']=float(vel[0]-effective[0]);row['estimated_vy_minus_target']=float(vel[1]-effective[1])
+            for prefix, od in [('guard_', guard_odometry), ('actor_', diag.get('odometry') or {})]:
+                row[prefix+'selected_pair_index'] = int(od.get('selected_pair_index', -1))
+                row[prefix+'legal_diagonal_support'] = bool(od.get('legal_diagonal_support', False))
+                row[prefix+'pair_residual_m_s'] = float(od.get('pair_residual_m_s', nan))
+                row[prefix+'confidence'] = float(od.get('confidence', nan))
+                vec(prefix+'raw_velocity_', od.get('raw_base_velocity', [nan]*3), axes)
+                vec(prefix+'filtered_velocity_', od.get('base_linear_velocity', [nan]*3), axes)
+                vf = np.asarray(od.get('velocity_by_foot', np.full((4,3), nan)))
+                vec(prefix+'velocity_by_foot_', vf, [leg+'_'+axis for leg in legs for axis in axes])
+                for pair_index, pair in enumerate(((0,3), (1,2))):
+                    row[prefix+'candidate_pair_residual_'+str(pair_index)] = float(np.linalg.norm((vf[pair[0]]-vf[pair[1]])[:2]))
+            if pipeline is not None:
+                row.update(pipeline.scalar_diagnostics())
+                for name in ('raw_dq','preview_filtered_dq'):
+                    vec(name+'_', pipeline.diagnostics[name], joints)
+                for name in ('raw_gyro','base_gyro','preview_filtered_gyro','raw_gravity','base_gravity'):
+                    vec(name+'_', pipeline.diagnostics[name], axes)
             self.capture.submit(row);self.capture_step+=1
         return super()._publish(observation,action,target_real,odometry,roll,pitch,yaw,motor,torque_info,now,guard_odometry)
 

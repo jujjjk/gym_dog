@@ -169,18 +169,12 @@ class ImuSerialInterface:
         """获取最新 IMU 快照。神经网络节点后面就调用这个函数。"""
         backend_alive = self._backend_is_alive()
         with self.lock:
-            return ImuSnapshot(
-                stamp=self.latest.stamp,
-                gyro_rad_s=self.latest.gyro_rad_s.copy(),
-                acc_g=self.latest.acc_g.copy(),
-                mag_uT=self.latest.mag_uT.copy(),
-                quat_wxyz=self.latest.quat_wxyz.copy(),
-                rpy_deg=self.latest.rpy_deg.copy(),
-                projected_gravity=self.latest.projected_gravity.copy(),
-                valid=bool(self.latest.valid and backend_alive),
-                backend_alive=backend_alive,
-                backend_error=self._backend_error,
-            )
+            from copy import deepcopy
+            snapshot = deepcopy(self.latest)
+            snapshot.valid = bool(snapshot.valid and backend_alive)
+            snapshot.backend_alive = backend_alive
+            snapshot.backend_error = self._backend_error
+            return snapshot
 
     def _acquire_process_lock(self) -> None:
         """Ensure only one project process owns the IMU serial port."""

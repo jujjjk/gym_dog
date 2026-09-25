@@ -229,11 +229,35 @@ class Rs01Model18000Node(Rs01Model6850Node):
             return response
         return super().arm_callback(request,response)
 
+    def _timing_fault_detail(self, now, previous):
+        parts = []
+        if previous is not None and now-previous > .040:
+            parts.append('control_gap_ms=%.2f' % ((now-previous)*1000.))
+        for name, values in [('control', list(self._b_loop_intervals)),
+                             ('send', list(self._b_send_intervals))]:
+            if name == 'send' and not self.enable_send:
+                continue
+            if not timing_window_ready(values):
+                if values:
+                    v=np.asarray(values)*1000.
+                    parts.append('%s[n=%d,min=%.2f,median=%.2f,p95=%.2f,max=%.2f]ms' %
+                                 (name,len(v),v.min(),np.median(v),np.percentile(v,95),v.max()))
+                else:
+                    parts.append(name+'[no samples]')
+        if self.enable_send:
+            if self._b_last_success is None:
+                parts.append('no successful send')
+            else:
+                age=(time.perf_counter()-self._b_last_success)*1000.
+                if age>40.:parts.append('last_success_age_ms=%.2f'%age)
+        return '; '.join(parts) or 'timing window changed during check'
+
     def control_loop(self):
         now=time.monotonic(); previous=self._previous_control
         if self.mode=='walk' and ((previous is not None and now-previous>.040)
                                   or not self._b_timing_ready()):
-            self.trial.disarm('B18000 timing contract lost; operator re-arm required')
+            detail=self._timing_fault_detail(now, previous)
+            self.trial.disarm(self.model_filename + ' timing contract lost: ' + detail + '; operator re-arm required')
         super().control_loop()
         if previous is not None and self._previous_control!=previous:
             self._b_loop_intervals.append(self._previous_control-previous)
