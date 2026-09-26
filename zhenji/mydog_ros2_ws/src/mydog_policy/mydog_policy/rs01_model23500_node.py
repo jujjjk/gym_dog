@@ -239,6 +239,7 @@ class Rs01Model23500Node(Rs01Model18000Node):
         result = super()._extra_status()
         pipeline = getattr(self, 'observation_pipeline', None)
         result['status_publish_hz'] = 1. / self.telemetry_period_sec
+        result['heading_correction_active'] = bool(self.core.actor.heading_correction_active())
         result['capture_policy_hz'] = 50.
         result['send_schedule'] = 'absolute_deadline_latest_target'
         result['send_target_age_ms'] = self._send_target_age_ms

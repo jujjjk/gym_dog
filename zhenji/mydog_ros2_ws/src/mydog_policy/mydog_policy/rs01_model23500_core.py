@@ -46,9 +46,26 @@ class Rs01Model23500Core(Rs01Model18000Core):
     # the later B18000-only deadband / half-gain / disabled planar correction.
     _mix_direction_command = Rs01Model6850Core._mix_direction_command
 
+    # Heading correction only while walking straight (vx only). Marching in
+    # place, lateral, turning and combined commands run uncorrected: the yaw
+    # term of the mixer and the actor's sin/cos heading channels made the
+    # robot side-step left during --march on 2026-09-26.
+    straight_min_vx_mps = 1e-3
+    straight_max_other = 1e-6
+
+    def heading_correction_active(self):
+        command = getattr(self, 'command', None)
+        if command is None:
+            return False
+        return bool(abs(float(command[0])) >= self.straight_min_vx_mps
+                    and abs(float(command[1])) <= self.straight_max_other
+                    and abs(float(command[2])) <= self.straight_max_other)
+
     def _direction_heading_error(self, error):
         # Apply the same confidence to direction mixing AND actor sin/cos
         # heading channels. Keep measured yaw and the original target intact.
+        if not self.heading_correction_active():
+            return 0.
         return error * getattr(self, 'heading_correction_weight', 1.)
 
 
