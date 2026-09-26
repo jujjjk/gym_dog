@@ -5,11 +5,38 @@ from .rt_schedule import LatestTarget, next_deadline
 from .observation_pipeline import ObservationPipeline
 from .observation_time_alignment import CommonTimeAlignment
 from .heading_recovery import HeadingRecovery
+from .heading_reference import GyroHeadingReference
 from .rs01_timestamped_imu import QuaternionFrameStampedImu
 from .motor_state_rt_interface import MotorStateRtInterface
 import numpy as np
 from .rs01_model18000_node import Rs01Model18000Node, TIMING_SINGLE_GAP_SEC
 from .rs01_model23500_core import Model23500Contract, Guarded23500PolicyCore, EXPECTED_ONNX_SHA256
+
+
+class _FusedYawMonitor:
+    """Keep the yaw/gyro consistency monitor on the fused IMU yaw.
+
+    The control loop now receives the gyro-integrated heading, which would
+    agree with the gyro by construction. Comparing the fused yaw instead keeps
+    the magnetometer disturbance measurable in status and capture.
+    """
+
+    def __init__(self, inner, node):
+        self._inner = inner
+        self._node = node
+
+    def _fused(self, yaw):
+        fused = getattr(self._node, '_fused_yaw', None)
+        return yaw if yaw is None or fused is None else fused
+
+    def update(self, now, yaw, corrected_gyro_z_rad_s):
+        return self._inner.update(now, self._fused(yaw), corrected_gyro_z_rad_s)
+
+    def reset(self, now=None, yaw=None):
+        return self._inner.reset(now, self._fused(yaw))
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
 
 
 class Rs01Model23500Node(Rs01Model18000Node):
@@ -36,6 +63,20 @@ class Rs01Model23500Node(Rs01Model18000Node):
         self.observation_pipeline = None
         self.common_time_alignment = None
         self.heading_recovery = HeadingRecovery()
+        # Direction-controller heading: calibrated gyro integration while
+        # walking; the magnetometer-fused yaw only pulls when the field norm
+        # is back at the standing baseline. The consistency monitor keeps
+        # watching the fused yaw so the disturbance stays visible in status.
+        self.declare_parameter('heading_reference_mode', 'gyro_mag_gated')
+        self.declare_parameter('heading_mag_tolerance_ut', 8.)
+        self.declare_parameter('heading_walking_pull_tau_sec', 5.)
+        mode = str(self.get_parameter('heading_reference_mode').value)
+        if mode not in ('gyro_mag_gated', 'fused'):
+            raise RuntimeError('heading_reference_mode must be gyro_mag_gated or fused')
+        self.heading_reference = None if mode == 'fused' else GyroHeadingReference(
+            mag_tolerance_ut=float(self.get_parameter('heading_mag_tolerance_ut').value),
+            walking_pull_tau_sec=float(self.get_parameter('heading_walking_pull_tau_sec').value))
+        self._fused_yaw = None
         if self.get_parameter('observation_pipeline_enabled').value:
             mount = [float(self.get_parameter('imu_mount_'+axis+'_deg').value)
                      for axis in ('roll', 'pitch', 'yaw')]
@@ -83,6 +124,27 @@ class Rs01Model23500Node(Rs01Model18000Node):
             self._latest_base_gyro = result[1].gyro_rad_s.copy()
         # Keep current feedback for all PD, position, attitude and fault guards.
         return result
+
+    def _fresh_state(self):
+        motor, imu, roll, pitch, yaw = super()._fresh_state()
+        reference = getattr(self, 'heading_reference', None)
+        if reference is None:
+            return motor, imu, roll, pitch, yaw
+        if not isinstance(self.heading_consistency, _FusedYawMonitor):
+            self.heading_consistency = _FusedYawMonitor(self.heading_consistency, self)
+        self._fused_yaw = float(yaw)
+        gyro = np.asarray(imu.gyro_rad_s, dtype=float) - np.asarray(self.gyro_bias_rad_s, dtype=float)
+        mag = getattr(imu, 'mag_uT', None)
+        mag_norm = None if mag is None else float(np.linalg.norm(np.asarray(mag, dtype=float)))
+        heading = reference.update(time.monotonic(), yaw, gyro[2], mag_norm, self.mode == 'walk')
+        pipeline = getattr(self, 'observation_pipeline', None)
+        if pipeline is not None:
+            pipeline.diagnostics.update(reference.diagnostics)
+        sample = getattr(self.core, 'aligned_sample', None)
+        if sample is not None:
+            # The 50 ms resampled quaternion yaw carries the same field error.
+            sample['yaw'] = heading
+        return motor, imu, roll, pitch, heading
 
     def _walk_entry_allowed(self):
         pipeline = getattr(self, 'observation_pipeline', None)
