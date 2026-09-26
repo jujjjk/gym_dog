@@ -14,6 +14,7 @@ class FrameStampedVendor(YbImuSerial):
     def __init__(self, *args, **kwargs):
         self.frame_lock = threading.RLock()
         self.frame_stamps = {}
+        self.frame_history = {}
         self.closed = threading.Event()
         super().__init__(*args, **kwargs)
 
@@ -25,6 +26,15 @@ class FrameStampedVendor(YbImuSerial):
                             self.FUNC_REPORT_IMU_QUAT,
                             self.FUNC_REPORT_IMU_EULER):
                 self.frame_stamps[ext_type] = time.time()
+                mono = time.monotonic()
+                if ext_type == self.FUNC_REPORT_IMU_RAW:
+                    value = tuple(self.get_gyroscope_data())
+                elif ext_type == self.FUNC_REPORT_IMU_QUAT:
+                    value = tuple(self.get_imu_quaternion_data())
+                else:
+                    value = None
+                if value is not None:
+                    self.frame_history.setdefault(ext_type, deque(maxlen=128)).append((mono, value))
 
     def _data_handle(self):
         self._dev.flushInput()
@@ -58,6 +68,12 @@ class FrameStampedImu(ImuSerialInterface):
         """Internal read-only view; published history entries are never mutated."""
         with self._history_lock:
             return tuple(self._history)
+
+    def get_frame_history(self):
+        """Independent immutable RAW/QUAT records, stamped at parser receipt."""
+        with self.imu.frame_lock:
+            return {name: tuple(self.imu.frame_history.get(kind, ())) for name, kind in
+                    [('gyro', self.imu.FUNC_REPORT_IMU_RAW), ('quat', self.imu.FUNC_REPORT_IMU_QUAT)]}
 
     def _required_frame_kinds(self):
         return (self.imu.FUNC_REPORT_IMU_RAW, self.imu.FUNC_REPORT_IMU_QUAT,
@@ -93,6 +109,14 @@ class FrameStampedImu(ImuSerialInterface):
 
 class QuaternionFrameStampedImu(FrameStampedImu):
     """B23500: Euler and gravity share the same validated quaternion frame."""
+    def start(self):
+        if self.running:
+            return
+        super().start()
+        # Vendor supported range is 10..100 Hz. Configure reporting, then
+        # measure actual frame cadence; never relabel a 25 Hz stream as 100 Hz.
+        self.imu.set_report_rate(100)
+
     def _required_frame_kinds(self):
         return (self.imu.FUNC_REPORT_IMU_RAW, self.imu.FUNC_REPORT_IMU_QUAT)
 

@@ -36,14 +36,17 @@ def test_parser_updates_only_required_frame_stamp(monkeypatch):
     vendor = module.FrameStampedVendor.__new__(module.FrameStampedVendor)
     vendor.frame_lock = threading.RLock()
     vendor.frame_stamps = {}
+    vendor.frame_history = {}
+    vendor.get_gyroscope_data = lambda: (1., 2., 3.)
     vendor.FUNC_REPORT_IMU_RAW = 4
     vendor.FUNC_REPORT_IMU_QUAT = 22
     vendor.FUNC_REPORT_IMU_EULER = 38
     monkeypatch.setattr(module.YbImuSerial, '_parse_data', lambda *a: None)
-    monkeypatch.setattr(module, 'time', NS(time=lambda: 123.))
+    monkeypatch.setattr(module, 'time', NS(time=lambda: 123., monotonic=lambda: 23.))
     vendor._parse_data(4, [])
     vendor._parse_data(1, [])
     assert vendor.frame_stamps == {4: 123.}
+    assert list(vendor.frame_history[4]) == [(23., (1., 2., 3.))]
 
 
 def test_quaternion_controls_euler_and_only_used_frames_set_age(monkeypatch):

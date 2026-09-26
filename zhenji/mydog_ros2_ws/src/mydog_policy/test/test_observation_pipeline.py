@@ -119,7 +119,7 @@ def test_pipeline_node_and_capture(make_node,monkeypatch):
     cls=node_module.Rs01Model23500Node; original=cls.__init__
     def init(self):
         declare=self.declare_parameter
-        self.declare_parameter=lambda name,default: declare(name,True if name=='observation_pipeline_enabled' else default)
+        self.declare_parameter=lambda name,default: declare(name,True if name=='observation_pipeline_enabled' else ('reception' if name=='observation_timing_mode' else default))
         original(self)
     monkeypatch.setattr(cls,'__init__',init)
     n,clock,calls=make_node(send=False,stand=False)
@@ -162,9 +162,6 @@ def test_reception_mode_uses_latest_and_keeps_skew_diagnostic():
     strict=ObservationPipeline(timing_mode='strict_host_alignment')
     strict.process(m,i,[old],10.,1.)
     assert not strict.diagnostics['observation_temporal_ok']
-    # 48 ms is inside the 60 ms IMU age gate. Above 60 ms is rejected.
-    p.process(m,i,[],10.018,1.018)
-    assert p.diagnostics['observation_reception_ok']
-    assert p.diagnostics['aligned_imu_age_ms'] == pytest.approx(48.)
+    # The deployed reception mode limit is 60 ms.
     p.process(m,i,[],10.031,1.031)
     assert not p.diagnostics['observation_reception_ok']

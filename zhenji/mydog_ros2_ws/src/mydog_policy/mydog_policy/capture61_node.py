@@ -35,13 +35,20 @@ class Capture61Node(Rs01Model18000Node):
                 motor_acquisition_timestamp=None, imu_acquisition_timestamp=None,
                 alignment='latest IMU in reception mode; nearest history only in strict_host_alignment',
                 observation_timing_mode=pipeline.timing_mode,
-                reception_age_limit_ms=40., imu_internal_receive_span_limit_ms=60.,
+                reception_age_limit_ms=pipeline.max_age_ms, imu_internal_receive_span_limit_ms=60.,
                 skew_is_hard_gate=pipeline.timing_mode=='strict_host_alignment',
-                age_limit_ms=40., skew_limit_ms=10., quality_bad_hold_sec=.20,
+                age_limit_ms=pipeline.max_age_ms, skew_limit_ms=10., quality_bad_hold_sec=.20,
                 filters='preview only; not applied to policy or PD',
                 gyro_bias='base frame; calibrated separately after mounting rotation',
                 quaternion_frame='raw IMU to world', rpy_frame='base to world',
                 euler_source='quaternion', required_imu_frames=['RAW','QUAT'])
+            alignment = getattr(self, 'common_time_alignment', None)
+            if alignment is not None:
+                metadata['observation_pipeline'].update(
+                    time_basis='mapped_mcu_can_reception_and_serial_reception_monotonic',
+                    observation_timing_mode='common_time', alignment='50ms delayed linear q/dq/gyro and quaternion SLERP; real brackets required',
+                    delay_ms=alignment.delay*1000., extrapolation=False, pd_feedback='latest; not delayed',
+                    timestamp_accuracy='transport estimate; interpolation skew is not acquisition accuracy')
         self.capture=CaptureWriter(path,metadata)
 
     def _fresh_state(self):
@@ -89,6 +96,14 @@ class Capture61Node(Rs01Model18000Node):
             vec('acc_sensor_g_',imu.acc_g,axes);vec('mag_sensor_uT_',imu.mag_uT,axes)
             vec('quat_',imu.quat_wxyz,['w','x','y','z'])
             vec('q_',motor.q_real,joints);vec('dq_',motor.dq_real,joints)
+            alignment = getattr(self, 'common_time_alignment', None)
+            if alignment is not None:
+                aligned = alignment.sample or {}
+                vec('aligned_q_', aligned.get('q_real', [nan]*12), joints)
+                vec('aligned_dq_', aligned.get('dq_real', [nan]*12), joints)
+                vec('aligned_gyro_uncalibrated_', aligned.get('gyro', [nan]*3), axes)
+                vec('aligned_gravity_', aligned.get('gravity', [nan]*3), axes)
+                row['aligned_yaw_rad'] = aligned.get('yaw', nan)
             vec('target_q_',target_real,joints)
             for prefix,attr in [('motor_torque_','torque'),('motor_temperature_','temp'),('motor_error_','error_code'),('motor_age_ms_','age_ms'),('motor_board_tick_','board_tick_ms'),('motor_snapshot_seq_','snapshot_seq'),('motor_last_update_ts_','last_update_ts')]:
                 vec(prefix,getattr(motor,attr),joints)

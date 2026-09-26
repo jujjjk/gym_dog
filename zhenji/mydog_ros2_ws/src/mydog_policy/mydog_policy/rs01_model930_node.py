@@ -311,7 +311,7 @@ class Rs01Model930Node(Node):
             ),
         )
         self.http = requests.Session()
-        self.motor = MotorStateHttpInterface(
+        self.motor = getattr(self, 'motor_interface_type', MotorStateHttpInterface)(
             base_url=self.motor_base_url,
             timeout=self.http_timeout,
             stale_recheck_ms=self.max_motor_age_ms,
