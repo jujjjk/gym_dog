@@ -17,7 +17,7 @@ fi
 CAPTURE_DIR="/home/jetson/mydog_ros2_ws/log/B23500_observation_$(date +%Y%m%d_%H%M%S)_$$"
 echo "Capture: $CAPTURE_DIR"
 exec ros2 run mydog_policy mydog_capture23500_node --ros-args \
-  -p enable_send:="$ENABLE_SEND" -p stand_only:="$STAND_ONLY" -p observation_pipeline_enabled:=true -p observation_timing_mode:=reception -p fast_commands:=true -p continuous_commands:=true \
+  -p enable_send:="$ENABLE_SEND" -p stand_only:="$STAND_ONLY" -p observation_pipeline_enabled:=true -p observation_timing_mode:=common_time -p fast_commands:=true -p continuous_commands:=true \
   -p motor_base_url:=http://127.0.0.1:8000 -p imu_port:=/dev/myimu \
   -p max_motor_age_ms:=80.0 -p max_imu_age_sec:=0.06 -p http_timeout_sec:=0.040 \
   -p max_abs_roll_rad:=0.45 -p max_abs_pitch_rad:=0.45 \

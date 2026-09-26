@@ -2,8 +2,10 @@
 import rclpy
 import time
 from .observation_pipeline import ObservationPipeline
+from .observation_time_alignment import CommonTimeAlignment
 from .heading_recovery import HeadingRecovery
 from .rs01_timestamped_imu import QuaternionFrameStampedImu
+from .motor_state_rt_interface import MotorStateRtInterface
 import numpy as np
 from .rs01_model18000_node import Rs01Model18000Node
 from .rs01_model23500_core import Model23500Contract, Guarded23500PolicyCore, EXPECTED_ONNX_SHA256
@@ -11,6 +13,7 @@ from .rs01_model23500_core import Model23500Contract, Guarded23500PolicyCore, EX
 
 class Rs01Model23500Node(Rs01Model18000Node):
     imu_interface_type = QuaternionFrameStampedImu
+    motor_interface_type = MotorStateRtInterface
     telemetry_period_sec = .10
     node_name = 'rs01_model23500_node'
     model_label = 'B23500 V22 guarded omni'
@@ -24,18 +27,22 @@ class Rs01Model23500Node(Rs01Model18000Node):
     def _validate_deployment_parameters(self):
         super()._validate_deployment_parameters()
         self.declare_parameter('observation_pipeline_enabled', False)
-        self.declare_parameter('observation_timing_mode', 'reception')
+        self.declare_parameter('observation_timing_mode', 'common_time')
         self.declare_parameter('imu_mount_roll_deg', 0.)
         self.declare_parameter('imu_mount_pitch_deg', 0.)
         self.declare_parameter('imu_mount_yaw_deg', 0.)
         self.declare_parameter('observation_filter_preview_tau_ms', 5.)
         self.observation_pipeline = None
+        self.common_time_alignment = None
         self.heading_recovery = HeadingRecovery()
         if self.get_parameter('observation_pipeline_enabled').value:
             mount = [float(self.get_parameter('imu_mount_'+axis+'_deg').value)
                      for axis in ('roll', 'pitch', 'yaw')]
+            mode = str(self.get_parameter('observation_timing_mode').value)
             self.observation_pipeline = ObservationPipeline(
-                mount=mount, max_age_ms=60., timing_mode=str(self.get_parameter('observation_timing_mode').value), preview_tau_ms=float(self.get_parameter('observation_filter_preview_tau_ms').value))
+                mount=mount, max_age_ms=60., timing_mode='reception' if mode == 'common_time' else mode, preview_tau_ms=float(self.get_parameter('observation_filter_preview_tau_ms').value))
+            if mode == 'common_time':
+                self.common_time_alignment = CommonTimeAlignment(self.observation_pipeline.rotation)
 
     def _observation_state(self, motor, imu):
         pipeline = getattr(self, 'observation_pipeline', None)
@@ -45,7 +52,26 @@ class Rs01Model23500Node(Rs01Model18000Node):
         if pipeline.timing_mode == 'strict_host_alignment':
             reader = getattr(self.imu, 'get_history_view', getattr(self.imu, 'get_history', None))
             history = reader() if reader is not None else []
-        return pipeline.process(motor, imu, history, time.time(), time.monotonic())
+        wall, mono = time.time(), time.monotonic()
+        result = pipeline.process(motor, imu, history, wall, mono)
+        alignment = getattr(self, 'common_time_alignment', None)
+        if alignment is not None:
+            reader = getattr(self.imu, 'get_frame_history', None)
+            alignment.update(motor, reader() if reader is not None else {}, mono)
+            pipeline.diagnostics['raw_reception_skew_ms'] = pipeline.diagnostics['aligned_sensor_skew_ms']
+            pipeline.diagnostics.update(alignment.diagnostics)
+            # In common_time this field describes the resampled policy data.
+            # The original source span is retained as raw_reception_skew_ms.
+            pipeline.diagnostics['aligned_sensor_skew_ms'] = alignment.diagnostics['observation_resampled_skew_ms']
+            pipeline.diagnostics['observation_timing_mode'] = 'common_time'
+            pipeline.diagnostics['observation_temporal_ok'] = bool(
+                pipeline.diagnostics['observation_reception_ok'] and alignment.sample is not None)
+            pipeline.diagnostics['observation_alignment_target_ok'] = alignment.sample is not None
+            self.core.common_time_required = True
+            self.core.aligned_sample = alignment.sample
+            self._latest_base_gyro = result[1].gyro_rad_s.copy()
+        # Keep current feedback for all PD, position, attitude and fault guards.
+        return result
 
     def _walk_entry_allowed(self):
         pipeline = getattr(self, 'observation_pipeline', None)
@@ -64,6 +90,13 @@ class Rs01Model23500Node(Rs01Model18000Node):
         pipeline = getattr(self, 'observation_pipeline', None)
         if pipeline is None:
             return super()._update_walk_inhibitors(now, odometry, q_policy)
+        alignment = getattr(self, 'common_time_alignment', None)
+        if alignment is not None:
+            self.core.aligned_gyro_bias = self._latest_base_gyro-self.corrected_gyro_rad_s
+            if self.mode == 'walk' and not pipeline.diagnostics.get('observation_temporal_ok', False):
+                self._enter_soft_hold('Common-time observation unavailable: '+
+                    pipeline.diagnostics.get('observation_alignment_reason', 'stale reception'), now, q_policy)
+                return True
         heading = self.heading_consistency_state
         recovery = self.heading_recovery.update(now, heading, self.mode == 'walk')
         self.core.actor.heading_correction_weight = recovery['heading_correction_weight']

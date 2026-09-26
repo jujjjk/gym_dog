@@ -291,7 +291,7 @@ class MotorStateHttpInterface:
             and server_comm_ok
         )
 
-        return MotorSnapshot(
+        snapshot = MotorSnapshot(
             stamp=time.time(),
             q_real=q,
             dq_real=dq,
@@ -309,6 +309,8 @@ class MotorStateHttpInterface:
             valid=valid,
             raw=raw,
         )
+        snapshot.state_epoch_monotonic = meta.get('state_epoch_monotonic')
+        return snapshot
 
     def get_latest(self) -> MotorSnapshot:
         if not self.async_poll:

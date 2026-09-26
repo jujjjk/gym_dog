@@ -48,6 +48,11 @@ class MotorRtClient:
             result['payload'] = {hex(s['can_id']): s for s in result['states']}
             result['payload']['__meta__'] = dict(
                 state_cache_age_ms=result['cache_age_ms'] + (time.monotonic()-started)*1000,
+                # Server and client are local processes sharing CLOCK_MONOTONIC.
+                # Keep the server epoch; subtracting the whole round-trip from
+                # a newly created wall stamp biases the old estimate backwards.
+                state_epoch_monotonic=result['timestamp_ns']/1e9-result['cache_age_ms']/1000.,
+                state_server_monotonic=result['timestamp_ns']/1e9,
                 communication_ok=True)
             return result
         except Exception:

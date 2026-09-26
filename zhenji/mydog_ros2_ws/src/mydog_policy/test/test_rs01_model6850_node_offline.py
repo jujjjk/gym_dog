@@ -138,6 +138,8 @@ def make_node(monkeypatch, tmp_path, request):
                       projected_gravity=np.array([0., 0., -1.]), quat_wxyz=np.array([1., 0., 0., 0.]))
 
     monkeypatch.setattr(base, 'MotorStateHttpInterface', Motor)
+    if use_v22:
+        monkeypatch.setattr(cls, 'motor_interface_type', Motor)
     monkeypatch.setattr(cls, 'imu_interface_type', Imu)
 
     def make(send=False, stand=True):
