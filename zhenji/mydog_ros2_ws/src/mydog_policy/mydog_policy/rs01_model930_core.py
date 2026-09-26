@@ -489,21 +489,51 @@ class Rs01Model930Mapper:
         return real
 
 
-def _axis_angle(axis: np.ndarray, angle: float) -> np.ndarray:
-    axis = np.asarray(axis, dtype=np.float64)
-    axis = axis / np.linalg.norm(axis)
+def _axis_angle_rows(axis, angle):
+    """Rodrigues rotation as nested tuples; same arithmetic as _axis_angle.
+
+    The 50 Hz loop evaluates this 24 times per cycle. numpy's per-call
+    overhead on 3x3 data dominated the four-leg FK, so the hot path stays in
+    scalar Python.
+    """
     x, y, z = axis
+    n = math.sqrt(x * x + y * y + z * z)
+    x, y, z = x / n, y / n, z / n
     c = math.cos(angle)
     s = math.sin(angle)
     C = 1.0 - c
-    return np.asarray(
-        [
-            [c + x * x * C, x * y * C - z * s, x * z * C + y * s],
-            [y * x * C + z * s, c + y * y * C, y * z * C - x * s],
-            [z * x * C - y * s, z * y * C + x * s, c + z * z * C],
-        ],
-        dtype=np.float64,
+    return (
+        (c + x * x * C, x * y * C - z * s, x * z * C + y * s),
+        (y * x * C + z * s, c + y * y * C, y * z * C - x * s),
+        (z * x * C - y * s, z * y * C + x * s, c + z * z * C),
     )
+
+
+def _axis_angle(axis: np.ndarray, angle: float) -> np.ndarray:
+    axis = np.asarray(axis, dtype=np.float64).reshape(3)
+    return np.asarray(_axis_angle_rows((float(axis[0]), float(axis[1]), float(axis[2])), angle),
+                      dtype=np.float64)
+
+
+def _mat3_mul(a, b):
+    return tuple(
+        tuple(a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j] for j in range(3))
+        for i in range(3))
+
+
+def _mat3_vec(a, v):
+    return (a[0][0] * v[0] + a[0][1] * v[1] + a[0][2] * v[2],
+            a[1][0] * v[0] + a[1][1] * v[1] + a[1][2] * v[2],
+            a[2][0] * v[0] + a[2][1] * v[1] + a[2][2] * v[2])
+
+
+def _cross3(a, b):
+    return (a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0])
+
+
+_IDENTITY3 = ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
 
 
 class Rs01NewMachineLegOdometry:
@@ -580,24 +610,27 @@ class Rs01NewMachineLegOdometry:
     def foot_position_and_jacobian(cls, leg, q_leg):
         q_leg = np.asarray(q_leg, dtype=np.float64).reshape(3)
         origins = cls.ORIGINS[leg]
-        rotation = np.eye(3)
-        position = np.zeros(3)
+        axes = tuple((float(a[0]), float(a[1]), float(a[2])) for a in cls.AXES)
+        rotation = _IDENTITY3
+        position = (0.0, 0.0, 0.0)
         joint_positions = []
         joint_axes = []
         for index in range(3):
-            position += rotation @ np.asarray(origins[index])
-            joint_positions.append(position.copy())
-            joint_axes.append(rotation @ cls.AXES[index])
-            rotation = rotation @ _axis_angle(
-                cls.AXES[index], float(q_leg[index])
-            )
-        foot = position + rotation @ np.asarray(origins[3])
-        jacobian = np.zeros((3, 3))
-        for index in range(3):
-            jacobian[:, index] = np.cross(
-                joint_axes[index], foot - joint_positions[index]
-            )
-        return foot.astype(np.float32), jacobian.astype(np.float32)
+            step = _mat3_vec(rotation, origins[index])
+            position = (position[0] + step[0], position[1] + step[1], position[2] + step[2])
+            joint_positions.append(position)
+            joint_axes.append(_mat3_vec(rotation, axes[index]))
+            rotation = _mat3_mul(rotation, _axis_angle_rows(axes[index], float(q_leg[index])))
+        step = _mat3_vec(rotation, origins[3])
+        foot = (position[0] + step[0], position[1] + step[1], position[2] + step[2])
+        columns = [
+            _cross3(joint_axes[index], (foot[0] - joint_positions[index][0],
+                                        foot[1] - joint_positions[index][1],
+                                        foot[2] - joint_positions[index][2]))
+            for index in range(3)
+        ]
+        jacobian = np.array([[columns[j][i] for j in range(3)] for i in range(3)], dtype=np.float32)
+        return np.array(foot, dtype=np.float32), jacobian
 
     def compute_kinematics(self, q_policy, dq_policy, omega_body):
         """Foot FK/Jacobian once; stance filters may reuse the same geometry."""
@@ -613,8 +646,10 @@ class Rs01NewMachineLegOdometry:
                 leg, q_policy[start:start + 3]
             )
             relative_velocity = jacobian @ dq_policy[start:start + 3]
+            spin = _cross3((float(omega_body[0]), float(omega_body[1]), float(omega_body[2])),
+                           (float(position[0]), float(position[1]), float(position[2])))
             velocity_by_foot[leg_index] = -(
-                relative_velocity + np.cross(omega_body, position)
+                relative_velocity + np.asarray(spin, dtype=np.float32)
             )
             foot_position[leg_index] = position
             foot_velocity[leg_index] = relative_velocity

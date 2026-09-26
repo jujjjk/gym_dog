@@ -10,6 +10,8 @@ class Capture23500Node(Capture61Node, Rs01Model23500Node):
 
 
 def main(args=None):
+    import sys
+    sys.setswitchinterval(.001)
     rclpy.init(args=args)
     node = None
     try:

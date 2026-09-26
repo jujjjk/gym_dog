@@ -19,6 +19,7 @@ from .rs01_model6850_core import EXPECTED_ONNX_SHA256, Model6850Contract
 from .rs01_model6850_guard import Guarded6850PolicyCore, ReceptionGuard, TrialCommand
 from .rs01_model930_node import Rs01Model930Node
 from .rs01_timestamped_imu import FrameStampedImu
+from . import realtime
 
 
 class Rs01Model6850Node(Rs01Model930Node):
@@ -87,10 +88,37 @@ class Rs01Model6850Node(Rs01Model930Node):
             self.leg_odometry = self.walk_guard_odometry
             self.arm_service = self.create_service(
                 SetBool, self.topic_namespace + '/arm', self.arm_callback)
+            self._declare_realtime_parameters()
             self._start_watchdog()
         except Exception:
             self._cleanup_partial()
             raise
+
+    def _declare_realtime_parameters(self):
+        # Host scheduling only. Empty CPU lists and priority 0 leave the OS
+        # defaults; refusals are reported in status, never fatal.
+        self.declare_parameter('realtime_control_cpus', '')
+        self.declare_parameter('realtime_send_cpus', '')
+        self.declare_parameter('realtime_background_cpus', '')
+        self.declare_parameter('realtime_fifo_priority', 0)
+        self.declare_parameter('realtime_gil_switch_interval_sec', .001)
+        self._rt_control_cpus = realtime.parse_cpus(self.get_parameter('realtime_control_cpus').value)
+        self._rt_send_cpus = realtime.parse_cpus(self.get_parameter('realtime_send_cpus').value)
+        self._rt_background_cpus = realtime.parse_cpus(self.get_parameter('realtime_background_cpus').value)
+        self._rt_fifo_priority = int(self.get_parameter('realtime_fifo_priority').value)
+        if not 0 <= self._rt_fifo_priority <= 95:
+            raise RuntimeError('realtime_fifo_priority must be within [0, 95]')
+        realtime.configure_interpreter(
+            float(self.get_parameter('realtime_gil_switch_interval_sec').value))
+
+    def _apply_thread_scheduling(self, role):
+        cpus = {'control': self._rt_control_cpus, 'send': self._rt_send_cpus}.get(
+            role, self._rt_background_cpus)
+        fifo = {'control': self._rt_fifo_priority,
+                'send': max(0, self._rt_fifo_priority - 10)}.get(role, 0)
+        report = realtime.apply_to_current_thread(
+            role, cpus=cpus, fifo_priority=fifo, nice=None if fifo else 5)
+        self.get_logger().info('Thread scheduling %s: %s' % (role, report))
 
     def _validate_deployment_parameters(self):
         # Hard ceilings for this initial test release; no launch override may
@@ -418,6 +446,7 @@ class Rs01Model6850Node(Rs01Model930Node):
         self._send_pump.start()
 
     def _send_pump_loop(self):
+        self._apply_thread_scheduling('send')
         while not self._watchdog_stop.is_set():
             with self._send_lock:
                 pending = self._pending_target is not None
@@ -511,6 +540,8 @@ class Rs01Model6850Node(Rs01Model930Node):
         self._telemetry_pump.start()
 
     def _telemetry_pump_loop(self):
+        self._apply_thread_scheduling('telemetry')
+        idle_cycles = 0
         while not self._watchdog_stop.is_set():
             with self._telemetry_lock:
                 pending = self._pending_telemetry is not None
@@ -519,6 +550,11 @@ class Rs01Model6850Node(Rs01Model930Node):
                 continue
             self._telemetry_event.wait(.02)
             self._telemetry_event.clear()
+            idle_cycles += 1
+            if idle_cycles % 100 == 0:
+                # Threads started after construction (IMU serial reader,
+                # capture writer) also stay off the control cores.
+                realtime.confine_other_threads(self._rt_background_cpus, nice=5)
 
     def _start_control_thread(self):
         timer = getattr(self, 'timer', None)
@@ -535,6 +571,7 @@ class Rs01Model6850Node(Rs01Model930Node):
         self._control_thread.start()
 
     def _control_thread_loop(self):
+        self._apply_thread_scheduling('control')
         period = float(self.contract.policy_dt)
         next_t = time.perf_counter()
         while not self._watchdog_stop.is_set():
@@ -548,14 +585,18 @@ class Rs01Model6850Node(Rs01Model930Node):
                 self._watchdog_stop.wait(delay)
 
     def _start_watchdog(self):
+        # Everything allocated so far (ONNX session, ROS entities, contract)
+        # lives for the whole run; keep it out of later collections.
+        realtime.freeze_startup_objects()
         self._start_telemetry_pump()
         self._start_control_thread()
-        if not self.enable_send:
-            return
-        self._watchdog = threading.Thread(target=self._watchdog_loop,
-                                          name='a6850-send-watchdog', daemon=True)
-        self._watchdog.start()
-        self._start_send_pump()
+        if self.enable_send:
+            self._watchdog = threading.Thread(target=self._watchdog_loop,
+                                              name='a6850-send-watchdog', daemon=True)
+            self._watchdog.start()
+            self._start_send_pump()
+        self.get_logger().info('Thread scheduling background: ' + realtime.confine_other_threads(
+            self._rt_background_cpus, nice=5))
 
     def _watchdog_check(self):
         if (self.enable_send and self.last_send_time is not None
@@ -565,6 +606,7 @@ class Rs01Model6850Node(Rs01Model930Node):
             self._hold_target()
 
     def _watchdog_loop(self):
+        self._apply_thread_scheduling('watchdog')
         while not self._watchdog_stop.wait(.02):
             self._watchdog_check()
 
@@ -589,7 +631,8 @@ class Rs01Model6850Node(Rs01Model930Node):
                     telemetry_pump=bool(self._telemetry_pump is not None
                                         and self._telemetry_pump.is_alive()),
                     control_thread=bool(self._control_thread is not None
-                                        and self._control_thread.is_alive()))
+                                        and self._control_thread.is_alive()),
+                    realtime_scheduling=realtime.reports())
 
     def _open_csv(self, path):
         super()._open_csv(path)

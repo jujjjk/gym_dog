@@ -1,13 +1,14 @@
 """B23500 on the latest calibrated, timing-guarded real RS01 transport."""
 import rclpy
 import time
+from .rt_schedule import LatestTarget, next_deadline
 from .observation_pipeline import ObservationPipeline
 from .observation_time_alignment import CommonTimeAlignment
 from .heading_recovery import HeadingRecovery
 from .rs01_timestamped_imu import QuaternionFrameStampedImu
 from .motor_state_rt_interface import MotorStateRtInterface
 import numpy as np
-from .rs01_model18000_node import Rs01Model18000Node
+from .rs01_model18000_node import Rs01Model18000Node, TIMING_SINGLE_GAP_SEC
 from .rs01_model23500_core import Model23500Contract, Guarded23500PolicyCore, EXPECTED_ONNX_SHA256
 
 
@@ -57,18 +58,28 @@ class Rs01Model23500Node(Rs01Model18000Node):
         alignment = getattr(self, 'common_time_alignment', None)
         if alignment is not None:
             reader = getattr(self.imu, 'get_frame_history', None)
-            alignment.update(motor, reader() if reader is not None else {}, mono)
+            motor_history = getattr(self.motor, 'get_history_view', lambda: ())()
+            alignment.update(motor, reader() if reader is not None else {}, mono, motor_history=motor_history)
             pipeline.diagnostics['raw_reception_skew_ms'] = pipeline.diagnostics['aligned_sensor_skew_ms']
+            fresh = alignment.sample
+            sample = fresh
+            if fresh is None:
+                previous = getattr(self.core, 'aligned_sample', None)
+                limit = float(getattr(self.core, 'common_time_max_age_sec', .14))
+                if previous is not None and 0 <= mono-float(previous['timestamp']) <= limit:
+                    sample = previous
+                    reason = alignment.diagnostics.get('observation_alignment_reason') or 'resample missed'
+                    alignment.diagnostics['observation_alignment_reason'] = 'holding last common-time sample: '+reason
             pipeline.diagnostics.update(alignment.diagnostics)
             # In common_time this field describes the resampled policy data.
             # The original source span is retained as raw_reception_skew_ms.
             pipeline.diagnostics['aligned_sensor_skew_ms'] = alignment.diagnostics['observation_resampled_skew_ms']
             pipeline.diagnostics['observation_timing_mode'] = 'common_time'
             pipeline.diagnostics['observation_temporal_ok'] = bool(
-                pipeline.diagnostics['observation_reception_ok'] and alignment.sample is not None)
-            pipeline.diagnostics['observation_alignment_target_ok'] = alignment.sample is not None
+                pipeline.diagnostics['observation_reception_ok'] and sample is not None)
+            pipeline.diagnostics['observation_alignment_target_ok'] = fresh is not None
             self.core.common_time_required = True
-            self.core.aligned_sample = alignment.sample
+            self.core.aligned_sample = sample
             self._latest_base_gyro = result[1].gyro_rad_s.copy()
         # Keep current feedback for all PD, position, attitude and fault guards.
         return result
@@ -113,6 +124,8 @@ class Rs01Model23500Node(Rs01Model18000Node):
         return False
 
     def __init__(self):
+        self._periodic_target = LatestTarget(max_age=TIMING_SINGLE_GAP_SEC)
+        self._send_target_age_ms = 0.
         super().__init__()
         self.declare_parameter('fast_commands', False)
         self.fast_commands = bool(self.get_parameter('fast_commands').value)
@@ -123,11 +136,50 @@ class Rs01Model23500Node(Rs01Model18000Node):
         if self.fast_commands:
             self.trial.caps = np.array([.40, .30, .60])
 
+    def _enqueue_send(self, target_real):
+        now = time.perf_counter()
+        # A watchdog holding an old target must not refresh a stalled policy's
+        # walking target lease. The controller will soft-stop when it resumes.
+        started = getattr(self, '_control_start', None)
+        if self.mode == 'walk' and (started is None or now-started > TIMING_SINGLE_GAP_SEC):
+            return
+        with self._send_lock:
+            self._periodic_target.put(np.asarray(target_real, dtype=np.float32), now)
+        if self._send_pump is None or not self._send_pump.is_alive():
+            return super()._enqueue_send(target_real)
+
+    def _periodic_send_tick(self, now):
+        if not self.enable_send or self.first_send:
+            return
+        with self._send_lock:
+            target = self._periodic_target.get(now)
+            stamp = self._periodic_target.stamp
+            self._pending_target = target
+        if target is None:
+            if stamp is not None and self.trial.armed:
+                self.trial.disarm('Control target stale: periodic sender requires target age <=50ms')
+            return
+        self._send_target_age_ms = (now-stamp)*1000.
+        self._dispatch_pending_send()
+
+    def _send_pump_loop(self):
+        self._apply_thread_scheduling('send')
+        period = float(self.contract.policy_dt)
+        deadline = time.perf_counter()
+        while not self._watchdog_stop.is_set():
+            if self._watchdog_stop.wait(max(0., deadline-time.perf_counter())):
+                break
+            started = time.perf_counter()
+            self._periodic_send_tick(started)
+            deadline = next_deadline(deadline, max(time.perf_counter(), started+.008), period)
+
     def _extra_status(self):
         result = super()._extra_status()
         pipeline = getattr(self, 'observation_pipeline', None)
         result['status_publish_hz'] = 1. / self.telemetry_period_sec
         result['capture_policy_hz'] = 50.
+        result['send_schedule'] = 'absolute_deadline_latest_target'
+        result['send_target_age_ms'] = self._send_target_age_ms
         result['observation_pipeline_enabled'] = pipeline is not None
         if pipeline is not None:
             result.update(pipeline.scalar_diagnostics())
@@ -144,6 +196,8 @@ class Rs01Model23500Node(Rs01Model18000Node):
 
 
 def main(args=None):
+    import sys
+    sys.setswitchinterval(.001)
     rclpy.init(args=args)
     node = None
     try:

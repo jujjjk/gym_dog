@@ -4,6 +4,7 @@ No auto-arm; startup stays dry-run/stand-only. A6850 and B18000 share the same
 exclusive hardware lock. Timing failure disarms motion, keeping the old soft-stop chain.
 """
 from collections import deque
+import math
 import time
 import threading
 import numpy as np
@@ -17,11 +18,30 @@ from .rs01_model6850_node import Rs01Model6850Node
 from .rs01_model18000_core import Model18000Contract, Guarded18000PolicyCore, EXPECTED_ONNX_SHA256
 
 
+TIMING_SINGLE_GAP_SEC = .050
+
+
 def timing_window_ready(intervals):
-    values=np.asarray(list(intervals),dtype=float)
-    return bool(len(values)>=40 and np.isfinite(values).all()
-                and .018<=np.median(values)<=.022 and np.percentile(values,95)<=.030
-                and values.min()>=.008 and values.max()<=.040)
+    """50 Hz contract: the median carries the rate, the tails carry the faults.
+
+    One late cycle is tolerated (max 50 ms, under the 60 ms IMU/motor stale
+    limits); a skipped cycle (>=60 ms), three late cycles in one second
+    (p95 > 35 ms) or a 25 Hz loop (median 40 ms) still fail. Measured Jetson
+    walk entry: median 20.4 ms, p95 28.8 ms, one 40.17 ms send on the first
+    walk tick. That single sample used to disarm the trial.
+    """
+    # Sorted scalars: this runs twice per 20 ms cycle and numpy's
+    # median/percentile on 50 values cost ~0.7 ms of the control budget.
+    values=[float(v) for v in intervals]
+    n=len(values)
+    if n<40 or not all(math.isfinite(v) for v in values):
+        return False
+    ordered=sorted(values)
+    median=ordered[n//2] if n%2 else .5*(ordered[n//2-1]+ordered[n//2])
+    position=.95*(n-1); low=int(position); frac=position-low
+    p95=ordered[low] if low+1>=n else ordered[low]+(ordered[low+1]-ordered[low])*frac
+    return bool(.018<=median<=.022 and p95<=.035
+                and ordered[0]>=.008 and ordered[-1]<=TIMING_SINGLE_GAP_SEC)
 
 
 class Rs01Model18000Node(Rs01Model6850Node):
@@ -216,7 +236,7 @@ class Rs01Model18000Node(Rs01Model6850Node):
                     and (not self.enable_send or
                          (timing_window_ready(self._b_send_intervals)
                           and self._b_last_success is not None
-                          and time.perf_counter()-self._b_last_success<=.040)))
+                          and time.perf_counter()-self._b_last_success<=TIMING_SINGLE_GAP_SEC)))
 
     def arm_callback(self, request, response):
         if request.data and not self.imu_calibrated:
@@ -231,7 +251,7 @@ class Rs01Model18000Node(Rs01Model6850Node):
 
     def _timing_fault_detail(self, now, previous):
         parts = []
-        if previous is not None and now-previous > .040:
+        if previous is not None and now-previous > TIMING_SINGLE_GAP_SEC:
             parts.append('control_gap_ms=%.2f' % ((now-previous)*1000.))
         for name, values in [('control', list(self._b_loop_intervals)),
                              ('send', list(self._b_send_intervals))]:
@@ -249,12 +269,12 @@ class Rs01Model18000Node(Rs01Model6850Node):
                 parts.append('no successful send')
             else:
                 age=(time.perf_counter()-self._b_last_success)*1000.
-                if age>40.:parts.append('last_success_age_ms=%.2f'%age)
+                if age>TIMING_SINGLE_GAP_SEC*1000.:parts.append('last_success_age_ms=%.2f'%age)
         return '; '.join(parts) or 'timing window changed during check'
 
     def control_loop(self):
         now=time.monotonic(); previous=self._previous_control
-        if self.mode=='walk' and ((previous is not None and now-previous>.040)
+        if self.mode=='walk' and ((previous is not None and now-previous>TIMING_SINGLE_GAP_SEC)
                                   or not self._b_timing_ready()):
             detail=self._timing_fault_detail(now, previous)
             self.trial.disarm(self.model_filename + ' timing contract lost: ' + detail + '; operator re-arm required')

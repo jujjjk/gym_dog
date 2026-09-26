@@ -11,6 +11,11 @@ from .observation_pipeline import quaternion_matrix, rotation_rpy
 
 
 class BoardClock:
+    # Residual is a robust scale of host-vs-tick scatter, not distance from
+    # the earliest sample. One early stamp must not pin the fit or publish inf.
+    acquire_residual_ms = 8.
+    hold_residual_ms = 12.
+
     def __init__(self):
         self.points = deque(maxlen=256)
         self.last_tick = None
@@ -19,6 +24,7 @@ class BoardClock:
         self.offset = 0.
         self.residual_ms = float('inf')
         self.updates = 0
+        self._accepted = False
 
     def update(self, tick, host):
         tick = int(tick)
@@ -42,24 +48,36 @@ class BoardClock:
         self.points.append((x, host))
         self.updates += 1
         # Drift changes slowly; fit at 5 Hz after warmup, not per motor tick.
+        # A single late sample must not clear a fit that is still usable.
         if len(self.points) > 10 and self.updates % 10:
-            if abs(host-self.host_time(x)) > .01:
-                self.residual_ms = float('inf')
             return x
+        self._refit()
+        return x
+
+    def _refit(self):
         data = np.asarray(self.points)
         dx = data[:, 0]-data[0, 0]
         dy = data[:, 1]-data[0, 1]
         if dx[-1] >= 2.:
             centered = dx-dx.mean()
-            self.slope = float(np.clip(np.dot(centered, dy-dy.mean())/np.dot(centered, centered), .999, 1.001))
+            denom = float(np.dot(centered, centered))
+            if denom > 0.:
+                slope = float(np.dot(centered, dy-dy.mean())/denom)
+                self.slope = float(np.clip(slope, .999, 1.001))
         offsets = data[:, 1]-self.slope*data[:, 0]
-        self.offset = float(np.min(offsets))
-        self.residual_ms = float(np.percentile(offsets-self.offset, 95)*1000.)
-        return x
+        self.offset = float(np.median(offsets))
+        mad = float(np.median(np.abs(offsets-self.offset)))
+        self.residual_ms = 1.4826*mad*1000.
+        if len(self.points) < 10:
+            self._accepted = False
+        elif self._accepted:
+            self._accepted = self.residual_ms <= self.hold_residual_ms
+        else:
+            self._accepted = self.residual_ms <= self.acquire_residual_ms
 
     @property
     def ready(self):
-        return len(self.points) >= 10 and self.residual_ms <= 5.
+        return self._accepted
 
     def host_time(self, board_seconds):
         return self.slope*board_seconds+self.offset
@@ -108,9 +126,10 @@ class CommonTimeAlignment:
         self.motors = [deque(maxlen=64) for _ in range(12)]
         self.sample = None
         self.last_target = None
+        self.last_motor_epoch = float("-inf")
         self.diagnostics = {}
 
-    def update(self, motor, frames, now):
+    def update(self, motor, frames, now, motor_history=()):
         self.sample = None
         target = now-self.delay
         self.diagnostics = dict(observation_alignment_method='linear_q_dq_gyro_quaternion_slerp',
@@ -130,25 +149,31 @@ class CommonTimeAlignment:
             if self.last_target is not None and target <= self.last_target:
                 raise ValueError('control clock regression')
             self.last_target = target
-            for board in range(2):
-                start = board*6
-                ticks = np.asarray(motor.board_tick_ms[start:start+6])
-                if not np.all(ticks == ticks[0]):
-                    raise ValueError('incoherent board snapshot')
-                try:
-                    board_now = self.clocks[board].update(ticks[0], epoch)
-                except ValueError:
-                    for index in range(start, start+6): self.motors[index].clear()
-                    raise
-                for index in range(start, start+6):
-                    age = float(motor.age_ms[index])
-                    if not motor.online[index] or not 0 <= age <= 60:
-                        self.motors[index].clear()
-                        continue
-                    stamp = board_now-age/1000.
-                    history = self.motors[index]
-                    if not history or stamp > history[-1][0]:
-                        history.append((stamp, (float(motor.q_real[index]), float(motor.dq_real[index]))))
+            history_inputs = list(motor_history)+[motor]
+            for motor in history_inputs:
+                epoch = getattr(motor, 'state_epoch_monotonic', None)
+                if epoch is None or epoch <= self.last_motor_epoch or not 0 <= now-epoch <= .25:
+                    continue
+                self.last_motor_epoch = epoch
+                for board in range(2):
+                    start = board*6
+                    ticks = np.asarray(motor.board_tick_ms[start:start+6])
+                    if not np.all(ticks == ticks[0]):
+                        raise ValueError('incoherent board snapshot')
+                    try:
+                        board_now = self.clocks[board].update(ticks[0], epoch)
+                    except ValueError:
+                        for index in range(start, start+6): self.motors[index].clear()
+                        raise
+                    for index in range(start, start+6):
+                        age = float(motor.age_ms[index])
+                        if not motor.online[index] or not 0 <= age <= 60:
+                            self.motors[index].clear()
+                            continue
+                        stamp = board_now-age/1000.
+                        history = self.motors[index]
+                        if not history or stamp > history[-1][0]:
+                            history.append((stamp, (float(motor.q_real[index]), float(motor.dq_real[index]))))
             self.diagnostics.update(mcu_clock_fit_ready=all(c.ready for c in self.clocks),
                 mcu_clock_fit_residual_ms=[c.residual_ms for c in self.clocks],
                 mcu_clock_scale=[c.slope for c in self.clocks],

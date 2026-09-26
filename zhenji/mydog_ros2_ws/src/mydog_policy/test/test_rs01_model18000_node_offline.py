@@ -32,6 +32,13 @@ def test_timing_window_rejects_25hz_and_stalls():
     assert not timing_window_ready([.02]*39)
     assert not timing_window_ready([.02]*49+[.081])
     assert not timing_window_ready([.02]*49+[float('nan')])
+    # Measured Jetson send windows: median 19.6 ms with p95 30.17 ms, and
+    # median 20.44 ms with one 40.17 ms first-walk-tick sample.
+    assert timing_window_ready([.0196]*46+[.03017]*4)
+    assert timing_window_ready([.02044]*49+[.04017])
+    assert not timing_window_ready([.0196]*46+[.036]*4)
+    assert not timing_window_ready([.02]*49+[.051])
+    assert not timing_window_ready([.02]*49+[.060])
 
 @pytest.mark.parametrize('make_node',['B18000'],indirect=True)
 def test_b_constructor_dry_run_and_timing_gate(make_node):

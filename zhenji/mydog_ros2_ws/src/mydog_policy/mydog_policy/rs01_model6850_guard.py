@@ -25,8 +25,11 @@ class Guarded6850PolicyCore:
         self.heading_target = 0.0
         self.pending = None
         # Allocate the ONNX execution buffers before any device is opened.
-        self.actor.tick(contract.default, np.zeros(12), np.zeros(3),
-                        [0, 0, -1], 0., np.zeros(3), gait=0.)
+        # The first inference after session creation is several times slower
+        # than steady state; repeat it so walk entry does not pay for it.
+        for _ in range(8):
+            self.actor.tick(contract.default, np.zeros(12), np.zeros(3),
+                            [0, 0, -1], 0., np.zeros(3), gait=0.)
         self.reset(0., 0.)
 
     def reset(self, now, yaw, q_policy=None):
