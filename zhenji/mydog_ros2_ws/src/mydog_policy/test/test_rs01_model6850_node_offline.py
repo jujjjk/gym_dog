@@ -56,6 +56,8 @@ def make_node(monkeypatch, tmp_path, request):
     cls = bmod.Rs01Model18000Node if use_b else mod.Rs01Model6850Node
     if use_v22:
         from mydog_policy.rs01_model23500_node import Rs01Model23500Node
+        from mydog_policy import rs01_model23500_node as v22mod
+        monkeypatch.setattr(v22mod, 'time', fake_time)
         cls = Rs01Model23500Node
     if use_capture:
         from mydog_policy import capture61_node as capmod

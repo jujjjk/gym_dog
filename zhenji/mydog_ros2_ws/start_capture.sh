@@ -27,4 +27,6 @@ exec ros2 run mydog_policy mydog_capture23500_node --ros-args \
   -p gyro_bias_calibration_sec:=5.0 -p walk_start_stable_sec:=1.0 \
   -p command_min_vx_mps:=0.001 -p command_max_vx_mps:=0.40 -p command_timeout_sec:=0.35 \
   -p capture_dir:="$CAPTURE_DIR" -p debug_csv_path:="${CAPTURE_DIR}_controller.csv" \
+  -p realtime_control_cpus:="'5'" -p realtime_send_cpus:="'4'" -p realtime_background_cpus:="'0-3'" \
+  -p realtime_fifo_priority:=80 \
   "${EXTRA[@]}"

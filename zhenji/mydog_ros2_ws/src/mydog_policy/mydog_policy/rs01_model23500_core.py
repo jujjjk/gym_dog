@@ -54,12 +54,15 @@ class Rs01Model23500Core(Rs01Model18000Core):
 
 class Guarded23500PolicyCore(Guarded6850PolicyCore):
     actor_type = Rs01Model23500Core
+    common_time_max_age_sec = .14
 
     def build_observation(self, now, base_linear_velocity, base_angular_velocity,
                           projected_gravity, command, q_policy, dq_policy, yaw, kinematics=None):
         if getattr(self, 'common_time_required', False):
             sample = getattr(self, 'aligned_sample', None)
-            if sample is None or not 0 <= now-sample['timestamp'] <= .06:
+            # Permit up to 140 ms TOTAL sample age, including 50 ms lookback.
+            # This tolerates short resampling gaps; longer outages fail closed.
+            if sample is None or not 0 <= now-sample['timestamp'] <= self.common_time_max_age_sec:
                 raise RuntimeError('Missing/stale common-time policy observation')
             q_policy, dq_policy = self.mapper.real_to_policy_abs(sample['q_real'], sample['dq_real'])
             base_angular_velocity = sample['gyro']-self.aligned_gyro_bias

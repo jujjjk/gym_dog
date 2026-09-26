@@ -1,4 +1,5 @@
 from types import SimpleNamespace as NS
+import math
 import numpy as np
 import pytest
 from mydog_policy.observation_time_alignment import BoardClock, CommonTimeAlignment, interpolate
@@ -15,6 +16,29 @@ def test_clock_wrap_reset_drift_and_repeated_snapshot():
         c.update(0, 100.04)
     for i in range(251): c.update(i*20, 200.+i*.02*1.0002)
     assert c.ready and c.slope == pytest.approx(1.0002, abs=1e-8)
+    assert math.isfinite(c.residual_ms) and c.residual_ms < 1.
+
+
+def test_outlier_and_command_jitter_do_not_drop_a_ready_clock():
+    c = BoardClock()
+    for i in range(40):
+        c.update(i*20, 50.+i*.02)
+    assert c.ready
+    # 8 ms early, still strictly increasing and inside the 100 ms reset.
+    c.update(40*20, 50.+40*.02-.008)
+    for i in range(41, 80):
+        c.update(i*20, 50.+i*.02+(.008 if i % 5 == 0 else 0.))
+    assert c.ready
+    assert math.isfinite(c.residual_ms) and c.residual_ms <= BoardClock.hold_residual_ms
+
+
+def test_diverging_host_and_tick_is_not_ready():
+    c = BoardClock()
+    for i in range(40):
+        # Tick advances 20 ms while the host stamp advances 50 ms.
+        c.update(i*20, 80.+i*.05)
+    assert not c.ready
+    assert c.residual_ms > BoardClock.hold_residual_ms
 
 
 def test_interpolation_no_extrapolation_gap_and_quaternion_sign():
@@ -127,6 +151,9 @@ def test_common_time_node_warmup_capture_and_missing_bracket_hold(make_node,monk
     assert n.core.common_time_required
     n.mode='walk';n.trial.arm(clock.t);n.trial.receive([.1,0,0],clock.t)
     n.imu.get_frame_history=lambda:{}
+    # 50 ms lookback + 140 ms hold: ages 70..130 ms reuse the last sample.
+    advance(n,clock,4)
+    assert n.mode=='walk' and n.trial.armed and not n.faulted
     advance(n,clock,1)
     assert n.mode=='soft_hold' and not n.trial.armed and not n.faulted
     if getattr(n,'capture',None) is not None:

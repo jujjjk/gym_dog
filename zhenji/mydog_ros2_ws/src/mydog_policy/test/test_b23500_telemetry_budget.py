@@ -30,7 +30,8 @@ def test_timing_fault_reports_window_and_keeps_threshold(make_node):
     n._b_loop_intervals.clear()
     n._b_loop_intervals.extend([.040]*50)
     assert not n._b_timing_ready()
-    detail=n._timing_fault_detail(clock.t,clock.t-.05)
-    assert 'control_gap_ms=50.00' in detail
+    detail=n._timing_fault_detail(clock.t,clock.t-.06)
+    assert 'control_gap_ms=60.00' in detail
+    assert 'control_gap_ms' not in n._timing_fault_detail(clock.t,clock.t-.045)
     assert 'median=40.00' in detail and 'p95=40.00' in detail
     assert not calls
