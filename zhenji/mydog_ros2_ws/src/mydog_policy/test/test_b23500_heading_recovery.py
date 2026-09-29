@@ -42,6 +42,7 @@ def test_severe_heading_does_not_stop_or_drop_correction(bad):
 def test_heading_channels_keep_full_error_without_resetting_target():
     actor = object.__new__(Rs01Model23500Core)
     actor.heading = .24
+    actor.command = np.array([.3, 0., 0.])  # straight walk: correction active
     assert actor._direction_heading_error(.083) == .083
     actor.heading_correction_weight = 1.
     assert actor._direction_heading_error(.083) == .083

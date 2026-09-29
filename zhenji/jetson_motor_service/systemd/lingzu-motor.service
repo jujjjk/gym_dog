@@ -1,0 +1,15 @@
+[Unit]
+Description=Lingzu motor FastAPI and real-time IPC service
+After=default.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/jetson/text
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=LINGZU_STATE_REFRESH_HZ=50
+ExecStart=/usr/bin/python3 -m uvicorn app:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

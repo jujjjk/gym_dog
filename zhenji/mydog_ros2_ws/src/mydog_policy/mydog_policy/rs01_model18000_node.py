@@ -176,14 +176,17 @@ class Rs01Model18000Node(Rs01Model6850Node):
                 self.calibration_reason = str(exc)
                 return state
             self.gyro_bias_rad_s = np.asarray(bias, dtype=np.float32)
-            Rs01Model930Node._reset_walk_session(self, time.monotonic(), yaw, q)
-            self.heading_consistency.reset()
-            self.walk_ready_since = None
+            self._on_gyro_calibration_complete(time.monotonic(), yaw, q)
             self.imu_calibrated = True
             self.calibration_requested = False
             self.calibration_state = 'complete'
             self.calibration_reason = ''
         return state
+
+    def _on_gyro_calibration_complete(self, now, yaw, q):
+        Rs01Model930Node._reset_walk_session(self, now, yaw, q)
+        self.heading_consistency.reset()
+        self.walk_ready_since = None
 
     def _dispatch_pending_send(self):
         with self._send_lock:

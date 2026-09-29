@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -e
 source /opt/ros/humble/setup.bash
-source /home/jetson/deploy_staging/b23500-observation-opt-20260923/install/setup.bash
+WORKSPACE="${B23500_WORKSPACE:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}"
+source "$WORKSPACE/install/setup.bash"
 export ROS_DOMAIN_ID=99
 export PYTHONPATH=/usr/local/lib/python3.10/site-packages:${PYTHONPATH:-}
 case "${1:-dry}" in

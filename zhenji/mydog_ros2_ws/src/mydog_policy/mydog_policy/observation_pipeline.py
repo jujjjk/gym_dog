@@ -51,6 +51,7 @@ class ObservationPipeline:
         self.filtered_dq = self.filtered_gyro = None
         self.diagnostics = {}
         self.quality_since = dict(timing=None, odometry=None, heading=None)
+        self.low_confidence_since = None
 
     def process(self, motor, latest_imu, history, wall, mono):
         # Keep the newest motor snapshot for PD protection and encoder limits.
@@ -127,9 +128,19 @@ class ObservationPipeline:
             base_gravity=result.projected_gravity.copy(), yaw_raw_deg=float(imu.rpy_deg[2]))
         return motor, result
 
-    def quality(self, now, confidence, heading_ok, walking):
+    def quality(self, now, confidence, heading_ok, walking, *, odometry_support_usable=None, odometry_timeout_sec=.20):
+        if not np.isfinite(odometry_timeout_sec) or not .20 <= odometry_timeout_sec <= .60:
+            raise ValueError('Odometry recovery window must be 0.20..0.60 seconds')
+        confidence_ok = bool(np.isfinite(confidence) and confidence >= .5)
+        if confidence_ok or not walking:
+            self.low_confidence_since = None
+        elif self.low_confidence_since is None:
+            self.low_confidence_since = now
+        low_confidence_sec = (0. if self.low_confidence_since is None else
+                              max(0., now-self.low_confidence_since))
         checks = dict(timing=bool(self.diagnostics.get('observation_temporal_ok', False)),
-                      odometry=bool(np.isfinite(confidence) and confidence >= .5),
+                      odometry=(confidence_ok if odometry_support_usable is None else
+                                bool(odometry_support_usable and np.isfinite(confidence) and confidence > 0)),
                       heading=bool(heading_ok))
         durations = {}
         for name, healthy in checks.items():
@@ -141,14 +152,17 @@ class ObservationPipeline:
             durations[name] = 0. if since is None else max(0., now-since)
         # Independent causes must not keep one shared timer alive when they
         # recover in turn. Each unchanged 200ms gate measures its own fault.
-        reasons = [name for name, duration in durations.items() if walking and duration >= .20]
-        ok = all(checks.values())
+        limits = dict(timing=.20, heading=.20, odometry=float(odometry_timeout_sec))
+        reasons = [name for name, duration in durations.items() if walking and duration >= limits[name]]
+        degraded = bool(all(checks.values()) and not confidence_ok)
+        ok = all(checks.values()) and confidence_ok
         stop = bool(reasons)
-        self.diagnostics.update(obs_quality_ok=ok, obs_quality_bad_sec=max(durations.values()),
-                                obs_quality_state='ok' if ok else ('soft_hold' if stop else 'transient'),
+        self.diagnostics.update(obs_quality_odometry_timeout_sec=float(odometry_timeout_sec), obs_quality_ok=ok, obs_quality_bad_sec=max(durations.values()),
+                                obs_quality_state='ok' if ok else ('soft_hold' if stop else ('degraded' if degraded else 'transient')),
                                 obs_quality_stop_reason=','.join(reasons),
                                 obs_quality_timing_bad_sec=durations['timing'],
                                 obs_quality_odometry_bad_sec=durations['odometry'],
+                                obs_quality_odometry_low_conf_sec=low_confidence_sec,
                                 obs_quality_heading_bad_sec=durations['heading'])
         return stop
 

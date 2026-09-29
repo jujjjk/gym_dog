@@ -1,0 +1,1348 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RS04 Multi-Joint Position Tuner</title>
+  <style>
+    :root {
+      --bg: #eef2f7;
+      --card: #ffffff;
+      --line: #dbe3ee;
+      --text: #1f2a44;
+      --muted: #64748b;
+      --blue: #2563eb;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --green: #10b981;
+      --teal: #0d9488;
+      --gray: #64748b;
+      --shadow: 0 8px 24px rgba(15, 23, 42, .06);
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 1500px;
+      margin: 16px auto;
+      padding: 0 12px 18px;
+    }
+
+    .title {
+      font-size: 28px;
+      font-weight: 800;
+      margin: 8px 0 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .status {
+      color: var(--muted);
+      font-weight: 600;
+      margin-left: 6px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 700;
+      font-size: 15px;
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+    }
+
+    .b-blue {
+      background: var(--blue)
+    }
+
+    .b-red {
+      background: var(--red)
+    }
+
+    .b-amber {
+      background: var(--amber)
+    }
+
+    .b-green {
+      background: var(--green)
+    }
+
+    .b-teal {
+      background: var(--teal)
+    }
+
+    .b-gray {
+      background: var(--gray)
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .rows {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* One motor = one row: checkbox | joint name | fields ... */
+    .motor-row {
+      display: grid;
+      gap: 10px;
+      align-items: center;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+    }
+
+    .motor-row.pp {
+      grid-template-columns: 44px 100px 90px 130px 120px 120px 90px 100px auto;
+    }
+
+    .motor-row.motion {
+      grid-template-columns: 44px 100px 90px 130px 120px 90px 90px 90px 100px auto;
+    }
+
+    .motor-row-chk {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .motor-row .motor-joint-name {
+      font-weight: 800;
+      font-size: 15px;
+      white-space: nowrap;
+      min-width: 0;
+    }
+
+    .field {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .field small {
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    input[type="number"],
+    input[type="text"] {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 14px;
+      outline: none;
+      background: #fff;
+    }
+
+    input:focus {
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, .12);
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-start;
+    }
+
+    .btn-sm {
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+
+    .btn-mini {
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: 13px;
+      background: #64748b;
+    }
+
+    .row-meta {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 2px 2px 0;
+    }
+
+    .row-meta code {
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: #334155;
+    }
+
+    .output-tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      resize: vertical;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .header-row {
+      display: grid;
+      gap: 10px;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 13px;
+      padding: 0 4px 6px;
+      align-items: end;
+    }
+
+    .header-row.pp {
+      grid-template-columns: 44px 100px 90px 130px 120px 120px 90px 100px auto;
+    }
+
+    .header-row.motion {
+      grid-template-columns: 44px 100px 90px 130px 120px 90px 90px 90px 100px auto;
+    }
+
+    .script-hint {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    #scriptStatus {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    @media (max-width: 1200px) {
+      .header-row {
+        display: none
+      }
+
+      .motor-row {
+        grid-template-columns: 1fr 1fr;
+        align-items: start;
+      }
+
+      .motor-row .motor-row-chk {
+        grid-column: 1;
+      }
+
+      .motor-row .motor-joint-name {
+        grid-column: 2 / -1;
+      }
+
+      .btn-group {
+        grid-column: 1 / -1
+      }
+
+      .row-meta {
+        grid-column: 1 / -1
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="title">Multi-Joint Position Mode Tuner (RS04)</div>
+
+    <!-- Global controls -->
+    <div class="card">
+      <div class="topbar">
+        <button class="b-blue" id="btnEnable">Enable</button>
+        <button class="b-red" id="btnStop">Stop</button>
+        <button class="b-amber" id="btnStopClear">Stop + Clear Error</button>
+        <button class="b-green" id="btnZeroCalAll">Calibrate Zero (12路)</button>
+        <button class="b-teal" id="btnZeroCalSelected">Calibrate Zero (Selected)</button>
+        <button class="b-blue" id="btnRunSelected">Run Selected</button>
+        <button class="b-green" id="btnDefaultStand">默认站立</button>
+
+        <button class="btn-mini" id="btnSelectAll" type="button" title="勾选全部关节">全选</button>
+        <button class="btn-mini" id="btnSelectNone" type="button" title="取消全部勾选">全不选</button>
+
+        <button class="b-green" id="btnGenAll">Generate Code (勾选行)</button>
+        <button class="b-gray" id="btnCopyAll">Copy Output</button>
+
+        <label style="display:flex;align-items:center;gap:6px;color:#334155;font-weight:600;">
+          <input type="checkbox" id="autoStopBeforeRun" checked />
+          Auto Stop Before Run
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;color:#334155;font-weight:600;">
+          Mode
+          <select id="uiMode" style="padding:8px 10px;border-radius:10px;border:1px solid #cbd5e1;">
+            <option value="pp">PP</option>
+            <option value="motion" selected>Motion</option>
+          </select>
+        </label>
+
+        <span class="status" id="globalStatus">Ready</span>
+      </div>
+      <div class="hint">
+        每行一路关节；仅<strong>勾选</strong>的行会响应顶部 Enable / Stop / Run / 生成代码。单行 Run / Zero（去目标零位）/ <strong>标零</strong>（本路硬件零点，与顶栏 12 路相同）可随时操作。
+        「脚本调试」区支持 <code>enable(0x11, 0x12, …)</code>（自行填写 ID
+        列表）、<code>position_mode_move</code>、<code>sleep</code>/<code>wait</code>、<code>zero</code>；每条位移/归零前会对<strong>当前轴</strong>自动再使能一次，便于
+        PP 后保持连续使能。
+      </div>
+    </div>
+
+    <!-- Table header -->
+    <div class="header-row" id="headerRow"></div>
+
+    <!-- Motor rows -->
+    <div class="rows" id="motorRows"></div>
+
+    <!-- Script / sequence debug -->
+    <div class="card">
+      <div class="output-tools">
+        <button class="b-blue" id="btnRunScript" type="button">运行脚本</button>
+        <button class="b-red" id="btnStopScript" type="button">停止脚本</button>
+        <span class="status" id="scriptStatus">脚本就绪</span>
+      </div>
+      <div class="script-hint">
+        每行一条。<code>enable(0x21, 0x22, 0x23)</code>：按你写的十六进制/十进制 ID 批量使能（可写任意路，不依赖界面行挂载）。<code>position_mode_move</code>
+        / <code>zero</code> 执行前会对该指令涉及的电机<strong>自动再 enable 一次</strong>。
+        另支持 <code>sleep</code>/<code>wait</code>。对应关节行若存在会同步角度与 Call 预览。
+      </div>
+      <textarea id="scriptInput" style="min-height:160px;"
+        placeholder="# 示例：自行替换为你的电机 ID&#10;enable(0x11, 0x12, 0x13)&#10;position_mode_move(0x11, 0.0000, 2.00)  # accel=1.00, delay=0.0s&#10;sleep(0.5)&#10;zero(0x12)"></textarea>
+    </div>
+
+    <!-- Generated code -->
+    <div class="card">
+      <div class="output-tools">
+        <button class="b-green" id="btnGenSelected">Generate Code (Selected Rows)</button>
+        <button class="b-gray" id="btnCopySelected">Copy Output</button>
+        <label style="display:flex;align-items:center;gap:6px;color:#334155;font-weight:600;">
+          <input type="checkbox" id="useDegOutput" />
+          Output angle as degree comment
+        </label>
+        <span class="status">Output format for later packaging / step scripting</span>
+      </div>
+      <textarea id="codeOutput" placeholder="Generated code will appear here..."></textarea>
+    </div>
+  </div>
+
+  <script>
+    /* Joint-1..12 default IDs — aligned with app.py MOTOR_IDS */
+    const motors = [
+      { joint: "Joint-1", id: 0x11, angle: 0.0, homeAngle: 0.0, delay: 0, selected: true, speed: 2.0, accel: 1.0, stepDeg: 5, motionPosition: 0.0, torque: 0.0, kp: 15.0, kd: 5.0 },
+      { joint: "Joint-2", id: 0x12, angle: 0.0, homeAngle: 0.0, delay: 0, selected: true, speed: 2.0, accel: 1.0, stepDeg: 5, motionPosition: 0.0, torque: 0.0, kp: 15.0, kd: 5.0 },
+      { joint: "Joint-3", id: 0x13, angle: 0.0, homeAngle: 0.0, delay: 0, selected: true, speed: 2.0, accel: 1.0, stepDeg: 5, motionPosition: 0.0, torque: 0.0, kp: 15.0, kd: 5.0 },
+      { joint: "Joint-4", id: 0x21, angle: 0.0, homeAngle: 0.0, delay: 0, selected: true, speed: 2.0, accel: 1.0, stepDeg: 5, motionPosition: 0.0, torque: 0.0, kp: 15.0, kd: 5.0 },
+      { joint: "Joint-5", id: 0x22, angle: 0.0, homeAngle: 0.0, delay: 0, selected: true, speed: 2.0, accel: 1.0, stepDeg: 5, motionPosition: 0.0, torque: 0.0, kp: 15.0, kd: 5.0 },
+      { joint: "Joint-6", id: 0x23, angle: 0.0, homeAngle: 0.0, delay: 0, selected: true, speed: 2.0, accel: 1.0, stepDeg: 5, motionPosition: 0.0, torque: 0.0, kp: 15.0, kd: 5.0 },
+      { joint: "Joint-7", id: 0x31, angle: 0.0, homeAngle: 0.0, delay: 0, selected: true, speed: 2.0, accel: 1.0, stepDeg: 5, motionPosition: 0.0, torque: 0.0, kp: 15.0, kd: 5.0 },
+      { joint: "Joint-8", id: 0x32, angle: 0.0, homeAngle: 0.0, delay: 0, selected: true, speed: 2.0, accel: 1.0, stepDeg: 5, motionPosition: 0.0, torque: 0.0, kp: 15.0, kd: 5.0 },
+      { joint: "Joint-9", id: 0x33, angle: 0.0, homeAngle: 0.0, delay: 0, selected: true, speed: 2.0, accel: 1.0, stepDeg: 5, motionPosition: 0.0, torque: 0.0, kp: 15.0, kd: 5.0 },
+      { joint: "Joint-10", id: 0x41, angle: 0.0, homeAngle: 0.0, delay: 0, selected: true, speed: 2.0, accel: 1.0, stepDeg: 5, motionPosition: 0.0, torque: 0.0, kp: 15.0, kd: 5.0 },
+      { joint: "Joint-11", id: 0x42, angle: 0.0, homeAngle: 0.0, delay: 0, selected: true, speed: 2.0, accel: 1.0, stepDeg: 5, motionPosition: 0.0, torque: 0.0, kp: 15.0, kd: 5.0 },
+      { joint: "Joint-12", id: 0x43, angle: 0.0, homeAngle: 0.0, delay: 0, selected: true, speed: 2.0, accel: 1.0, stepDeg: 5, motionPosition: 0.0, torque: 0.0, kp: 15.0, kd: 5.0 },
+    ];
+
+    const DEFAULT_STAND_KP = 40.0;
+    const DEFAULT_STAND_KD = 5.0;
+    const DEFAULT_STAND_POSE = [
+      { id: 0x11, position: 0.157080, stepDeg: 5 },
+      { id: 0x12, position: 0.349066, stepDeg: 5 },
+      { id: 0x13, position: -0.785398, stepDeg: 5 },
+      { id: 0x21, position: -0.157081, stepDeg: 5 },
+      { id: 0x22, position: -0.349067, stepDeg: 5 },
+      { id: 0x23, position: 0.785397, stepDeg: 5 },
+      { id: 0x31, position: 0.157078, stepDeg: 5 },
+      { id: 0x32, position: -0.226897, stepDeg: 2 },
+      { id: 0x33, position: 0.349065, stepDeg: 2 },
+      { id: 0x41, position: -0.157080, stepDeg: 5 },
+      { id: 0x42, position: 0.226904, stepDeg: 2 },
+      { id: 0x43, position: -0.349066, stepDeg: 5 },
+    ];
+
+    const MSG_NO_SELECTION = "请先勾选至少一路关节";
+
+    /* =========================
+       Helpers
+       ========================= */
+    const $ = (id) => document.getElementById(id);
+    const radToDeg = (r) => r * 180 / Math.PI;
+    const degToRad = (d) => d * Math.PI / 180;
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+    let scriptAbortRequested = false;
+    let scriptRunnerBusy = false;
+
+    function setGlobalStatus(msg, isErr = false) {
+      const el = $("globalStatus");
+      el.textContent = msg;
+      el.style.color = isErr ? "#dc2626" : "#64748b";
+    }
+
+    function setScriptStatus(msg, isErr = false) {
+      const el = $("scriptStatus");
+      if (!el) return;
+      el.textContent = msg;
+      el.style.color = isErr ? "#dc2626" : "#64748b";
+    }
+
+    async function postJSON(url, payload) {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const t = await r.text();
+      let data; try { data = JSON.parse(t); } catch { data = { raw: t }; }
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}: ${t}`);
+      return data;
+    }
+
+    function getMotorRowEl(idx) {
+      return document.querySelector(`.motor-row[data-idx="${idx}"]`);
+    }
+
+    function getUiMode() {
+      return $("uiMode")?.value || "pp";
+    }
+
+    function renderHeader() {
+      const mode = getUiMode();
+      const root = $("headerRow");
+      if (!root) return;
+      root.className = `header-row ${mode}`;
+      if (mode === "pp") {
+        root.innerHTML = `
+      <div title="顶部批量操作仅作用于勾选行">Sel</div>
+      <div>Joint</div>
+      <div>Motor ID</div>
+      <div>Angle (rad)</div>
+      <div>Speed</div>
+      <div>Accel</div>
+      <div>Step(deg)</div>
+      <div>Delay(s)</div>
+      <div>Actions</div>
+    `;
+      } else {
+        root.innerHTML = `
+      <div title="顶部批量操作仅作用于勾选行">Sel</div>
+      <div>Joint</div>
+      <div>Motor ID</div>
+      <div>Pos (rad)</div>
+      <div>Torque (Nm)</div>
+      <div>Kp</div>
+      <div>Kd</div>
+      <div>Step(deg)</div>
+      <div>Delay(s)</div>
+      <div>Actions</div>
+    `;
+      }
+    }
+
+    function syncAllRowsToMotors() {
+      document.querySelectorAll(".motor-row").forEach((row) => {
+        const idx = parseInt(row.dataset.idx, 10);
+        if (Number.isFinite(idx) && motors[idx]) applyRowInputsToMotor(row, motors[idx]);
+      });
+    }
+
+    function getSelectedMotors() {
+      return motors.filter(m => m.selected);
+    }
+
+    function getSelectedMotorIds() {
+      return getSelectedMotors().map(m => m.id);
+    }
+
+    async function safeStopBeforeRun() {
+      if (!($("autoStopBeforeRun")?.checked)) return;
+      const ids = getSelectedMotorIds();
+      if (ids.length === 0) return;
+      try {
+        await postJSON("/api/stop?clear_error=false", { motor_ids: ids });
+        await sleep(80);
+      } catch (e) {
+        console.warn("auto stop failed:", e);
+      }
+    }
+
+    async function sleepCancellable(totalMs) {
+      const slice = 80;
+      let left = totalMs;
+      while (left > 0) {
+        if (scriptAbortRequested) return;
+        const w = Math.min(slice, left);
+        await sleep(w);
+        left -= w;
+      }
+    }
+
+    function findMotorIndexByCanId(idToken) {
+      const id = parseMotorId(String(idToken).trim());
+      if (!Number.isFinite(id)) return -1;
+      return motors.findIndex(m => m.id === id);
+    }
+
+    function parseCommentParams(comment) {
+      const s = String(comment || "");
+      const o = {};
+      const am = s.match(/accel\s*=\s*([-+eE0-9.]+)/i);
+      const dm = s.match(/delay\s*=\s*([-+eE0-9.]+)/i);
+      if (am) o.accel = parseFloat(am[1]);
+      if (dm) o.delay = parseFloat(dm[1]);
+      return o;
+    }
+
+    /** Comma-separated motor ids inside enable(...); empty ok for caller to validate. */
+    function parseEnableIdList(inner) {
+      const s = String(inner ?? "").trim();
+      if (!s) return [];
+      const ids = [];
+      const seen = new Set();
+      for (const part of s.split(",")) {
+        const id = parseMotorId(part.trim());
+        if (!Number.isFinite(id)) continue;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        ids.push(id);
+      }
+      return ids;
+    }
+
+    async function apiEnableMotorIds(motorIds) {
+      const ids = (motorIds || []).filter((id) => Number.isFinite(id));
+      if (ids.length === 0) return;
+      await postJSON("/api/enable", { motor_ids: ids });
+      await sleep(80);
+    }
+    function syncZeroCalibratedMotors(list) {
+      (list || []).forEach((m) => {
+        if (!m) return;
+        m.angle = 0;
+        m.motionPosition = 0;
+        const idx = motors.indexOf(m);
+        const row = idx >= 0 ? getMotorRowEl(idx) : null;
+        if (row) writeMotorToRow(row, m);
+      });
+    }
+
+    async function apiCalibrateZeroList(list, scopeLabel) {
+      const targets = (list || []).filter(Boolean);
+      if (targets.length === 0) {
+        setGlobalStatus(MSG_NO_SELECTION, true);
+        return;
+      }
+
+      setGlobalStatus(`Calibrating zero: ${scopeLabel} ...`);
+      try {
+        await postJSON("/api/zero", {
+          motor_ids: targets.map(m => m.id),
+          stop_first: true,
+          set_motion_mode: true
+        });
+        syncZeroCalibratedMotors(targets);
+        setGlobalStatus(`Zero calibration sent: ${scopeLabel}`);
+      } catch (e) {
+        setGlobalStatus("Zero calibration failed: " + e.message, true);
+      }
+    }
+
+    async function apiCalibrateZeroAll() {
+      syncAllRowsToMotors();
+      await apiCalibrateZeroList(motors, "all 12 motors");
+    }
+
+    async function apiCalibrateZeroSelected() {
+      syncAllRowsToMotors();
+      const list = getSelectedMotors();
+      if (list.length === 0) {
+        setGlobalStatus(MSG_NO_SELECTION, true);
+        return;
+      }
+      await apiCalibrateZeroList(list, `${list.length} selected motor(s)`);
+    }
+
+    /** 单路硬件 set_zero，与 /api/zero 全路参数一致 */
+    async function apiCalibrateZeroMotor(m) {
+      await apiCalibrateZeroList([m], `${m.joint} (ID=${formatIdForInput(m.id)})`);
+    }
+
+    /* =========================
+       API wrappers
+       ========================= */
+    async function apiEnable() {
+      syncAllRowsToMotors();
+      const list = getSelectedMotors();
+      if (list.length === 0) { setGlobalStatus(MSG_NO_SELECTION, true); return; }
+      const mode = getUiMode();
+      setGlobalStatus(mode === "motion" ? "Enable + enter Motion..." : "Enable...");
+      try {
+        if (mode === "motion") {
+          for (const m of list) {
+            m.kp = 40;
+            m.kd = 5;
+            await postJSON("/api/rs04/motion_mode_run", {
+              motor_id: m.id,
+              position: m.motionPosition,
+              torque: m.torque,
+              kp: 40,
+              kd: 5,
+              enable_first: true,
+              stop_first: false
+            });
+          }
+          renderRows();
+          setGlobalStatus(`已使能并进入 Motion 模式（${list.length} 路，kp=40，kd=5）`);
+        } else {
+          await postJSON("/api/enable", { motor_ids: list.map(m => m.id) });
+          setGlobalStatus("Enabled");
+        }
+      } catch (e) {
+        setGlobalStatus("Enable failed: " + e.message, true);
+      }
+    }
+
+    async function apiStop(clear = false) {
+      syncAllRowsToMotors();
+      const ids = getSelectedMotorIds();
+      if (ids.length === 0) { setGlobalStatus(MSG_NO_SELECTION, true); return; }
+      setGlobalStatus(clear ? "Stop + Clear Error..." : "Stop...");
+      try {
+        await postJSON(`/api/stop?clear_error=${clear ? "true" : "false"}`, { motor_ids: ids });
+        setGlobalStatus(clear ? "Stopped + Error Cleared" : "Stopped");
+      } catch (e) {
+        setGlobalStatus("Stop failed: " + e.message, true);
+      }
+    }
+
+    /** Position mode single motor run?????? motor_id ???? */
+    async function apiRunPP(motor) {
+      await safeStopBeforeRun();
+      const d = Math.max(0, motor.delay || 0);
+      if (d > 0) {
+        setGlobalStatus(`Run ${motor.joint} (ID=${formatIdForInput(motor.id)}) after ${d.toFixed(1)}s ...`);
+        await sleep(d * 1000);
+      } else {
+        setGlobalStatus(`Run ${motor.joint} (ID=${formatIdForInput(motor.id)}) ...`);
+      }
+      const target = (motor.homeAngle || 0) + (motor.angle || 0);
+      const payload = {
+        motor_id: motor.id,
+        position: target,
+        speed: motor.speed,
+        accel: motor.accel
+      };
+      const res = await postJSON("/api/rs04/pp_mode_run", payload);
+      setGlobalStatus(`PP sent: ${motor.joint} angle=${motor.angle.toFixed(4)} rad`);
+      return res;
+    }
+
+    async function apiRunMotion(motor) {
+      await safeStopBeforeRun();
+      const d = Math.max(0, motor.delay || 0);
+      if (d > 0) {
+        setGlobalStatus(`Run Motion ${motor.joint} (ID=${formatIdForInput(motor.id)}) after ${d.toFixed(1)}s ...`);
+        await sleep(d * 1000);
+      } else {
+        setGlobalStatus(`Run Motion ${motor.joint} (ID=${formatIdForInput(motor.id)}) ...`);
+      }
+      const payload = {
+        motor_id: motor.id,
+        position: motor.motionPosition,
+        torque: motor.torque,
+        kp: motor.kp,
+        kd: motor.kd,
+        enable_first: true,
+        stop_first: false
+      };
+      const res = await postJSON("/api/rs04/motion_mode_run", payload);
+      setGlobalStatus(`Motion sent: ${motor.joint}`);
+      return res;
+    }
+
+    function applyDefaultStandPoseToMotors() {
+      DEFAULT_STAND_POSE.forEach((pose, idx) => {
+        const m = motors[idx];
+        if (!m) return;
+        m.id = pose.id;
+        m.motionPosition = pose.position;
+        m.torque = 0.0;
+        m.kp = DEFAULT_STAND_KP;
+        m.kd = DEFAULT_STAND_KD;
+        m.stepDeg = pose.stepDeg;
+        m.delay = 0.0;
+      });
+    }
+
+    async function apiDefaultStand() {
+      syncAllRowsToMotors();
+      applyDefaultStandPoseToMotors();
+
+      const modeEl = $("uiMode");
+      if (modeEl) modeEl.value = "motion";
+      renderHeader();
+      renderRows();
+      $("codeOutput").value = buildCodeBlock(motors);
+
+      const items = motors.map((m) => ({
+        motor_id: m.id,
+        position: m.motionPosition,
+        speed: 0.0,
+        torque: m.torque,
+        kp: m.kp,
+        kd: m.kd
+      }));
+
+      try {
+        setGlobalStatus("默认站立下发中...");
+        if ($("autoStopBeforeRun")?.checked) {
+          await postJSON("/api/stop?clear_error=false", { motor_ids: motors.map(m => m.id) });
+          await sleep(80);
+        }
+        await postJSON("/api/rs04/motion_mode_run_batch", {
+          items,
+          enable_first: true,
+          stop_first: false
+        });
+        setGlobalStatus(`默认站立已发送：12 路，kp=${DEFAULT_STAND_KP.toFixed(0)}，kd=${DEFAULT_STAND_KD.toFixed(0)}`);
+      } catch (e) {
+        setGlobalStatus("默认站立失败: " + e.message, true);
+      }
+    }
+
+    async function zeroMotorRow(row, m) {
+      m.angle = 0;
+      writeMotorToRow(row, m);
+      await apiRunPP(m);
+    }
+
+    async function applyScriptPositionMove(idToken, angleStr, speedStr, hashPart) {
+      syncAllRowsToMotors();
+      const idx = findMotorIndexByCanId(idToken);
+      if (idx < 0) throw new Error(`未找到电机 ID（请检查界面行 Motor ID 或与脚本一致）: ${idToken}`);
+      const m = motors[idx];
+      const row = getMotorRowEl(idx);
+      const ang = parseFloat(String(angleStr).trim());
+      const spd = parseFloat(String(speedStr).trim());
+      if (!Number.isFinite(ang) || !Number.isFinite(spd)) throw new Error("角度或速度无效");
+      m.angle = ang;
+      m.speed = spd;
+      const extra = parseCommentParams(hashPart);
+      if (Number.isFinite(extra.accel)) m.accel = extra.accel;
+      if (Number.isFinite(extra.delay)) m.delay = extra.delay;
+      if (row) writeMotorToRow(row, m);
+      await apiEnableMotorIds([m.id]);
+      await apiRunPP(m);
+    }
+
+    async function applyScriptMotionRun(idToken, posStr, torqueStr, kpStr, kdStr, hashPart) {
+      syncAllRowsToMotors();
+      const idx = findMotorIndexByCanId(idToken);
+      if (idx < 0) throw new Error(`未找到电机 ID（请检查界面行 Motor ID 或与脚本一致）: ${idToken}`);
+      const m = motors[idx];
+      const row = getMotorRowEl(idx);
+      const pos = parseFloat(String(posStr).trim());
+      const tq = parseFloat(String(torqueStr).trim());
+      const kp = parseFloat(String(kpStr).trim());
+      const kd = parseFloat(String(kdStr).trim());
+      if (!Number.isFinite(pos) || !Number.isFinite(tq) || !Number.isFinite(kp) || !Number.isFinite(kd)) {
+        throw new Error("motion_mode_run 参数无效");
+      }
+      m.motionPosition = pos;
+      m.torque = tq;
+      m.kp = kp;
+      m.kd = kd;
+      const extra = parseCommentParams(hashPart);
+      if (Number.isFinite(extra.delay)) m.delay = extra.delay;
+      if (row) writeMotorToRow(row, m);
+      await apiEnableMotorIds([m.id]);
+      await apiRunMotion(m);
+    }
+
+    async function applyScriptZero(idToken) {
+      syncAllRowsToMotors();
+      const idx = findMotorIndexByCanId(idToken);
+      if (idx < 0) throw new Error(`未找到电机 ID（请检查界面行 Motor ID 或与脚本一致）: ${idToken}`);
+      const m = motors[idx];
+      const row = getMotorRowEl(idx);
+      await apiEnableMotorIds([m.id]);
+      await apiCalibrateZeroMotor(m);
+      if (row) writeMotorToRow(row, m);
+    }
+
+    function parseScriptLine(raw) {
+      const line = raw.trim();
+      if (!line || line.startsWith("#")) return { type: "skip" };
+
+      let m = line.match(/^\s*enable\s*\(\s*(.*?)\s*\)\s*$/i);
+      if (m) return { type: "enable", inner: m[1] };
+
+      m = line.match(/^\s*position_mode_move\s*\(\s*(.+?)\s*,\s*(.+?)\s*,\s*(.+?)\)\s*(?:#(.*))?$/i);
+      if (m) {
+        return { type: "pp", id: m[1].trim(), angle: m[2].trim(), speed: m[3].trim(), comment: (m[4] || "").trim() };
+      }
+      m = line.match(/^\s*motion_mode_run\s*\(\s*(.+?)\s*,\s*(.+?)\s*,\s*(.+?)\s*,\s*(.+?)\s*,\s*(.+?)\)\s*(?:#(.*))?$/i);
+      if (m) {
+        return {
+          type: "motion",
+          id: m[1].trim(),
+          position: m[2].trim(),
+          torque: m[3].trim(),
+          kp: m[4].trim(),
+          kd: m[5].trim(),
+          comment: (m[6] || "").trim()
+        };
+      }
+      m = line.match(/^\s*zero\s*\(\s*(.+?)\)\s*$/i);
+      if (m) return { type: "zero", id: m[1].trim() };
+
+      m = line.match(/^\s*(sleep|wait)\s*\(\s*([-+eE0-9.]+)\s*\)\s*$/i);
+      if (m) return { type: "sleep", sec: parseFloat(m[2]) };
+
+      throw new Error(`无法解析: ${line}`);
+    }
+
+    async function runScriptText() {
+      const lines = ($("scriptInput")?.value || "").split(/\r?\n/);
+      for (let i = 0; i < lines.length; i++) {
+        if (scriptAbortRequested) {
+          setScriptStatus(`已停止（第 ${i + 1} 行前）`, false);
+          return;
+        }
+        let cmd;
+        try {
+          cmd = parseScriptLine(lines[i]);
+        } catch (e) {
+          throw new Error(`第 ${i + 1} 行: ${e.message}`);
+        }
+        if (cmd.type === "skip") continue;
+        if (cmd.type === "sleep") {
+          if (!Number.isFinite(cmd.sec) || cmd.sec < 0) throw new Error(`第 ${i + 1} 行: sleep 时间无效`);
+          setScriptStatus(`等待 ${cmd.sec}s …`);
+          await sleepCancellable(cmd.sec * 1000);
+          continue;
+        }
+        if (cmd.type === "enable") {
+          const eids = parseEnableIdList(cmd.inner);
+          if (eids.length === 0) {
+            throw new Error(`第 ${i + 1} 行: enable() 须指定至少一个电机 ID，例如 enable(0x11, 0x21)（ID 由你自行填写）`);
+          }
+          setScriptStatus(`enable([${eids.map((x) => formatIdForInput(x)).join(", ")}]) 第 ${i + 1} 行`);
+          setGlobalStatus(`脚本 enable: ${eids.map((x) => formatIdForInput(x)).join(", ")}`);
+          await apiEnableMotorIds(eids);
+          continue;
+        }
+        if (cmd.type === "zero") {
+          setScriptStatus(`zero(${cmd.id}) 第 ${i + 1} 行`);
+          await applyScriptZero(cmd.id);
+          continue;
+        }
+        if (cmd.type === "pp") {
+          setScriptStatus(`position_mode_move 第 ${i + 1} 行`);
+          await applyScriptPositionMove(cmd.id, cmd.angle, cmd.speed, cmd.comment);
+          continue;
+        }
+        if (cmd.type === "motion") {
+          setScriptStatus(`motion_mode_run 第 ${i + 1} 行`);
+          await applyScriptMotionRun(cmd.id, cmd.position, cmd.torque, cmd.kp, cmd.kd, cmd.comment);
+        }
+      }
+    }
+
+    async function apiRunSelected() {
+      syncAllRowsToMotors();
+      const list = getSelectedMotors();
+      if (list.length === 0) { setGlobalStatus(MSG_NO_SELECTION, true); return; }
+      const mode = getUiMode();
+      try {
+        if ($("autoStopBeforeRun")?.checked) {
+          await postJSON("/api/stop?clear_error=false", { motor_ids: getSelectedMotorIds() });
+          await sleep(80);
+        }
+
+        const nowFn = (typeof performance !== "undefined" && performance.now) ? () => performance.now() : () => Date.now();
+        const t0 = nowFn();
+        const schedule = list
+          .map(m => ({
+            m,
+            startAt: t0 + Math.max(0, m.delay || 0) * 1000
+          }))
+          .sort((a, b) => a.startAt - b.startAt);
+
+        for (const item of schedule) {
+          const { m, startAt } = item;
+          const now = nowFn();
+          const wait = startAt - now;
+          if (wait > 0) await sleep(wait);
+          const d = Math.max(0, m.delay || 0);
+          if (mode === "pp") {
+            setGlobalStatus(`Run ${m.joint} (ID=${formatIdForInput(m.id)}) after ${d.toFixed(1)}s ...`);
+            const target = (m.homeAngle || 0) + (m.angle || 0);
+            await postJSON("/api/rs04/pp_mode_run", {
+              motor_id: m.id,
+              position: target,
+              speed: m.speed,
+              accel: m.accel
+            });
+          } else {
+            setGlobalStatus(`Run Motion ${m.joint} (ID=${formatIdForInput(m.id)}) after ${d.toFixed(1)}s ...`);
+            await postJSON("/api/rs04/motion_mode_run", {
+              motor_id: m.id,
+              position: m.motionPosition,
+              torque: m.torque,
+              kp: m.kp,
+              kd: m.kd,
+              enable_first: true,
+              stop_first: false
+            });
+          }
+        }
+        setGlobalStatus(`已运行 ${schedule.length} 路（${mode}）`);
+      } catch (e) {
+        setGlobalStatus("批量运行失败: " + e.message, true);
+      }
+    }
+
+    /* =========================
+       UI render
+       ========================= */
+    function renderRows() {
+      const root = $("motorRows");
+      const mode = getUiMode();
+      root.innerHTML = "";
+
+      motors.forEach((m, idx) => {
+        const row = document.createElement("div");
+        row.className = `motor-row ${mode}`;
+        row.dataset.idx = idx;
+
+        if (mode === "pp") {
+          row.innerHTML = `
+      <div class="motor-row-chk">
+        <input type="checkbox" data-k="selected" ${m.selected ? "checked" : ""} title="参与顶部批量操作" />
+      </div>
+      <div class="motor-joint-name">${m.joint}</div>
+
+      <div class="field">
+        <input type="text" data-k="id" value="${formatIdForInput(m.id)}" title="Decimal or hex like 0x11" />
+      </div>
+
+      <div class="field">
+        <input type="number" step="0.000001" data-k="angle" value="${Number(m.angle).toFixed(6)}" />
+      </div>
+
+      <div class="field">
+        <input type="number" step="0.1" data-k="speed" value="${Number(m.speed).toFixed(2)}" />
+      </div>
+
+      <div class="field">
+        <input type="number" step="0.1" data-k="accel" value="${Number(m.accel).toFixed(2)}" />
+      </div>
+
+      <div class="field">
+        <input type="number" step="1" data-k="stepDeg" value="${Number(m.stepDeg).toFixed(0)}" />
+      </div>
+
+      <div class="field">
+        <input type="number" step="0.1" data-k="delay" value="${Number(m.delay ?? 0).toFixed(1)}" />
+      </div>
+
+      <div class="btn-group">
+        <button class="btn-sm b-gray" data-act="minusStep">-Step</button>
+        <button class="btn-sm b-gray" data-act="plusStep">+Step</button>
+        <button class="btn-sm b-green" data-act="zero">Zero</button>
+        <button class="btn-sm b-teal" data-act="calZeroHw" title="本路硬件零点标定">标零</button>
+        <button class="btn-sm b-blue" data-act="run">Run</button>
+        <button class="btn-sm b-amber" data-act="genCode">Code</button>
+      </div>
+
+      <div class="row-meta">
+        <span>Angle(deg): <code data-view="deg">${radToDeg(m.angle).toFixed(2)}</code></span>
+        <span>Call: <code data-view="call">${buildCodeLine(m)}</code></span>
+      </div>
+    `;
+        } else {
+          row.innerHTML = `
+      <div class="motor-row-chk">
+        <input type="checkbox" data-k="selected" ${m.selected ? "checked" : ""} title="参与顶部批量操作" />
+      </div>
+      <div class="motor-joint-name">${m.joint}</div>
+
+      <div class="field">
+        <input type="text" data-k="id" value="${formatIdForInput(m.id)}" title="Decimal or hex like 0x11" />
+      </div>
+
+      <div class="field">
+        <input type="number" step="0.000001" data-k="motionPosition" value="${Number(m.motionPosition).toFixed(6)}" />
+      </div>
+
+      <div class="field">
+        <input type="number" step="0.01" data-k="torque" value="${Number(m.torque).toFixed(2)}" />
+      </div>
+
+      <div class="field">
+        <input type="number" step="0.1" data-k="kp" value="${Number(m.kp).toFixed(2)}" />
+      </div>
+
+      <div class="field">
+        <input type="number" step="0.01" data-k="kd" value="${Number(m.kd).toFixed(2)}" />
+      </div>
+
+      <div class="field">
+        <input type="number" step="1" data-k="stepDeg" value="${Number(m.stepDeg).toFixed(0)}" />
+      </div>
+
+      <div class="field">
+        <input type="number" step="0.1" data-k="delay" value="${Number(m.delay ?? 0).toFixed(1)}" />
+      </div>
+
+      <div class="btn-group">
+        <button class="btn-sm b-gray" data-act="minusStep">-Step</button>
+        <button class="btn-sm b-gray" data-act="plusStep">+Step</button>
+        <button class="btn-sm b-green" data-act="zero">Zero</button>
+        <button class="btn-sm b-teal" data-act="calZeroHw" title="本路硬件零点标定">标零</button>
+        <button class="btn-sm b-gray" data-act="hold">Hold</button>
+        <button class="btn-sm b-blue" data-act="run">Run</button>
+        <button class="btn-sm b-amber" data-act="genCode">Code</button>
+      </div>
+
+      <div class="row-meta">
+        <span>Pos(deg): <code data-view="deg">${radToDeg(m.motionPosition).toFixed(2)}</code></span>
+        <span>Call: <code data-view="call">${buildCodeLine(m)}</code></span>
+      </div>
+    `;
+        }
+
+        // bind input changes
+        row.querySelectorAll("input[data-k]").forEach(inp => {
+          inp.addEventListener("input", () => {
+            applyRowInputsToMotor(row, m);
+            refreshRowMeta(row, m);
+          });
+          inp.addEventListener("change", () => {
+            applyRowInputsToMotor(row, m);
+            refreshRowMeta(row, m);
+          });
+        });
+
+        // bind actions
+        row.querySelectorAll("button[data-act]").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            try {
+              applyRowInputsToMotor(row, m);
+
+              const act = btn.dataset.act;
+              if (act === "minusStep") {
+                if (mode === "pp") m.angle -= degToRad(m.stepDeg || 5);
+                else m.motionPosition -= degToRad(m.stepDeg || 5);
+                writeMotorToRow(row, m);
+              } else if (act === "plusStep") {
+                if (mode === "pp") m.angle += degToRad(m.stepDeg || 5);
+                else m.motionPosition += degToRad(m.stepDeg || 5);
+                writeMotorToRow(row, m);
+              } else if (act === "zero") {
+                if (mode === "pp") {
+                  await zeroMotorRow(row, m);
+                } else {
+                  m.motionPosition = 0;
+                  m.torque = 0;
+                  writeMotorToRow(row, m);
+                  await apiRunMotion(m);
+                }
+              } else if (act === "calZeroHw") {
+                await apiCalibrateZeroMotor(m);
+                writeMotorToRow(row, m);
+              } else if (act === "hold") {
+                m.torque = 0;
+                writeMotorToRow(row, m);
+                await apiRunMotion(m);
+              } else if (act === "run") {
+                if (mode === "pp") {
+                  await apiRunPP(m);
+                } else {
+                  await apiRunMotion(m);
+                }
+              } else if (act === "genCode") {
+                $("codeOutput").value = buildCodeBlock([m]);
+                setGlobalStatus(`Generated code for ${m.joint}`);
+              }
+
+              refreshRowMeta(row, m);
+            } catch (e) {
+              console.error(e);
+              setGlobalStatus(`${m.joint} action failed: ${e.message}`, true);
+            }
+          });
+        });
+
+        root.appendChild(row);
+      });
+    }
+
+    function formatIdForInput(id) {
+      if (typeof id === "number") return "0x" + id.toString(16).toUpperCase();
+      return String(id);
+    }
+
+    function parseMotorId(v) {
+      const s = String(v).trim();
+      if (s.startsWith("0x") || s.startsWith("0X")) return parseInt(s, 16);
+      return parseInt(s, 10);
+    }
+
+    function applyRowInputsToMotor(row, m) {
+      const read = (k) => row.querySelector(`[data-k="${k}"]`)?.value;
+      m.selected = !!row.querySelector(`[data-k="selected"]`)?.checked;
+
+      const pid = parseMotorId(read("id"));
+      if (Number.isFinite(pid)) m.id = pid;
+
+      const angle = parseFloat(read("angle"));
+      const speed = parseFloat(read("speed"));
+      const accel = parseFloat(read("accel"));
+      const stepDeg = parseFloat(read("stepDeg"));
+      const motionPosition = parseFloat(read("motionPosition"));
+      const torque = parseFloat(read("torque"));
+      const kp = parseFloat(read("kp"));
+      const kd = parseFloat(read("kd"));
+      const delay = parseFloat(read("delay"));
+
+      if (Number.isFinite(angle)) m.angle = angle;
+      if (Number.isFinite(speed)) m.speed = speed;
+      if (Number.isFinite(accel)) m.accel = accel;
+      if (Number.isFinite(stepDeg)) m.stepDeg = stepDeg;
+      if (Number.isFinite(motionPosition)) m.motionPosition = motionPosition;
+      if (Number.isFinite(torque)) m.torque = torque;
+      if (Number.isFinite(kp)) m.kp = kp;
+      if (Number.isFinite(kd)) m.kd = kd;
+      if (Number.isFinite(delay)) m.delay = delay;
+    }
+
+    function writeMotorToRow(row, m) {
+      const setVal = (k, v) => {
+        const el = row.querySelector(`[data-k="${k}"]`);
+        if (el) el.value = v;
+      };
+      setVal("id", formatIdForInput(m.id));
+      setVal("angle", Number(m.angle).toFixed(6));
+      setVal("speed", Number(m.speed).toFixed(2));
+      setVal("accel", Number(m.accel).toFixed(2));
+      setVal("stepDeg", Number(m.stepDeg).toFixed(0));
+      setVal("motionPosition", Number(m.motionPosition).toFixed(6));
+      setVal("torque", Number(m.torque).toFixed(2));
+      setVal("kp", Number(m.kp).toFixed(2));
+      setVal("kd", Number(m.kd).toFixed(2));
+      setVal("delay", Number(m.delay ?? 0).toFixed(1));
+      const cb = row.querySelector(`[data-k="selected"]`);
+      if (cb) cb.checked = !!m.selected;
+      refreshRowMeta(row, m);
+    }
+
+    function refreshRowMeta(row, m) {
+      const mode = getUiMode();
+      const degEl = row.querySelector(`[data-view="deg"]`);
+      const callEl = row.querySelector(`[data-view="call"]`);
+      if (degEl) {
+        const ang = mode === "pp" ? m.angle : m.motionPosition;
+        degEl.textContent = radToDeg(ang).toFixed(2);
+      }
+      if (callEl) callEl.textContent = buildCodeLine(m);
+    }
+
+    /* =========================
+       Code generation (?????????????)
+       ========================= */
+    function buildCodeLine(m) {
+      const mode = getUiMode();
+      const delay = Number(m.delay ?? 0);
+      if (mode === "pp") {
+        return `position_mode_move(${formatIdForCode(m.id)}, ${m.angle.toFixed(4)}, ${m.speed.toFixed(2)})  # accel=${m.accel.toFixed(2)}, delay=${delay.toFixed(1)}s`;
+      }
+      return `motion_mode_run(${formatIdForCode(m.id)}, ${m.motionPosition.toFixed(4)}, ${m.torque.toFixed(2)}, ${m.kp.toFixed(2)}, ${m.kd.toFixed(2)})  # delay=${delay.toFixed(1)}s`;
+    }
+
+    function formatIdForCode(id) {
+      // ????????????????????0x11
+      return "0x" + Number(id).toString(16).toUpperCase();
+    }
+
+    function buildCodeBlock(list) {
+      const now = new Date().toLocaleString();
+      const useDegComment = $("useDegOutput")?.checked;
+      const mode = getUiMode();
+
+      const lines = [];
+      lines.push(`# Generated by Multi-Joint Position Tuner`);
+      lines.push(`# Time: ${now}`);
+      lines.push(`# Step commands (${mode.toUpperCase()} Mode)`);
+      lines.push("");
+
+      list.forEach((m, i) => {
+        let line = buildCodeLine(m);
+        if (useDegComment) {
+          const ang = mode === "pp" ? m.angle : m.motionPosition;
+          line += `  # ${radToDeg(ang).toFixed(1)} deg`;
+        }
+        lines.push(line);
+      });
+
+      lines.push("");
+      lines.push(`# Example packaging`);
+      lines.push(`# def step_1():`);
+      list.forEach((m) => {
+        lines.push(`#     ${buildCodeLine(m)}`);
+      });
+
+      return lines.join("\n");
+    }
+
+    function setAllSelected(val) {
+      motors.forEach((m) => { m.selected = !!val; });
+      motors.forEach((_, idx) => {
+        const row = getMotorRowEl(idx);
+        const cb = row?.querySelector('[data-k="selected"]');
+        if (cb) cb.checked = !!val;
+      });
+    }
+
+    /* =========================
+       Global buttons
+       ========================= */
+    $("btnEnable").addEventListener("click", apiEnable);
+    $("btnStop").addEventListener("click", () => apiStop(false));
+    $("btnStopClear").addEventListener("click", () => apiStop(true));
+    $("btnZeroCalAll").addEventListener("click", apiCalibrateZeroAll);
+    $("btnZeroCalSelected")?.addEventListener("click", apiCalibrateZeroSelected);
+    $("btnRunSelected").addEventListener("click", apiRunSelected);
+    $("btnDefaultStand")?.addEventListener("click", apiDefaultStand);
+
+    $("btnSelectAll")?.addEventListener("click", () => {
+      setAllSelected(true);
+      setGlobalStatus("已全选 12 路");
+    });
+    $("btnSelectNone")?.addEventListener("click", () => {
+      setAllSelected(false);
+      setGlobalStatus("已取消全选");
+    });
+
+    $("btnGenAll").addEventListener("click", () => {
+      syncAllRowsToMotors();
+      const list = getSelectedMotors();
+      if (list.length === 0) { setGlobalStatus(MSG_NO_SELECTION, true); return; }
+      $("codeOutput").value = buildCodeBlock(list);
+      setGlobalStatus(`已生成 ${list.length} 路（勾选）代码 → 输出区`);
+    });
+    $("btnCopyAll").addEventListener("click", async () => {
+      syncAllRowsToMotors();
+      const list = getSelectedMotors();
+      const fallback = list.length ? buildCodeBlock(list) : buildCodeBlock(motors);
+      const txt = $("codeOutput").value || fallback;
+      try {
+        await navigator.clipboard.writeText(txt);
+        $("codeOutput").value = txt;
+        setGlobalStatus("已复制输出区内容");
+      } catch (e) {
+        setGlobalStatus("复制失败，请手动复制", true);
+      }
+    });
+
+    $("btnGenSelected").addEventListener("click", () => {
+      syncAllRowsToMotors();
+      const list = getSelectedMotors();
+      if (list.length === 0) { setGlobalStatus(MSG_NO_SELECTION, true); return; }
+      $("codeOutput").value = buildCodeBlock(list);
+      setGlobalStatus(`已生成勾选行代码: ${list.length}`);
+    });
+    $("btnCopySelected").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText($("codeOutput").value || "");
+        setGlobalStatus("输出已复制");
+      } catch (e) {
+        setGlobalStatus("复制失败，请手动复制", true);
+      }
+    });
+
+    $("btnRunScript")?.addEventListener("click", async () => {
+      if (scriptRunnerBusy) return;
+      scriptRunnerBusy = true;
+      scriptAbortRequested = false;
+      setScriptStatus("运行中…");
+      try {
+        await runScriptText();
+        if (!scriptAbortRequested) setScriptStatus("脚本执行完成");
+      } catch (e) {
+        console.error(e);
+        setScriptStatus(e.message || String(e), true);
+        setGlobalStatus("脚本错误: " + e.message, true);
+      } finally {
+        scriptRunnerBusy = false;
+      }
+    });
+
+    $("btnStopScript")?.addEventListener("click", () => {
+      scriptAbortRequested = true;
+      setScriptStatus("正在停止…");
+    });
+
+    $("uiMode")?.addEventListener("change", () => {
+      renderHeader();
+      renderRows();
+      $("codeOutput").value = buildCodeBlock(motors);
+      setGlobalStatus(`已切换到 ${getUiMode().toUpperCase()} 模式`);
+    });
+
+    /* init */
+    renderHeader();
+    renderRows();
+    $("codeOutput").value = buildCodeBlock(motors);
+  </script>
+</body>
+
+</html>
