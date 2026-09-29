@@ -37,7 +37,7 @@ def test_lease_and_deadman(make_node, monkeypatch, continuous):
         assert not n.trial.active(clock.t+86401.)
 
 
-@pytest.mark.parametrize('case', ['ctrl_c', 'stale', 'fault', 'old_controller', 'timing_not_ready'])
+@pytest.mark.parametrize('case', ['ctrl_c', 'slow_recovery', 'stale', 'fault', 'old_controller', 'timing_not_ready'])
 def test_continuous_command_cleanup(monkeypatch, case):
     clock = NS(t=0.)
     state = dict(armed=False, callback=None, sent=[], arm_calls=[], destroyed=False)
@@ -58,10 +58,13 @@ def test_continuous_command_cleanup(monkeypatch, case):
         clock.t += .05
         if state['armed'] and case == 'ctrl_c' and clock.t > 181.:
             raise KeyboardInterrupt
+        if state['armed'] and case == 'slow_recovery' and clock.t > 8.3:
+            raise KeyboardInterrupt
         if state['armed'] and case == 'stale':
             return
         state['callback'](NS(data=json.dumps(dict(
-            mode='fault' if state['armed'] and case == 'fault' else 'ready',
+            mode=('fault' if state['armed'] and case == 'fault' else
+                  'soft_hold' if case=='slow_recovery' and clock.t<8. else 'ready'),
             walk_start_stable=True, send=True, stand_only=False,
             continuous_commands=case != 'old_controller',
             observation_temporal_ok=case != 'timing_not_ready'))))
@@ -73,18 +76,18 @@ def test_continuous_command_cleanup(monkeypatch, case):
     monkeypatch.setattr(command.rclpy, 'ok', lambda: True)
     monkeypatch.setattr(command.rclpy, 'shutdown', lambda: None)
     args = ['--continuous', '--vx', '.4', '--namespace', '/mydog/model23500']
-    if case == 'ctrl_c':
-        command.main(args, speed_caps=(.4,.3,.6), allow_continuous=True)
-        assert max(t for t, vx in state['sent'] if vx == .4) > 180.
+    if case in ('ctrl_c','slow_recovery'):
+        command.main(args, speed_caps=(.4,.3,.6), allow_continuous=True, ready_timeout_sec=30.)
+        assert max(t for t, vx in state['sent'] if vx == .4) > (180. if case=='ctrl_c' else 8.)
     else:
         with pytest.raises(RuntimeError):
             command.main(args, speed_caps=(.4,.3,.6), allow_continuous=True)
-    assert state['arm_calls'][-1] is False
     assert state['destroyed']
-    assert all(vx == 0 for _, vx in state['sent'][-3:])
     assert state['init']['signal_handler_options'] == command.SignalHandlerOptions.NO
     if case in ('old_controller', 'timing_not_ready'):
-        assert True not in state['arm_calls']
+        assert state['arm_calls']==[] and state['sent']==[]
+    else:
+        assert state['arm_calls']==[True,False]
 
 
 def test_duration_flags_are_exclusive():

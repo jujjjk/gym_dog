@@ -12,7 +12,7 @@ from std_msgs.msg import String
 from std_srvs.srv import SetBool
 
 
-def main(args=None, *, speed_caps=(.30, .20, .30), allow_continuous=False):
+def main(args=None, *, speed_caps=(.30, .20, .30), allow_continuous=False, ready_timeout_sec=5.):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--vx', type=float, default=0.)
     parser.add_argument('--vy', type=float, default=0.)
@@ -31,6 +31,9 @@ def main(args=None, *, speed_caps=(.30, .20, .30), allow_continuous=False):
             any(abs(v) > cap for v, cap in zip(values, speed_caps))):
         parser.error(f'Limits: |vx|<={speed_caps[0]}, |vy|<={speed_caps[1]}, |wz|<={speed_caps[2]}, 0<seconds<=6')
     # Keep the ROS context alive through Ctrl+C so finally can disarm.
+    from .motion_session import CommandOwner
+    owner = CommandOwner(opts.namespace)
+    owns_arm = False
     rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
     node = rclpy.create_node('model6850_single_trial')
     pub = node.create_publisher(Twist, opts.namespace + '/cmd_vel', 1)
@@ -49,15 +52,18 @@ def main(args=None, *, speed_caps=(.30, .20, .30), allow_continuous=False):
     sub = node.create_subscription(String, opts.namespace + '/status', on_status, 1)
 
     def set_arm(value):
+        nonlocal owns_arm
         req = SetBool.Request()
         req.data = value
         future = client.call_async(req)
         rclpy.spin_until_future_complete(node, future, timeout_sec=2.)
         if not future.done() or future.result() is None:
+            if value: owns_arm = True  # service may have accepted the request
             raise RuntimeError('Arm service timed out')
         response = future.result()
         if not response.success:
             raise RuntimeError(response.message)
+        owns_arm = value
         print(response.message, flush=True)
 
     try:
@@ -66,7 +72,8 @@ def main(args=None, *, speed_caps=(.30, .20, .30), allow_continuous=False):
         if not any(values) and not opts.march:
             set_arm(False)
             return
-        deadline = time.monotonic() + 5.
+        deadline = time.monotonic() + ready_timeout_sec
+        print('Waiting for ready/stable before arming (up to %.0fs)...' % ready_timeout_sec, flush=True)
         while time.monotonic() < deadline:
             rclpy.spin_once(node, timeout_sec=.1)
             if (status.get('mode') == 'ready' and status.get('walk_start_stable')
@@ -74,11 +81,14 @@ def main(args=None, *, speed_caps=(.30, .20, .30), allow_continuous=False):
                     and status.get('timing_ready', True)
                     and status.get('observation_temporal_ok', True)
                     and status.get('imu_calibrated', True)
+                    and not status.get('calibration_requested', False)
+                    and not status.get('trial_armed', False)
+                    and not status.get('walk_inhibit_latched', False)
                     and time.monotonic() - status_time[0] < .2
                     and pub.get_subscription_count() > 0):
                 break
         else:
-            raise RuntimeError('Not ready: require fresh ready/stable, timing, observation freshness, calibration and send=true; status=' + str({k:status.get(k) for k in ('mode','walk_start_stable','timing_ready','observation_temporal_ok','imu_calibrated','aligned_motor_age_ms','aligned_imu_age_ms')}))
+            raise RuntimeError('Not ready: require fresh ready/stable, timing, observation freshness, calibration and send=true; status=' + str({k:status.get(k) for k in ('mode','walk_start_stable','timing_ready','observation_temporal_ok','imu_calibrated','aligned_motor_age_ms','aligned_imu_age_ms','stand_worst_joint','stand_max_error_rad','stand_required_error_rad','calibration_requested','reason','walk_inhibit_reason')}))
         if opts.continuous and not status.get('continuous_commands', False):
             raise RuntimeError('Restart with continuous_commands=true before using --continuous')
         set_arm(True)
@@ -93,25 +103,23 @@ def main(args=None, *, speed_caps=(.30, .20, .30), allow_continuous=False):
             if status.get('mode') in ('fault', 'soft_hold'):
                 reason = status.get('walk_inhibit_reason') if status.get('mode') == 'soft_hold' else status.get('last_fault_reason')
                 raise RuntimeError('Trial aborted: ' + str(status.get('mode')) + ': ' +
-                                   str(reason or status.get('trial_reason') or 'reason unavailable'))
+                                   str(reason or status.get('reason') or status.get('trial_reason') or 'reason unavailable'))
             pub.publish(message)
             rclpy.spin_once(node, timeout_sec=.05)
     except KeyboardInterrupt:
         pass
     finally:
-        # Redundant zero + disarm; a killed client is covered by node timeout.
+        # Only a session that armed may disarm; killed clients hit the deadman.
         if rclpy.ok():
             try:
-                try:
-                    if client.service_is_ready():
-                        set_arm(False)
-                finally:
-                    for _ in range(3):
-                        pub.publish(Twist())
-                        rclpy.spin_once(node, timeout_sec=.05)
+                if owns_arm and client.service_is_ready():
+                    set_arm(False)
             finally:
                 node.destroy_node()
                 rclpy.shutdown()
+                owner.close()
+        else:
+            owner.close()
 
 
 if __name__ == '__main__':

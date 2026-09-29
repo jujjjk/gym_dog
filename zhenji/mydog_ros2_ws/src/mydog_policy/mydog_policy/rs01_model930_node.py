@@ -717,6 +717,11 @@ class Rs01Model930Node(Node):
             self.heading_consistency.snapshot()
         )
 
+    def _heading_ready_for_stand(self):
+        return bool(not self.heading_consistency_enabled or (
+            self.heading_consistency_state["ready"]
+            and self.heading_consistency_state["healthy"]))
+
     def _walk_start_is_stable(self, roll, pitch, odometry):
         """Require a quiet, supported pose before latching a walk origin."""
         gyro_norm = float(
@@ -730,13 +735,7 @@ class Rs01Model930Node(Node):
                 )[:2]
             )
         )
-        heading_consistent = bool(
-            not self.heading_consistency_enabled
-            or (
-                self.heading_consistency_state["ready"]
-                and self.heading_consistency_state["healthy"]
-            )
-        )
+        heading_consistent = self._heading_ready_for_stand()
         diagonal_support_valid = bool(
             not self.strict_diagonal_odometry
             or odometry.get("legal_diagonal_support", False)
@@ -1094,13 +1093,7 @@ class Rs01Model930Node(Node):
                 stand_error = float(
                     np.max(np.abs(q_policy - self.contract.default))
                 )
-                heading_recovered = bool(
-                    not self.heading_consistency_enabled
-                    or (
-                        self.heading_consistency_state["ready"]
-                        and self.heading_consistency_state["healthy"]
-                    )
-                )
+                heading_recovered = self._heading_ready_for_stand()
                 if (
                     not command_active
                     and stand_error <= self.startup_ready_error

@@ -46,9 +46,33 @@ class Rs01Model23500Core(Rs01Model18000Core):
     # the later B18000-only deadband / half-gain / disabled planar correction.
     _mix_direction_command = Rs01Model6850Core._mix_direction_command
 
+    # March also holds the session heading: never erase its actor heading
+    # channels. Intentional turns keep the existing uncorrected behavior.
+    straight_min_vx_mps = 1e-3
+    straight_max_other = 1e-6
+
+    def heading_correction_active(self):
+        command = getattr(self, 'command', None)
+        if command is None:
+            return False
+        return bool(abs(float(command[2])) <= self.straight_max_other)
+
+    def tick(self,q,dq,gyro,gravity,yaw,command,gait=1.,kinematics=None):
+        previous_hold=self.heading_correction_active()
+        new=np.asarray(command,dtype=float)
+        next_hold=abs(new[2]) <= self.straight_max_other
+        if self.steps and next_hold and not previous_hold:
+            # Start holding the current heading after an intentional turn, rather than
+            # steering back to a reference from an earlier action. Parent tick
+            # advances the previous yaw command before constructing this obs.
+            self.heading=float(yaw)-self.contract.policy_dt*float(self.command[2])
+        return super().tick(q,dq,gyro,gravity,yaw,command,gait,kinematics)
+
     def _direction_heading_error(self, error):
         # Apply the same confidence to direction mixing AND actor sin/cos
         # heading channels. Keep measured yaw and the original target intact.
+        if not self.heading_correction_active():
+            return 0.
         return error * getattr(self, 'heading_correction_weight', 1.)
 
 
