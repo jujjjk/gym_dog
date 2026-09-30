@@ -75,6 +75,9 @@ def test_continuous_command_cleanup(monkeypatch, case):
     monkeypatch.setattr(command.rclpy, 'spin_until_future_complete', lambda *a, **kw: None)
     monkeypatch.setattr(command.rclpy, 'ok', lambda: True)
     monkeypatch.setattr(command.rclpy, 'shutdown', lambda: None)
+    # One command session per robot is a production guard; it must not make
+    # this cleanup test depend on whether an operator terminal is live.
+    monkeypatch.setattr('fcntl.flock', lambda *a, **kw: None)
     args = ['--continuous', '--vx', '.4', '--namespace', '/mydog/model23500']
     if case in ('ctrl_c','slow_recovery'):
         command.main(args, speed_caps=(.4,.3,.6), allow_continuous=True, ready_timeout_sec=30.)

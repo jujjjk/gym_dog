@@ -118,6 +118,9 @@ class Capture61Node(Rs01Model18000Node):
             for name in ['foot_position','foot_velocity','velocity_by_foot']:
                 vec(name+'_',odometry[name],[leg+'_'+axis for leg in legs for axis in axes])
             row['estimated_vx_minus_target']=float(vel[0]-effective[0]);row['estimated_vy_minus_target']=float(vel[1]-effective[1])
+            hold=getattr(actor,'lateral_hold',None)
+            if hold is not None:
+                row.update(hold.state())
             for prefix, od in [('guard_', guard_odometry), ('actor_', diag.get('odometry') or {})]:
                 row[prefix+'selected_pair_index'] = int(od.get('selected_pair_index', -1))
                 row[prefix+'legal_diagonal_support'] = bool(od.get('legal_diagonal_support', False))

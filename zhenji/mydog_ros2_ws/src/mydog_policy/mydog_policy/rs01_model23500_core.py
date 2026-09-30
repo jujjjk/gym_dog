@@ -1,10 +1,11 @@
 """V22 B23500: measured sensor snapshot only; no synthetic noise/delay on hardware."""
 from dataclasses import replace
 import numpy as np
-from .rs01_model930_core import Model930Contract
+from .rs01_model930_core import Model930Contract, wrap_pi
 from .rs01_model6850_core import Rs01Model6850Core
 from .rs01_model6850_guard import Guarded6850PolicyCore
 from .rs01_model18000_core import Rs01Model18000Core
+from .lateral_position_hold import LateralPositionHold
 
 EXPECTED_ONNX_SHA256 = '4367b59d30a75bd9150866bd90d0fa304b05f7eeab874c477e8dde452362423f'
 
@@ -42,9 +43,28 @@ class Rs01Model23500Core(Rs01Model18000Core):
     # Only remove float64 roundoff at mathematically exact target arrival.
     # No macroscopic target/rate/acceleration envelope is changed.
     target_reached_atol = 1e-12
+
+    def __init__(self, session, contract):
+        # Built first: the base constructor already calls the overridden reset().
+        self.lateral_hold = LateralPositionHold()
+        super().__init__(session, contract)
+
+    def reset(self, yaw, q_policy=None, phase=0.):
+        super().reset(yaw, q_policy, phase)
+        self.lateral_hold.reset()
+
     # V22 trained with the original V13 direction controller. Do not inherit
     # the later B18000-only deadband / half-gain / disabled planar correction.
-    _mix_direction_command = Rs01Model6850Core._mix_direction_command
+    # The bounded lateral position-hold correction is added on top; raw
+    # command observation channels are never modified.
+    def _mix_direction_command(self, command, error, turning, conf):
+        target = Rs01Model6850Core._mix_direction_command(
+            self, command, error, turning, conf)
+        correction = float(self.lateral_hold.correction)
+        if correction:
+            lo, hi = self.contract.raw['commands']['ranges']['lin_vel_y']
+            target[1] = float(np.clip(target[1]+correction, lo, hi))
+        return target
 
     # March also holds the session heading: never erase its actor heading
     # channels. Intentional turns keep the existing uncorrected behavior.
@@ -66,7 +86,15 @@ class Rs01Model23500Core(Rs01Model18000Core):
             # steering back to a reference from an earlier action. Parent tick
             # advances the previous yaw command before constructing this obs.
             self.heading=float(yaw)-self.contract.policy_dt*float(self.command[2])
-        return super().tick(q,dq,gyro,gravity,yaw,command,gait,kinematics)
+        result = super().tick(q,dq,gyro,gravity,yaw,command,gait,kinematics)
+        # Integrates one tick behind the injection point; at 50 Hz this lag is
+        # negligible for a drift-rate integrator and keeps tick() side-effect
+        # order identical to the trained controller.
+        self.lateral_hold.update(
+            self.contract.policy_dt, result['estimated_velocity'],
+            result['confidence'], self.command, self.turning, self.gait,
+            wrap_pi(self.heading-float(yaw)))
+        return result
 
     def _direction_heading_error(self, error):
         # Apply the same confidence to direction mixing AND actor sin/cos

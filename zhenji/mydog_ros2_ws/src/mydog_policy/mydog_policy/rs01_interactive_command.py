@@ -91,7 +91,7 @@ def main(speed_caps):
                 elif waiting_since is not None and now-waiting_since>30.:
                     pending=None;waiting_since=None
                     print('Still not ready: '+str({k:state.get(k) for k in
-                          ('mode','walk_start_stable','stand_worst_joint','stand_max_error_rad','stand_required_error_rad',
+                          ('time_monotonic_s','mode','walk_start_stable','stand_worst_joint','stand_max_error_rad','stand_required_error_rad',
                            'imu_calibrated','calibration_requested','timing_ready','observation_temporal_ok','reason','walk_inhibit_reason')})+
                           '. No arm request was sent; enter an action again after recovery.',flush=True)
             if owns_arm and pending is not None:

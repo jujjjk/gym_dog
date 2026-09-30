@@ -324,6 +324,9 @@ class Rs01Model23500Node(Rs01Model18000Node):
                 for i in np.flatnonzero(errors > self.startup_ready_error)]
         result['status_publish_hz'] = 1. / self.telemetry_period_sec
         result['heading_correction_active'] = bool(self.core.actor.heading_correction_active())
+        hold = getattr(self.core.actor, 'lateral_hold', None)
+        if hold is not None:
+            result.update(hold.state())
         result['calibration_requested'] = self.calibration_requested
         result['calibration_generation'] = getattr(self, 'calibration_generation', 0)
         result['gyro_bias_rad_s'] = np.asarray(self.gyro_bias_rad_s).tolist()

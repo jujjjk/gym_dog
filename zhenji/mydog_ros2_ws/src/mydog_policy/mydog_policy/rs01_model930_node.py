@@ -1292,7 +1292,12 @@ class Rs01Model930Node(Node):
             })
         status.update(self._extra_status())
         message = String()
-        message.data = json_dumps_compact(status)
+        # The interactive command client must be able to place a ready sample
+        # after its own disarm, which needs the controller clock. Only the
+        # published copy carries the stamp: the status log writer passes
+        # time_monotonic_s as its own keyword argument, so a shared key raises
+        # TypeError inside the control loop.
+        message.data = json_dumps_compact({**status, "time_monotonic_s": float(now)})
         self.pub_status.publish(message)
         self._write_csv(
             now,

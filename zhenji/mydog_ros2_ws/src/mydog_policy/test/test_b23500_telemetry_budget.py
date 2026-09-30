@@ -1,6 +1,10 @@
 import csv
+import json
+import math
 from types import SimpleNamespace as NS
 import pytest
+
+
 from test_rs01_model6850_node_offline import make_node, advance
 
 
@@ -34,4 +38,21 @@ def test_timing_fault_reports_window_and_keeps_threshold(make_node):
     assert 'control_gap_ms=60.00' in detail
     assert 'control_gap_ms' not in n._timing_fault_detail(clock.t,clock.t-.045)
     assert 'median=40.00' in detail and 'p95=40.00' in detail
+    assert not calls
+
+
+@pytest.mark.parametrize('make_node',['B23500','capture23500'],indirect=True)
+def test_published_status_carries_the_controller_publish_clock(make_node):
+    """The interactive client refuses to arm on a status it cannot time-stamp."""
+    n,clock,calls=make_node(send=False,stand=False)
+    stamps=[]
+    seen=0
+    for _ in range(20):
+        advance(n,clock,1)
+        stamps+=[json.loads(msg.data)['time_monotonic_s']
+                   for topic,msg in n.messages[seen:] if topic.endswith('/status')]
+        seen=len(n.messages)
+    assert stamps
+    assert all(math.isfinite(s) for s in stamps)
+    assert stamps==sorted(stamps) and stamps[-1]<=clock.t
     assert not calls
