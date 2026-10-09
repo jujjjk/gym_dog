@@ -7,7 +7,7 @@ from legged_gym.utils import get_args, task_registry
 
 
 def evaluate(args):
-    if args.task not in ('rs01_omni_v16_guarded_support', 'rs01_omni_v17_balance', 'rs01_omni_v18_balance18', 'rs01_omni_v18_balance14', 'rs01_omni_v18_balance_soft', 'rs01_omni_v19_placement', 'rs01_omni_v19_placement_soft'):
+    if args.task not in ('rs01_omni_v21_phase_coord', 'rs01_omni_v20_bounded_hip', 'rs01_omni_v16_guarded_support', 'rs01_omni_v17_balance', 'rs01_omni_v18_balance18', 'rs01_omni_v18_balance14', 'rs01_omni_v18_balance_soft', 'rs01_omni_v19_placement', 'rs01_omni_v19_placement_soft'):
         raise ValueError('Use V16, V17, V18 or V19')
     if args.duration_s <= 2 or args.eval_envs < 1:
         raise ValueError('duration_s must exceed 2; eval_envs must be positive')
@@ -45,13 +45,16 @@ def evaluate(args):
                 env.v11_tracking_reward*env.reward_scales['tracking_command_velocity'],
                 env.v11_contact_quality_reward*env.reward_scales['phase_two_contact_quality'],
                 cost*getattr(cfg.rewards,'balance_prior_weight',0.)*env.reward_scales['phase_two_contact_quality'],
-                phase[:,0], env._handoff_mask())))
-    stacked = [torch.stack([row[k] for row in data]) for k in range(13)]
+                phase[:,0], env._handoff_mask(),
+                getattr(env,'v21_coordination_error',torch.zeros((env.num_envs,4,2),device=env.device)),
+                getattr(env,'v21_coordination_valid',torch.zeros(env.num_envs,dtype=torch.bool,device=env.device)))))
+    stacked = [torch.stack([row[k] for row in data]) for k in range(15)]
     results=[]
     for j,name in enumerate(('march','forward','backward')):
         sl=slice(j*args.eval_envs,(j+1)*args.eval_envs)
-        r,v,w,f,h,m,c,q,tracking,quality,balance,phase,handoff = [x[:,sl] for x in stacked]
+        r,v,w,f,h,m,c,q,tracking,quality,balance,phase,handoff,coord,valid = [x[:,sl] for x in stacked]
         results.append(dict(case=name, command=commands[j], resets=int(resets[sl].sum()),
+            half_cycle_front_xz_error_mm=(coord[valid][:,:2].mean((0,1))*1000).tolist() if valid.any() else None,
             signed_roll_pitch_deg=(r.mean((0,1))*180/torch.pi).tolist(),
             roll_rms_deg=float(r[:,:,0].square().mean().sqrt()*180/torch.pi),
             mean_vx_vy_wz=[float(v[:,:,0].mean()),float(v[:,:,1].mean()),float(w.mean())],

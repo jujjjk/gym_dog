@@ -1,5 +1,6 @@
 """Standalone V16 viewer/diagnostic: every command lasts 5 simulated seconds."""
 import sys
+import argparse
 import json
 import time
 from pathlib import Path
@@ -22,13 +23,25 @@ MOVEMENTS = (
 
 
 def main():
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument('--sensor_profile', choices=('clean', 'normal', 'robust', 'mixed'))
+    sensor_args, rest = parser.parse_known_args()
+    sys.argv = [sys.argv[0]] + rest
     args = get_args()
-    if args.task not in ('rs01_omni_v20_geometry', 'rs01_omni_v20_bounded_hip', 'rs01_omni_v16_guarded_support', 'rs01_omni_v17_balance', 'rs01_omni_v18_balance18', 'rs01_omni_v18_balance14', 'rs01_omni_v18_balance_soft', 'rs01_omni_v19_placement', 'rs01_omni_v19_placement_soft'):
+    if args.task not in ('rs01_omni_v22_sensor', 'rs01_omni_v22_clean', 'rs01_omni_v21_phase_coord', 'rs01_omni_v20_geometry', 'rs01_omni_v20_bounded_hip', 'rs01_omni_v16_guarded_support', 'rs01_omni_v17_balance', 'rs01_omni_v18_balance18', 'rs01_omni_v18_balance14', 'rs01_omni_v18_balance_soft', 'rs01_omni_v19_placement', 'rs01_omni_v19_placement_soft'):
         raise ValueError('This diagnostic is for V16/V17/V18 RS01 tasks')
     sequence = [('march', (0., 0., 0.))]
     for movement in MOVEMENTS:
         sequence.extend((movement, ('march', (0., 0., 0.))))
     cfg, train = task_registry.get_cfgs(args.task)
+    if sensor_args.sensor_profile is not None:
+        if not hasattr(cfg, 'sensor'):
+            raise ValueError('--sensor_profile requires V22')
+        profile = sensor_args.sensor_profile
+        cfg.sensor.enabled = profile != 'clean'
+        cfg.sensor.clean_fraction = .25 if profile == 'mixed' else 0.
+        cfg.sensor.robust_fraction = {'clean': 0., 'normal': 0., 'robust': 1., 'mixed': .25}[profile]
+        print('Sensor profile:', profile, flush=True)
     count = args.num_envs or args.eval_envs
     _set_nominal_eval_cfg(cfg, 5. * len(sequence), count)
     env, _ = task_registry.make_env(args.task, args=args, env_cfg=cfg)

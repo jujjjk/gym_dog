@@ -131,11 +131,11 @@ def compute_rs01_torques(
 
 
 class Rs01Go2Sim:
+    def make_policy_session(self, policy):
+        return ort.InferenceSession(str(policy), providers=["CPUExecutionProvider"])
+
     def __init__(self, scene, policy, command):
-        self.session = ort.InferenceSession(
-            str(policy),
-            providers=["CPUExecutionProvider"],
-        )
+        self.session = self.make_policy_session(policy)
         self.cfg = load_contract(self.session)
         scene_contract = load_scene_contract(scene)
         expected_urdf_sha256 = self.cfg["simulator"].get("urdf_sha256")

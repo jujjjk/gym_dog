@@ -10,6 +10,8 @@ from legged_gym.utils import get_args, task_registry
 
 
 SUPPORTED_TASKS = {
+    "rs01_omni_v22_sensor", "rs01_omni_v22_clean",
+    "rs01_omni_v21_phase_coord",
     "rs01_omni_v20_geometry",
     "rs01_omni_v20_bounded_hip",
     "rs01_omni_v19_placement",
