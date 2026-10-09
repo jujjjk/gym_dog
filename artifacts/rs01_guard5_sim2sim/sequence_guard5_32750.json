@@ -1,0 +1,20 @@
+{
+  "policy": "/home/nszb/gym/artifacts/rs01_guard5_sim2sim/guard5_32750.onnx",
+  "scene": "/home/nszb/gym/artifacts/rs01_v20_sim2sim/scene.xml",
+  "initial_phase": 0.0,
+  "requested_duration_s": 125.0,
+  "completed_duration_s": 125.0,
+  "stop_reason": null,
+  "finite": true,
+  "flight_ratio": 0.0,
+  "roll_rms_deg": 1.2296531056258082,
+  "vz_rms_m_s": 0.04093497299038995,
+  "raw_peak_nm": 17.879568357347683,
+  "max_joint_speed_rad_s": 18.77898200974995,
+  "sensor_profile": "normal",
+  "sensor_seed": 20260925,
+  "fast": false,
+  "sensor_model": "shared_training_SensorSnapshot",
+  "host_guard": "policy_sensor_snapshot",
+  "inward_guard": "omnidirectional_inward_scale_v1_5deg"
+}

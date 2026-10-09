@@ -250,6 +250,11 @@ from legged_gym.envs.rs01_omni_v2.rs01_v22_phase_scratch import Rs01V22PhaseScra
 task_registry.register('rs01_v22_phase_scratch', Rs01V22PhaseScratchRobot, Rs01V22PhaseScratchCfg(), Rs01V22PhaseScratchPPO())
 from legged_gym.envs.rs01_omni_v2.rs01_v22_phase_lift import Rs01V22PhaseLiftRobot, Rs01V22PhaseLiftCfg, Rs01V22PhaseLiftPPO
 task_registry.register('rs01_v22_phase_lift', Rs01V22PhaseLiftRobot, Rs01V22PhaseLiftCfg(), Rs01V22PhaseLiftPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_v22_phase_guard import (Rs01V22PhaseGuardRobot, Rs01V22PhaseGuard5Cfg, Rs01V22PhaseGuard3Cfg, Rs01V22PhaseGuard5PPO, Rs01V22PhaseGuard3PPO)
+task_registry.register('rs01_v22_phase_guard5', Rs01V22PhaseGuardRobot, Rs01V22PhaseGuard5Cfg(), Rs01V22PhaseGuard5PPO())
+task_registry.register('rs01_v22_phase_guard3', Rs01V22PhaseGuardRobot, Rs01V22PhaseGuard3Cfg(), Rs01V22PhaseGuard3PPO())
+from legged_gym.envs.rs01_omni_v2.rs01_v22_phase_lateral import Rs01V22PhaseLateralRobot, Rs01V22PhaseLateralCfg, Rs01V22PhaseLateralPPO
+task_registry.register('rs01_v22_phase_lateral', Rs01V22PhaseLateralRobot, Rs01V22PhaseLateralCfg(), Rs01V22PhaseLateralPPO())
 from legged_gym.envs.rs01_omni_v2.rs01_omni_v23_config import Rs01OmniV23Cfg, Rs01OmniV23WideCfg, Rs01OmniV23CfgPPO, Rs01OmniV23WideCfgPPO
 from legged_gym.envs.rs01_omni_v2.rs01_omni_v23_env import Rs01OmniV23Robot
 task_registry.register('rs01_omni_v23_balance18', Rs01OmniV23Robot, Rs01OmniV23Cfg(), Rs01OmniV23CfgPPO())
