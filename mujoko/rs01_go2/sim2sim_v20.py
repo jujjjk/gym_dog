@@ -15,6 +15,16 @@ from sim2sim_sensor_sync import SensorSyncSim
 
 
 def map_targets(target, command, ids, sides, ranges, cfg):
+    if cfg['mapping'] == 'omnidirectional_inward_scale_v1':
+        limit = cfg['inward_target_rad']
+        if not np.isfinite(limit) or limit <= 0 or np.any(ranges < limit):
+            raise ValueError('Invalid omnidirectional inward limit')
+        out = target.copy()
+        hip = target[ids]
+        out[ids] = np.where(hip*sides < 0, hip*limit/ranges, hip)
+        return out
+    if cfg['mapping'] != 'conditional_inward_scale_v1':
+        raise ValueError('Unknown hip mapping contract')
     g = np.clip(1-abs(command[1])/cfg['vy_gate']-abs(command[2])/cfg['wz_gate'], 0, 1)
     hip = target[ids]
     out = target.copy()
@@ -37,12 +47,13 @@ def update_guard(rms_sq, torque, dt, cfg):
 
 class V20Sim(V14Sim):
     task_name = 'rs01_omni_v20_bounded_hip'
+    supported_mappings = ('conditional_inward_scale_v1',)
     base_velocity_world = SensorSyncSim.base_velocity_world
 
     def __init__(self, *args):
         super().__init__(*args)
         c = self.cfg.get('v20', {})
-        if c.get('mapping') != 'conditional_inward_scale_v1' or c.get('odometry') != 'legacy':
+        if c.get('mapping') not in self.supported_mappings or c.get('odometry') != 'legacy':
             raise ValueError('Use export_v20.py; old ONNX contracts are incompatible')
         self.hip_ids = [self.names.index(x+'_hip_joint') for x in ('FL','FR','RL','RR')]
         self.hip_sides = np.array([1.,-1.,1.,-1.])
@@ -98,9 +109,15 @@ MOVEMENTS = [('forward',(.2,0,0)),('backward',(-.2,0,0)),
 def sequence_run(args):
     sim = V20Sim(args.scene, args.policy, [0.,0.,0.])
     sim.phase_value = args.phase
+    interval = getattr(args, 'interval', 5.)
+    if not np.isfinite(interval) or interval < sim.policy_dt:
+        raise ValueError('Invalid sequence interval')
+    count = round(interval/sim.policy_dt)
     sequence = [('march',(0.,0.,0.))]
     for move in MOVEMENTS:
-        sequence.extend([move, ('march',(0.,0.,0.))])
+        sequence.append(move)
+        if not getattr(args, 'direct', False):
+            sequence.append(('march',(0.,0.,0.)))
     rows=[]; reason=None; viewer=None
     if args.viewer:
         import mujoco.viewer
@@ -108,9 +125,9 @@ def sequence_run(args):
         viewer.cam.distance=2.
     try:
         for name,command in sequence:
-            print(name, command, '5s', flush=True)
+            print(name, command, count*sim.policy_dt, 's', flush=True)
             sim.set_command(command, 1.)
-            for _ in range(round(5/sim.policy_dt)):
+            for _ in range(count):
                 begin=time.monotonic(); sim.control_step()
                 linear,angular=sim.base_velocity_body()
                 roll,pitch,yaw=roll_pitch_yaw(sim.data.qpos[3:7])
@@ -139,7 +156,7 @@ def sequence_run(args):
     with Path(str(args.output)+'.csv').open('w',newline='') as f:
         w=csv.DictWriter(f,fieldnames=list(rows[0]));w.writeheader();w.writerows(rows)
     result=dict(policy=str(args.policy),scene=str(args.scene),initial_phase=args.phase,
-        requested_duration_s=125.,completed_duration_s=rows[-1]['time_s'],stop_reason=reason,
+        requested_duration_s=len(sequence)*count*sim.policy_dt,completed_duration_s=rows[-1]['time_s'],stop_reason=reason,
         finite=all(np.isfinite([v for k,v in r.items() if k!='stage']).all() for r in rows),
         flight_ratio=float(np.mean([r['flight'] for r in rows])),
         roll_rms_deg=float(np.sqrt(np.mean([r['roll']**2 for r in rows]))*180/np.pi),
