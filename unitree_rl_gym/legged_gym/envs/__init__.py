@@ -239,6 +239,85 @@ from legged_gym.envs.rs01_omni_v2.rs01_omni_v20_config import Rs01OmniV20ACfg, R
 from legged_gym.envs.rs01_omni_v2.rs01_omni_v20_env import Rs01OmniV20GeometryRobot, Rs01OmniV20BoundedRobot
 task_registry.register('rs01_omni_v20_geometry', Rs01OmniV20GeometryRobot, Rs01OmniV20ACfg(), Rs01OmniV20ACfgPPO())
 task_registry.register('rs01_omni_v20_bounded_hip', Rs01OmniV20BoundedRobot, Rs01OmniV20BCfg(), Rs01OmniV20BCfgPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v21_config import Rs01OmniV21Cfg, Rs01OmniV21CfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v21_env import Rs01OmniV21Robot
+task_registry.register('rs01_omni_v21_phase_coord', Rs01OmniV21Robot, Rs01OmniV21Cfg(), Rs01OmniV21CfgPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v22_config import Rs01OmniV22Cfg, Rs01OmniV22CfgPPO, Rs01OmniV22CleanCfg, Rs01OmniV22CleanCfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v22_env import Rs01OmniV22Robot
+task_registry.register('rs01_omni_v22_sensor', Rs01OmniV22Robot, Rs01OmniV22Cfg(), Rs01OmniV22CfgPPO())
+task_registry.register('rs01_omni_v22_clean', Rs01OmniV22Robot, Rs01OmniV22CleanCfg(), Rs01OmniV22CleanCfgPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_v22_phase_scratch import Rs01V22PhaseScratchRobot, Rs01V22PhaseScratchCfg, Rs01V22PhaseScratchPPO
+task_registry.register('rs01_v22_phase_scratch', Rs01V22PhaseScratchRobot, Rs01V22PhaseScratchCfg(), Rs01V22PhaseScratchPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_v22_phase_lift import Rs01V22PhaseLiftRobot, Rs01V22PhaseLiftCfg, Rs01V22PhaseLiftPPO
+task_registry.register('rs01_v22_phase_lift', Rs01V22PhaseLiftRobot, Rs01V22PhaseLiftCfg(), Rs01V22PhaseLiftPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v23_config import Rs01OmniV23Cfg, Rs01OmniV23WideCfg, Rs01OmniV23CfgPPO, Rs01OmniV23WideCfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v23_env import Rs01OmniV23Robot
+task_registry.register('rs01_omni_v23_balance18', Rs01OmniV23Robot, Rs01OmniV23Cfg(), Rs01OmniV23CfgPPO())
+task_registry.register('rs01_omni_v23_balance20', Rs01OmniV23Robot, Rs01OmniV23WideCfg(), Rs01OmniV23WideCfgPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v24_config import Rs01OmniV24Cfg, Rs01OmniV24WideCfg, Rs01OmniV24CfgPPO, Rs01OmniV24WideCfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v24_env import Rs01OmniV24Robot
+task_registry.register('rs01_omni_v24_support10', Rs01OmniV24Robot, Rs01OmniV24Cfg(), Rs01OmniV24CfgPPO())
+task_registry.register('rs01_omni_v24_support11', Rs01OmniV24Robot, Rs01OmniV24WideCfg(), Rs01OmniV24WideCfgPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v25_config import Rs01OmniV25Cfg, Rs01OmniV25FastCfg, Rs01OmniV25CfgPPO, Rs01OmniV25FastCfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v25_env import Rs01OmniV25Robot
+task_registry.register('rs01_omni_v25_cadence20', Rs01OmniV25Robot, Rs01OmniV25Cfg(), Rs01OmniV25CfgPPO())
+task_registry.register('rs01_omni_v25_cadence22', Rs01OmniV25Robot, Rs01OmniV25FastCfg(), Rs01OmniV25FastCfgPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v26_config import Rs01OmniV26Cfg, Rs01OmniV26SoftCfg, Rs01OmniV26CfgPPO, Rs01OmniV26SoftCfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v26_env import Rs01OmniV26Robot
+task_registry.register('rs01_omni_v26_inward3', Rs01OmniV26Robot, Rs01OmniV26Cfg(), Rs01OmniV26CfgPPO())
+task_registry.register('rs01_omni_v26_inward5', Rs01OmniV26Robot, Rs01OmniV26SoftCfg(), Rs01OmniV26SoftCfgPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v27_config import Rs01OmniV27Cfg,Rs01OmniV27StrongCfg,Rs01OmniV27CfgPPO,Rs01OmniV27StrongCfgPPO
+task_registry.register('rs01_omni_v27_foot15', Rs01OmniV25Robot, Rs01OmniV27Cfg(), Rs01OmniV27CfgPPO())
+task_registry.register('rs01_omni_v27_foot10', Rs01OmniV25Robot, Rs01OmniV27StrongCfg(), Rs01OmniV27StrongCfgPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v28_config import Rs01OmniV28Cfg,Rs01OmniV28CfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v28_env import Rs01OmniV28Robot
+task_registry.register('rs01_omni_v28_curriculum', Rs01OmniV28Robot, Rs01OmniV28Cfg(), Rs01OmniV28CfgPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v29_config import Rs01OmniV29Cfg,Rs01OmniV29CfgPPO
+task_registry.register('rs01_omni_v29_mince', Rs01OmniV28Robot, Rs01OmniV29Cfg(), Rs01OmniV29CfgPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_omni_v30_config import Rs01OmniV30Cfg,Rs01OmniV30CfgPPO
+task_registry.register('rs01_omni_v30_clearance', Rs01OmniV28Robot, Rs01OmniV30Cfg(), Rs01OmniV30CfgPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_amp_config import Rs01AMPCfg,Rs01AMPCfgPPO
+from legged_gym.envs.rs01_omni_v2.rs01_amp_env import Rs01AMPRobot
+task_registry.register('rs01_amp_style', Rs01AMPRobot, Rs01AMPCfg(), Rs01AMPCfgPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_amp_config import Rs01AMPRetimeCfg, Rs01AMPControlCfgPPO, Rs01AMPRetimeCfgPPO
+task_registry.register('rs01_amp_control', Rs01AMPRobot, Rs01AMPCfg(), Rs01AMPControlCfgPPO())
+task_registry.register('rs01_amp_retime', Rs01AMPRobot, Rs01AMPRetimeCfg(), Rs01AMPRetimeCfgPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_amp_scratch_config import Rs01AMPScratchCfg, Rs01AMPScratchPPO, Rs01AMPScratchSlowCfg, Rs01AMPScratchSlowPPO
+from legged_gym.envs.rs01_omni_v2.rs01_amp_scratch_env import Rs01AMPScratchRobot
+task_registry.register('rs01_amp_scratch_original', Rs01AMPScratchRobot, Rs01AMPScratchCfg(), Rs01AMPScratchPPO())
+task_registry.register('rs01_amp_scratch_slow', Rs01AMPScratchRobot, Rs01AMPScratchSlowCfg(), Rs01AMPScratchSlowPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_amp_core_config import Rs01AMPCoreCfg, Rs01AMPCoreSlowCfg, Rs01AMPCorePPO, Rs01AMPCoreSlowPPO
+from legged_gym.envs.rs01_omni_v2.rs01_amp_core_env import Rs01AMPCoreRobot
+task_registry.register('rs01_amp_core_original', Rs01AMPCoreRobot, Rs01AMPCoreCfg(), Rs01AMPCorePPO())
+task_registry.register('rs01_amp_core_slow', Rs01AMPCoreRobot, Rs01AMPCoreSlowCfg(), Rs01AMPCoreSlowPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_amp_seeded_env import Rs01AMPSeededRobot
+from legged_gym.envs.rs01_omni_v2.rs01_amp_seeded_config import Rs01AMPSeededCfg, Rs01AMPSeededSlowCfg, Rs01AMPSeededPPO, Rs01AMPSeededSlowPPO
+task_registry.register('rs01_amp_seeded_original', Rs01AMPSeededRobot, Rs01AMPSeededCfg(), Rs01AMPSeededPPO())
+task_registry.register('rs01_amp_seeded_slow', Rs01AMPSeededRobot, Rs01AMPSeededSlowCfg(), Rs01AMPSeededSlowPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_amp_phys_config import (
+    Rs01AMPPhysCfg, Rs01AMPPhysSeededCfg, Rs01AMPPhysPPO, Rs01AMPPhysSeededPPO)
+task_registry.register('rs01_amp_phys_original', Rs01AMPCoreRobot, Rs01AMPPhysCfg(), Rs01AMPPhysPPO())
+task_registry.register('rs01_amp_phys_seeded', Rs01AMPSeededRobot, Rs01AMPPhysSeededCfg(), Rs01AMPPhysSeededPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_amp_inplant_config import (
+    Rs01AMPInPlantCfg, Rs01AMPInPlantSeededCfg, Rs01AMPInPlantPPO, Rs01AMPInPlantSeededPPO)
+task_registry.register('rs01_amp_inplant_original', Rs01AMPCoreRobot, Rs01AMPInPlantCfg(), Rs01AMPInPlantPPO())
+task_registry.register('rs01_amp_inplant_seeded', Rs01AMPSeededRobot, Rs01AMPInPlantSeededCfg(), Rs01AMPInPlantSeededPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_amp_style_first import (
+    Rs01AMPStyleFirstRobot, Rs01AMPStyleFirstCfg, Rs01AMPStyleFirstSlowCfg,
+    Rs01AMPStyleFirstPPO, Rs01AMPStyleFirstSlowPPO)
+task_registry.register('rs01_amp_style_first', Rs01AMPStyleFirstRobot, Rs01AMPStyleFirstCfg(), Rs01AMPStyleFirstPPO())
+task_registry.register('rs01_amp_style_first_slow', Rs01AMPStyleFirstRobot, Rs01AMPStyleFirstSlowCfg(), Rs01AMPStyleFirstSlowPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_amp_bootstrap import (
+    Rs01AMPBootstrapRobot, Rs01AMPBootstrapCfg, Rs01AMPBootstrapSlowCfg,
+    Rs01AMPBootstrapPPO, Rs01AMPBootstrapSlowPPO)
+task_registry.register('rs01_amp_bootstrap', Rs01AMPBootstrapRobot, Rs01AMPBootstrapCfg(), Rs01AMPBootstrapPPO())
+task_registry.register('rs01_amp_bootstrap_slow', Rs01AMPBootstrapRobot, Rs01AMPBootstrapSlowCfg(), Rs01AMPBootstrapSlowPPO())
+from legged_gym.envs.rs01_omni_v2.rs01_stable_phase import Rs01StablePhaseRobot, Rs01StablePhaseCfg, Rs01StablePhasePPO
+task_registry.register('rs01_stable_phase', Rs01StablePhaseRobot, Rs01StablePhaseCfg(), Rs01StablePhasePPO())
+from legged_gym.envs.rs01_omni_v2.rs01_stable_phase_v2 import Rs01StablePhaseV2Robot,Rs01StablePhaseV2Cfg,Rs01StablePhaseV2PPO
+task_registry.register('rs01_stable_phase_v2', Rs01StablePhaseV2Robot,Rs01StablePhaseV2Cfg(),Rs01StablePhaseV2PPO())
+from legged_gym.envs.rs01_omni_v2.rs01_stable_phase_v3 import Rs01StablePhaseV3Cfg,Rs01StablePhaseV3PPO
+task_registry.register('rs01_stable_phase_v3', Rs01StablePhaseV2Robot,Rs01StablePhaseV3Cfg(),Rs01StablePhaseV3PPO())
 
 task_registry.register("go2", LeggedRobot, GO2RoughCfg(), GO2RoughCfgPPO())
 task_registry.register(
