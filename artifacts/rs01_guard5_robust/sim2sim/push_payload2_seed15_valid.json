@@ -1,0 +1,76 @@
+{
+  "policy": "artifacts/rs01_guard5_robust/sim2sim/robust_36100.onnx",
+  "scene": "artifacts/rs01_guard5_robust/sim2sim/scene.xml",
+  "initial_phase": 0.0,
+  "requested_duration_s": 65.0,
+  "completed_duration_s": 65.0,
+  "stop_reason": null,
+  "finite": true,
+  "flight_ratio": 0.0,
+  "roll_rms_deg": 2.525027423823516,
+  "vz_rms_m_s": 0.049860151766097455,
+  "raw_peak_nm": 16.278661038682163,
+  "max_joint_speed_rad_s": 16.762457691822178,
+  "task": "rs01_v22_guard5_robust",
+  "sensor_profile": "normal",
+  "sensor_seed": 20261015,
+  "speed_scale": 1.5,
+  "interval_s": 5.0,
+  "direct_switch": true,
+  "payload_kg": 2.0,
+  "total_mass_kg": 13.731736000000003,
+  "pushes_enabled": true,
+  "disturbance_seed": 20261015,
+  "push_events": [
+    {
+      "time_s": 4.8450000000000575,
+      "peak_n": 11.698787027058055,
+      "duration_s": 0.14127794730483395,
+      "angle_rad": 3.6914991523974225
+    },
+    {
+      "time_s": 11.004999999999953,
+      "peak_n": 6.261720290812244,
+      "duration_s": 0.18848673890804968,
+      "angle_rad": 4.807194589636869
+    },
+    {
+      "time_s": 20.385000000001202,
+      "peak_n": 17.00459006800292,
+      "duration_s": 0.1583119192723844,
+      "angle_rad": 5.494123536164575
+    },
+    {
+      "time_s": 30.165000000006206,
+      "peak_n": 13.958567682436032,
+      "duration_s": 0.12348949365543488,
+      "angle_rad": 2.83313937899788
+    },
+    {
+      "time_s": 37.71000000000195,
+      "peak_n": 15.588251603222172,
+      "duration_s": 0.10410044634485291,
+      "angle_rad": 3.1715111040070267
+    },
+    {
+      "time_s": 45.85249999999454,
+      "peak_n": 16.384374862744668,
+      "duration_s": 0.18532170669898468,
+      "angle_rad": 0.2251619726327781
+    },
+    {
+      "time_s": 53.732499999987375,
+      "peak_n": 12.805876505139711,
+      "duration_s": 0.1890383871104304,
+      "angle_rad": 1.6685553293453006
+    },
+    {
+      "time_s": 62.6099999999793,
+      "peak_n": 17.91995880768657,
+      "duration_s": 0.14789834112073744,
+      "angle_rad": 5.514111782187288
+    }
+  ],
+  "total_impulse_ns": 8.489530004926596,
+  "payload_model": "distributed trunk mass; unchanged COM; inertia scaled with mass"
+}

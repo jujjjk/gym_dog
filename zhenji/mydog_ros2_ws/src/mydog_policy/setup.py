@@ -34,7 +34,8 @@ setup(
             + glob("resource/stand_only_6850.*")
             + glob("resource/B18000.*")
             + glob("resource/B23500.*")
-            + glob("resource/B32750.*"),
+            + glob("resource/B32750.*")
+            + glob("resource/B36100.*"),
         ),
     ],
     install_requires=["setuptools"],
@@ -46,6 +47,9 @@ setup(
     extras_require={"test": ["pytest"]},
     entry_points={
         "console_scripts": [
+            "mydog_rs01_model36100_node = mydog_policy.rs01_model36100_node:main",
+            "mydog_model36100_command = mydog_policy.rs01_model36100_command:main",
+            "mydog_validate_model36100 = mydog_policy.validate_rs01_model36100:main",
             "mydog_rs01_model32750_node = mydog_policy.rs01_model32750_node:main",
             "mydog_model32750_command = mydog_policy.rs01_model32750_command:main",
             "mydog_validate_model32750 = mydog_policy.validate_rs01_model32750:main",
