@@ -1,0 +1,20 @@
+{
+  "policy": "artifacts/rs01_guard5_robust/sim2sim/robust_36100.onnx",
+  "scene": "artifacts/rs01_guard5_robust/sim2sim/scene.xml",
+  "initial_phase": 0.0,
+  "requested_duration_s": 65.0,
+  "completed_duration_s": 65.0,
+  "stop_reason": null,
+  "finite": true,
+  "flight_ratio": 0.0,
+  "roll_rms_deg": 2.783223127817186,
+  "vz_rms_m_s": 0.0637669927075238,
+  "raw_peak_nm": 17.535574687745623,
+  "max_joint_speed_rad_s": 17.795937202510043,
+  "task": "rs01_v22_guard5_robust",
+  "sensor_profile": "normal",
+  "sensor_seed": 20261015,
+  "speed_scale": 1.5,
+  "interval_s": 5.0,
+  "direct_switch": true
+}

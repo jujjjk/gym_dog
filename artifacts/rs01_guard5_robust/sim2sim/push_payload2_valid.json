@@ -1,0 +1,52 @@
+{
+  "policy": "artifacts/rs01_guard5_robust/sim2sim/robust_36100.onnx",
+  "scene": "artifacts/rs01_guard5_robust/sim2sim/scene.xml",
+  "initial_phase": 0.0,
+  "requested_duration_s": 39.0,
+  "completed_duration_s": 39.0,
+  "stop_reason": null,
+  "finite": true,
+  "flight_ratio": 0.0,
+  "roll_rms_deg": 1.442389010547349,
+  "vz_rms_m_s": 0.052491815247516754,
+  "raw_peak_nm": 18.14801854005064,
+  "max_joint_speed_rad_s": 18.93327222328907,
+  "task": "rs01_v22_guard5_robust",
+  "sensor_profile": "normal",
+  "sensor_seed": 20261014,
+  "speed_scale": 1.5,
+  "interval_s": 3.0,
+  "direct_switch": true,
+  "payload_kg": 2.0,
+  "total_mass_kg": 13.731736000000003,
+  "pushes_enabled": true,
+  "disturbance_seed": 20261014,
+  "push_events": [
+    {
+      "time_s": 6.347500000000292,
+      "peak_n": 7.391601741789802,
+      "duration_s": 0.18701219342087866,
+      "angle_rad": 2.995530350582903
+    },
+    {
+      "time_s": 14.919999999999174,
+      "peak_n": 12.80062413731569,
+      "duration_s": 0.17303068845156605,
+      "angle_rad": 2.555432893915098
+    },
+    {
+      "time_s": 23.205000000002645,
+      "peak_n": 11.962703708046782,
+      "duration_s": 0.19915246720911917,
+      "angle_rad": 2.2108581864250128
+    },
+    {
+      "time_s": 30.867500000006565,
+      "peak_n": 11.679832791430382,
+      "duration_s": 0.17553954657915924,
+      "angle_rad": 5.062481223394735
+    }
+  ],
+  "total_impulse_ns": 4.014948138507602,
+  "payload_model": "distributed trunk mass; unchanged COM; inertia scaled with mass"
+}
