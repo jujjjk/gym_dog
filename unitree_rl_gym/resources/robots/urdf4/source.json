@@ -1,0 +1,26 @@
+{
+  "source_urdf": "/home/nszb/gym/URDF4.0.SLDASM/urdf/URDF4.0.SLDASM.urdf",
+  "source_urdf_sha256": "05a9372b56aac56bdc61a1088e15aa265291c051e3ade638223c983f07001f8d",
+  "training_urdf_sha256": "528c088ff240916b04dfc98611ae9437b92a31cfafc9a297399632e8d0774b91",
+  "meshes": [
+    "FL_calf_joint.STL",
+    "FL_hip_joint.STL",
+    "FL_thigh_joint.STL",
+    "FR_calf_joint.STL",
+    "FR_hip_joint.STL",
+    "FR_thigh_joint.STL",
+    "RL_calf_joint.STL",
+    "RL_hip_joint.STL",
+    "RL_thigh_joint.STL",
+    "RR_calf_joint.STL",
+    "RR_hip_joint.STL",
+    "RR_thigh_joint.STL",
+    "imu_Link.STL",
+    "trunk.STL"
+  ],
+  "changes": [
+    "mesh paths made relative",
+    "foot visual spheres added",
+    "robot renamed to urdf4_rs01"
+  ]
+}

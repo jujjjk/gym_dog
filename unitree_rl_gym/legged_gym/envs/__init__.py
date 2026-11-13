@@ -325,6 +325,8 @@ from legged_gym.envs.rs01_omni_v2.rs01_stable_phase_v2 import Rs01StablePhaseV2R
 task_registry.register('rs01_stable_phase_v2', Rs01StablePhaseV2Robot,Rs01StablePhaseV2Cfg(),Rs01StablePhaseV2PPO())
 from legged_gym.envs.rs01_omni_v2.rs01_stable_phase_v3 import Rs01StablePhaseV3Cfg,Rs01StablePhaseV3PPO
 task_registry.register('rs01_stable_phase_v3', Rs01StablePhaseV2Robot,Rs01StablePhaseV3Cfg(),Rs01StablePhaseV3PPO())
+from legged_gym.envs.urdf4 import Urdf4OmniRobot, Urdf4OmniCfg, Urdf4OmniCfgPPO
+task_registry.register('urdf4_omni_v1', Urdf4OmniRobot, Urdf4OmniCfg(), Urdf4OmniCfgPPO())
 
 task_registry.register("go2", LeggedRobot, GO2RoughCfg(), GO2RoughCfgPPO())
 task_registry.register(

@@ -6,3 +6,7 @@
 *.yaml text eol=lf
 *.yml text eol=lf
 *.ps1 text eol=crlf
+
+# Preserve SolidWorks source URDF bytes so provenance SHA256 survives checkout.
+URDF4.0.SLDASM/urdf/*.urdf -text whitespace=cr-at-eol,-blank-at-eol
+unitree_rl_gym/resources/robots/urdf4/urdf/*.urdf -text whitespace=cr-at-eol,-blank-at-eol
