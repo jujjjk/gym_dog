@@ -1,0 +1,557 @@
+{
+  "source": "/home/nszb/gym/URDF4.0.SLDASM/urdf/URDF4.0.SLDASM.urdf",
+  "sha256": "05a9372b56aac56bdc61a1088e15aa265291c051e3ade638223c983f07001f8d",
+  "engine": "3.17.0",
+  "links": 18,
+  "joints": [
+    {
+      "name": "FR_hip_joint",
+      "type": "revolute",
+      "xyz": "0.215 -0.06 0.01",
+      "axis": "1 0 0",
+      "limit": {
+        "lower": "-1.0472",
+        "upper": "1.0472",
+        "effort": "17",
+        "velocity": "32.9867"
+      }
+    },
+    {
+      "name": "FR_thigh_joint",
+      "type": "revolute",
+      "xyz": "0 -0.0875 0",
+      "axis": "0 -1 0",
+      "limit": {
+        "lower": "-2.29921305286",
+        "upper": "2.76228694714",
+        "effort": "17",
+        "velocity": "32.9867"
+      }
+    },
+    {
+      "name": "FR_calf_joint",
+      "type": "revolute",
+      "xyz": "-0.16579 0 -0.070098",
+      "axis": "0 -1 0",
+      "limit": {
+        "lower": "-1.91986217719",
+        "upper": "0",
+        "effort": "17",
+        "velocity": "32.9867"
+      }
+    },
+    {
+      "name": "FR_foot_fixed",
+      "type": "fixed",
+      "xyz": "0.186 0 0.004",
+      "axis": null,
+      "limit": null
+    },
+    {
+      "name": "FL_hip_joint",
+      "type": "revolute",
+      "xyz": "0.215 0.0599999999999999 0.01",
+      "axis": "1 0 0",
+      "limit": {
+        "lower": "-1.0472",
+        "upper": "1.0472",
+        "effort": "17",
+        "velocity": "32.9867"
+      }
+    },
+    {
+      "name": "FL_thigh_joint",
+      "type": "revolute",
+      "xyz": "0 0.0875 0",
+      "axis": "0 1 0",
+      "limit": {
+        "lower": "-2.76228694714",
+        "upper": "2.29921305286",
+        "effort": "17",
+        "velocity": "32.9867"
+      }
+    },
+    {
+      "name": "FL_calf_joint",
+      "type": "revolute",
+      "xyz": "-0.16579 0 -0.070098",
+      "axis": "0 1 0",
+      "limit": {
+        "lower": "0",
+        "upper": "1.91986217719",
+        "effort": "17",
+        "velocity": "32.9867"
+      }
+    },
+    {
+      "name": "FL_foot_fixed",
+      "type": "fixed",
+      "xyz": "0.186 0 0.004",
+      "axis": null,
+      "limit": null
+    },
+    {
+      "name": "RR_hip_joint",
+      "type": "revolute",
+      "xyz": "-0.215 -0.06 0.01",
+      "axis": "-1 0 0",
+      "limit": {
+        "lower": "-1.0472",
+        "upper": "1.0472",
+        "effort": "17",
+        "velocity": "32.9867"
+      }
+    },
+    {
+      "name": "RR_thigh_joint",
+      "type": "revolute",
+      "xyz": "0 -0.0875 0",
+      "axis": "0 -1 0",
+      "limit": {
+        "lower": "-2.29921305286",
+        "upper": "2.76228694714",
+        "effort": "17",
+        "velocity": "32.9867"
+      }
+    },
+    {
+      "name": "RR_calf_joint",
+      "type": "revolute",
+      "xyz": "-0.165789672480304 0 -0.0700983915569642",
+      "axis": "0 -1 0",
+      "limit": {
+        "lower": "-1.91986217719",
+        "upper": "0",
+        "effort": "17",
+        "velocity": "32.9867"
+      }
+    },
+    {
+      "name": "RR_foot_fixed",
+      "type": "fixed",
+      "xyz": "0.186 0 0.004",
+      "axis": null,
+      "limit": null
+    },
+    {
+      "name": "RL_hip_joint",
+      "type": "revolute",
+      "xyz": "-0.215 0.06 0.01",
+      "axis": "-1 0 0",
+      "limit": {
+        "lower": "-1.0472",
+        "upper": "1.0472",
+        "effort": "17",
+        "velocity": "32.9867"
+      }
+    },
+    {
+      "name": "RL_thigh_joint",
+      "type": "revolute",
+      "xyz": "0 0.0875 0",
+      "axis": "0 1 0",
+      "limit": {
+        "lower": "-2.76228694714",
+        "upper": "2.29921305286",
+        "effort": "17",
+        "velocity": "32.9867"
+      }
+    },
+    {
+      "name": "RL_calf_joint",
+      "type": "revolute",
+      "xyz": "-0.16579 0 -0.070098",
+      "axis": "0 1 0",
+      "limit": {
+        "lower": "0",
+        "upper": "1.91986217719",
+        "effort": "17",
+        "velocity": "32.9867"
+      }
+    },
+    {
+      "name": "RL_foot_fixed",
+      "type": "fixed",
+      "xyz": "0.186 0 0.004",
+      "axis": null,
+      "limit": null
+    },
+    {
+      "name": "imu_Link",
+      "type": "fixed",
+      "xyz": "0 0 0.021",
+      "axis": "0 0 0",
+      "limit": null
+    }
+  ],
+  "inertias": [
+    {
+      "link": "trunk",
+      "mass": 5.1784426438803,
+      "eigenvalues": [
+        0.008868749512522733,
+        0.010228910075108556,
+        0.015234502156146235
+      ],
+      "valid": true
+    },
+    {
+      "link": "FR_hip_joint",
+      "mass": 0.532099079677959,
+      "eigenvalues": [
+        0.00022885827533027244,
+        0.000256772897954534,
+        0.00037784396769030326
+      ],
+      "valid": true
+    },
+    {
+      "link": "FR_thigh_joint",
+      "mass": 0.808385606538209,
+      "eigenvalues": [
+        0.00031686118029781703,
+        0.0011640206106843872,
+        0.0013596274409664647
+      ],
+      "valid": true
+    },
+    {
+      "link": "FR_calf_joint",
+      "mass": 0.207260014918475,
+      "eigenvalues": [
+        3.724595609480467e-05,
+        0.0007377832515352223,
+        0.0007484188524506666
+      ],
+      "valid": true
+    },
+    {
+      "link": "FR_foot",
+      "mass": 0.01,
+      "eigenvalues": [
+        1.6e-06,
+        1.6e-06,
+        1.6e-06
+      ],
+      "valid": true
+    },
+    {
+      "link": "FL_hip_joint",
+      "mass": 0.611558171335228,
+      "eigenvalues": [
+        0.0002660703275488555,
+        0.00029414418309930073,
+        0.0004338080017470779
+      ],
+      "valid": true
+    },
+    {
+      "link": "FL_thigh_joint",
+      "mass": 0.80838560653821,
+      "eigenvalues": [
+        0.0003168611802978206,
+        0.0011640206106843956,
+        0.001359627440966474
+      ],
+      "valid": true
+    },
+    {
+      "link": "FL_calf_joint",
+      "mass": 0.207260014918475,
+      "eigenvalues": [
+        3.7245956094793736e-05,
+        0.0007377832515352235,
+        0.0007484188524506578
+      ],
+      "valid": true
+    },
+    {
+      "link": "FL_foot",
+      "mass": 0.01,
+      "eigenvalues": [
+        1.6e-06,
+        1.6e-06,
+        1.6e-06
+      ],
+      "valid": true
+    },
+    {
+      "link": "RR_hip_joint",
+      "mass": 0.611558171335229,
+      "eigenvalues": [
+        0.00026607032754885607,
+        0.0002941441830993011,
+        0.0004338080017470778
+      ],
+      "valid": true
+    },
+    {
+      "link": "RR_thigh_joint",
+      "mass": 0.808385606538211,
+      "eigenvalues": [
+        0.0003168611802978173,
+        0.0011640206106843956,
+        0.0013596274409664742
+      ],
+      "valid": true
+    },
+    {
+      "link": "RR_calf_joint",
+      "mass": 0.207260014918475,
+      "eigenvalues": [
+        3.7245956094801576e-05,
+        0.000737783251535224,
+        0.0007484188524506661
+      ],
+      "valid": true
+    },
+    {
+      "link": "RR_foot",
+      "mass": 0.01,
+      "eigenvalues": [
+        1.6e-06,
+        1.6e-06,
+        1.6e-06
+      ],
+      "valid": true
+    },
+    {
+      "link": "RL_hip_joint",
+      "mass": 0.532099079677959,
+      "eigenvalues": [
+        0.00022885827533027247,
+        0.000256772897954534,
+        0.0003778439676903034
+      ],
+      "valid": true
+    },
+    {
+      "link": "RL_thigh_joint",
+      "mass": 0.80838560653821,
+      "eigenvalues": [
+        0.00031686118029781947,
+        0.001164020610684394,
+        0.0013596274409664738
+      ],
+      "valid": true
+    },
+    {
+      "link": "RL_calf_joint",
+      "mass": 0.207260014918475,
+      "eigenvalues": [
+        3.724595609480073e-05,
+        0.0007377832515352249,
+        0.0007484188524506658
+      ],
+      "valid": true
+    },
+    {
+      "link": "RL_foot",
+      "mass": 0.01,
+      "eigenvalues": [
+        1.6e-06,
+        1.6e-06,
+        1.6e-06
+      ],
+      "valid": true
+    },
+    {
+      "link": "imu_Link",
+      "mass": 0.0015252,
+      "eigenvalues": [
+        7.7424236e-08,
+        1.2265149999999994e-07,
+        1.9905893599999994e-07
+      ],
+      "valid": true
+    }
+  ],
+  "total_mass": 11.569864831733414,
+  "mesh_missing": [],
+  "stance_angles": {
+    "FR_hip_joint": 0.0,
+    "FR_thigh_joint": 0.37340871614805576,
+    "FR_calf_joint": -1.2010610990508666,
+    "FL_hip_joint": 0.0,
+    "FL_thigh_joint": -0.3734087161480557,
+    "FL_calf_joint": 1.2010610990508668,
+    "RR_hip_joint": 0.0,
+    "RR_thigh_joint": 0.3734066617661678,
+    "RR_calf_joint": -1.2010582073379403,
+    "RL_hip_joint": 0.0,
+    "RL_thigh_joint": -0.3734087161480558,
+    "RL_calf_joint": 1.201061099050867
+  },
+  "stance_feet": [
+    [
+      0.215,
+      -0.1475,
+      0.022000000000000047
+    ],
+    [
+      0.215,
+      0.1475,
+      0.022000000000000047
+    ],
+    [
+      -0.21499999999999997,
+      -0.1475,
+      0.02200000000000002
+    ],
+    [
+      -0.215,
+      0.1475,
+      0.021999999999999964
+    ]
+  ],
+  "stance_com": [
+    -0.010899435318638597,
+    -1.358385814018164e-06,
+    0.25485909654642563
+  ],
+  "initial_self_contacts": [],
+  "sweep": {
+    "FR_hip_joint": true,
+    "FR_thigh_joint": true,
+    "FR_calf_joint": true,
+    "FL_hip_joint": true,
+    "FL_thigh_joint": true,
+    "FL_calf_joint": true,
+    "RR_hip_joint": true,
+    "RR_thigh_joint": true,
+    "RR_calf_joint": true,
+    "RL_hip_joint": true,
+    "RL_thigh_joint": true,
+    "RL_calf_joint": true
+  },
+  "passive": {
+    "duration_s": 10,
+    "finite": true,
+    "final_xyz": [
+      -0.0035256401287005164,
+      6.40689200049961e-05,
+      0.06990824959193082
+    ],
+    "min_height_m": 0.057681882815034856,
+    "raw_peak_Nm": 0.0,
+    "applied_peak_Nm": 0.0,
+    "saturated_joint_fraction": 0.0,
+    "final_joint_error_rad": 1.2066057672012787,
+    "warnings": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "final_contacts": [
+      {
+        "a": "world",
+        "b": "trunk",
+        "distance_m": -9.139884647561825e-05
+      },
+      {
+        "a": "world",
+        "b": "trunk",
+        "distance_m": -9.210105166300442e-05
+      },
+      {
+        "a": "world",
+        "b": "trunk",
+        "distance_m": -9.139976394860472e-05
+      },
+      {
+        "a": "world",
+        "b": "trunk",
+        "distance_m": -9.210196913599089e-05
+      },
+      {
+        "a": "world",
+        "b": "FR_thigh_joint",
+        "distance_m": -5.283815108419673e-05
+      },
+      {
+        "a": "world",
+        "b": "FR_foot",
+        "distance_m": -0.0006399357279534071
+      },
+      {
+        "a": "world",
+        "b": "FL_thigh_joint",
+        "distance_m": -5.2529701453900984e-05
+      },
+      {
+        "a": "world",
+        "b": "FL_foot",
+        "distance_m": -0.0006373130264772549
+      },
+      {
+        "a": "world",
+        "b": "RR_thigh_joint",
+        "distance_m": -5.425432656397042e-05
+      },
+      {
+        "a": "world",
+        "b": "RR_foot",
+        "distance_m": -0.0006337159293686133
+      },
+      {
+        "a": "world",
+        "b": "RL_thigh_joint",
+        "distance_m": -5.4566002191735324e-05
+      },
+      {
+        "a": "world",
+        "b": "RL_foot",
+        "distance_m": -0.0006362188154200935
+      }
+    ]
+  },
+  "pd_stand": {
+    "duration_s": 10,
+    "finite": true,
+    "final_xyz": [
+      -0.021811740741039386,
+      4.7843756201423875e-06,
+      0.2508548841936732
+    ],
+    "min_height_m": 0.25085488419383495,
+    "raw_peak_Nm": 5.160595188010887,
+    "applied_peak_Nm": 5.160595188010887,
+    "saturated_joint_fraction": 0.0,
+    "final_joint_error_rad": 0.10042333504312495,
+    "warnings": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "final_contacts": [
+      {
+        "a": "world",
+        "b": "FR_foot",
+        "distance_m": -0.0023189194663572298
+      },
+      {
+        "a": "world",
+        "b": "FL_foot",
+        "distance_m": -0.002313181176279943
+      },
+      {
+        "a": "world",
+        "b": "RR_foot",
+        "distance_m": -0.0030224155868147883
+      },
+      {
+        "a": "world",
+        "b": "RL_foot",
+        "distance_m": -0.0030296763783157037
+      }
+    ]
+  }
+}

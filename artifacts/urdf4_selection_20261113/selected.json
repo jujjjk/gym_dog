@@ -1,0 +1,51 @@
+{
+  "selected_checkpoint": "/home/nszb/gym/unitree_rl_gym/logs/urdf4_omni_v1/Nov12_20-20-27_long_gyroobs5000_20261112_202024/model_5400.pt",
+  "sha256": "3c876d226b28bfb1c7516d1a8dcaa7cab8f7787e403e9b900148d51efd4f2547",
+  "rankings": [
+    {
+      "iteration": 5400,
+      "scores": [
+        0.6223518599581438,
+        0.7297069601253581,
+        0.7420450051950577
+      ],
+      "mean_score": 0.6980346084261866,
+      "falls": 0,
+      "max_flight_share": 0.0
+    },
+    {
+      "iteration": 3400,
+      "scores": [
+        0.6339062855997988,
+        0.7967937943867582,
+        0.7704394991570469
+      ],
+      "mean_score": 0.7337131930478679,
+      "falls": 0,
+      "max_flight_share": 0.0
+    },
+    {
+      "iteration": 3600,
+      "scores": [
+        0.6346455985463266,
+        0.7828129222265778,
+        0.7893731847484147
+      ],
+      "mean_score": 0.7356105685071063,
+      "falls": 0,
+      "max_flight_share": 0.0
+    },
+    {
+      "iteration": 4900,
+      "scores": [
+        0.6721357808908743,
+        0.7971484175109668,
+        0.7648458992219027
+      ],
+      "mean_score": 0.744710032541248,
+      "falls": 0,
+      "max_flight_share": 8.617717685410753e-05
+    }
+  ],
+  "repository_checkpoint": "artifacts/urdf4_selection_20261113/model_5400.pt"
+}
