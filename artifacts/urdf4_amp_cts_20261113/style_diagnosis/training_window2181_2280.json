@@ -1,0 +1,15 @@
+{
+  "iterations": [
+    2181,
+    2280
+  ],
+  "averages": {
+    "task_reward_step": 0.04948871217668056,
+    "amp_bonus_step": 0.002522020866163075,
+    "amp_valid_fraction": 0.8828504645824432,
+    "expert_coverage": 0.7899781024456024,
+    "expert_score": 0.7642790886759758,
+    "policy_score": -0.7662166467308998
+  },
+  "source_contract_matches": true
+}

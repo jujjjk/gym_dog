@@ -1,0 +1,670 @@
+{
+  "task": "urdf4_amp_cts_v1",
+  "revision": "v2_style_cycle_v2",
+  "updates": 150,
+  "seed": 1,
+  "num_envs": 1024,
+  "evaluation_seconds": 8.0,
+  "warmup_seconds": 3.0,
+  "eval_envs_per_clip": 4,
+  "checkpoint": "artifacts/urdf4_amp_cts_20261113/reward_revision/cycle_short150/run/model_150.pt",
+  "results": {
+    "before": [
+      {
+        "clip": "march",
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.14985740184783936,
+        "AMP_style_same_final_discriminator": 0.07791683822870255,
+        "mean_velocity": [
+          -0.00026194500969722867,
+          2.326492904103361e-05,
+          0.0001458378683310002
+        ],
+        "velocity_error": 0.013497730048745745,
+        "yaw_rate_error": 0.015223987400531769,
+        "clearance_p95_mm": [
+          0.0023957341909408565,
+          0.0033490359783172607,
+          0.006493180990219116,
+          0.0033564865589141846
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "forward_slow",
+        "command": [
+          0.18,
+          0.0,
+          0.0
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.058952249586582184,
+        "AMP_style_same_final_discriminator": 0.004489755257964134,
+        "mean_velocity": [
+          -0.0002609084767755121,
+          -4.308914503781125e-05,
+          8.534018706995994e-05
+        ],
+        "velocity_error": 0.18042095474738673,
+        "yaw_rate_error": 0.01574580743908882,
+        "clearance_p95_mm": [
+          0.002105161547660827,
+          0.00320039689540863,
+          0.006649643182754517,
+          0.0034905970096588135
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "forward",
+        "command": [
+          0.28,
+          0.0,
+          0.0
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.03570116311311722,
+        "AMP_style_same_final_discriminator": 0.004249160178005695,
+        "mean_velocity": [
+          -0.0002617374120745808,
+          4.455998350749724e-06,
+          0.00011200182052562013
+        ],
+        "velocity_error": 0.2803869060012512,
+        "yaw_rate_error": 0.01670997217297554,
+        "clearance_p95_mm": [
+          0.0021349638700485225,
+          0.0037070363759994502,
+          0.0068284571170806885,
+          0.003557652235031128
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "backward",
+        "command": [
+          -0.18,
+          0.0,
+          0.0
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.19839978218078613,
+        "AMP_style_same_final_discriminator": 0.1277727633714676,
+        "mean_velocity": [
+          -0.0002649503294378519,
+          -3.3092601370299235e-05,
+          0.0001666886528255418
+        ],
+        "velocity_error": 0.17991710186556584,
+        "yaw_rate_error": 0.016113055869936943,
+        "clearance_p95_mm": [
+          0.0022616237401962276,
+          0.003632158041000366,
+          0.006321817636489868,
+          0.003520399332046509
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "left",
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.12402735650539398,
+        "AMP_style_same_final_discriminator": 0.03496143966913223,
+        "mean_velocity": [
+          -0.00027075211983174086,
+          -1.1628907486738171e-05,
+          0.00010593777551548555
+        ],
+        "velocity_error": 0.10069526238602729,
+        "yaw_rate_error": 0.01646692492067814,
+        "clearance_p95_mm": [
+          0.0020828098058700557,
+          0.003639981150627136,
+          0.006649643182754517,
+          0.003632158041000366
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "right",
+        "command": [
+          0.0,
+          -0.1,
+          0.0
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.15735360980033875,
+        "AMP_style_same_final_discriminator": 0.09873555600643158,
+        "mean_velocity": [
+          -0.0002619731822051108,
+          -6.175925227580592e-05,
+          0.0001660111011005938
+        ],
+        "velocity_error": 0.10062798281120448,
+        "yaw_rate_error": 0.016624877229332924,
+        "clearance_p95_mm": [
+          0.0022388994693756104,
+          0.0036172568798065186,
+          0.006627663969993591,
+          0.00338628888130188
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "turn_left",
+        "command": [
+          0.0,
+          0.0,
+          0.4
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.10870286822319031,
+        "AMP_style_same_final_discriminator": 0.17777742445468903,
+        "mean_velocity": [
+          -0.00046370946802198887,
+          -6.0445563576649874e-05,
+          8.766687096795067e-05
+        ],
+        "velocity_error": 0.01354957390254101,
+        "yaw_rate_error": 0.3999123275279999,
+        "clearance_p95_mm": [
+          0.002671405673027038,
+          0.003371760249137878,
+          0.005822628736495972,
+          0.0036247074604034424
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "turn_right",
+        "command": [
+          0.0,
+          0.0,
+          -0.4
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.10041394084692001,
+        "AMP_style_same_final_discriminator": 3.239631723772618e-06,
+        "mean_velocity": [
+          -0.0004101803351659328,
+          8.857493958203122e-05,
+          0.0004232785722706467
+        ],
+        "velocity_error": 0.013724031618300506,
+        "yaw_rate_error": 0.4004232883453369,
+        "clearance_p95_mm": [
+          0.0020459294319152823,
+          0.0031329691410064697,
+          0.007484108209609985,
+          0.0034458935260772705
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "forward_left",
+        "command": [
+          0.2,
+          0.08,
+          0.0
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.04835681989789009,
+        "AMP_style_same_final_discriminator": 0.0012784636346623302,
+        "mean_velocity": [
+          -0.0002717258466873318,
+          -1.2456931472115684e-05,
+          2.1887823095312342e-05
+        ],
+        "velocity_error": 0.215757946165269,
+        "yaw_rate_error": 0.015613897703588009,
+        "clearance_p95_mm": [
+          0.0021047890186309814,
+          0.003155320882797241,
+          0.006545335054397583,
+          0.003524310886859894
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "forward_right",
+        "command": [
+          0.2,
+          -0.08,
+          0.0
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.06015748530626297,
+        "AMP_style_same_final_discriminator": 0.01338509377092123,
+        "mean_velocity": [
+          -0.00026924966368824244,
+          -2.6669405997381546e-05,
+          3.6756828194484115e-05
+        ],
+        "velocity_error": 0.21586151543002177,
+        "yaw_rate_error": 0.016053101047873497,
+        "clearance_p95_mm": [
+          0.002067908644676208,
+          0.0032227486371994014,
+          0.006568059325218201,
+          0.003170222043991089
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "arc_left",
+        "command": [
+          0.22,
+          0.0,
+          0.3
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.04046456143260002,
+        "AMP_style_same_final_discriminator": 0.03221539407968521,
+        "mean_velocity": [
+          -0.0004440322518348694,
+          5.9208072343608364e-05,
+          0.00015338120283558965
+        ],
+        "velocity_error": 0.22057649496560733,
+        "yaw_rate_error": 0.2998466491699219,
+        "clearance_p95_mm": [
+          0.002514570951461792,
+          0.0032301992177963252,
+          0.006173178553581238,
+          0.003468245267868042
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "arc_right",
+        "command": [
+          0.22,
+          0.0,
+          -0.3
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.037780433893203735,
+        "AMP_style_same_final_discriminator": 0.0,
+        "mean_velocity": [
+          -0.00044853691360913217,
+          3.5235083487350494e-05,
+          0.0002659990277606994
+        ],
+        "velocity_error": 0.2205734389788129,
+        "yaw_rate_error": 0.30026599764823914,
+        "clearance_p95_mm": [
+          0.001985952258110046,
+          0.002671405673027038,
+          0.007383711636066437,
+          0.0035429373383522034
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      }
+    ],
+    "after": [
+      {
+        "clip": "march",
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.548497200012207,
+        "AMP_style_same_final_discriminator": 0.41223153471946716,
+        "mean_velocity": [
+          -0.00014826664119027555,
+          -1.6654730643494986e-05,
+          4.479080598684959e-05
+        ],
+        "velocity_error": 0.017785970082077725,
+        "yaw_rate_error": 0.05104836821556091,
+        "clearance_p95_mm": [
+          0.001330301165580749,
+          0.0019781291484832764,
+          0.004481896758079529,
+          -0.00032372772693634066
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "forward_slow",
+        "command": [
+          0.18,
+          0.0,
+          0.0
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.42262354493141174,
+        "AMP_style_same_final_discriminator": 0.3635634779930115,
+        "mean_velocity": [
+          -0.00015422998694702983,
+          3.8820864574518055e-05,
+          7.770091178826988e-05
+        ],
+        "velocity_error": 0.1810717135460859,
+        "yaw_rate_error": 0.05045616999268532,
+        "clearance_p95_mm": [
+          0.0012334436178207393,
+          0.0019632279872894287,
+          0.004466623067855835,
+          -0.00046566128730773926
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "forward",
+        "command": [
+          0.28,
+          0.0,
+          0.0
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.35036608576774597,
+        "AMP_style_same_final_discriminator": 0.35453522205352783,
+        "mean_velocity": [
+          -0.00014622265007346869,
+          1.3971030966786202e-05,
+          6.724262493662536e-05
+        ],
+        "velocity_error": 0.2807418008647334,
+        "yaw_rate_error": 0.050580695271492004,
+        "clearance_p95_mm": [
+          0.0012032687664031982,
+          0.0020079314708709717,
+          0.004332885146141052,
+          -0.00019744038581848145
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "backward",
+        "command": [
+          -0.18,
+          0.0,
+          0.0
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.3904893100261688,
+        "AMP_style_same_final_discriminator": 0.4439558982849121,
+        "mean_velocity": [
+          -0.00014487355656456202,
+          -1.8018678019871004e-05,
+          7.451188866980374e-05
+        ],
+        "velocity_error": 0.1809281166538326,
+        "yaw_rate_error": 0.052327048033475876,
+        "clearance_p95_mm": [
+          0.0015236437320709229,
+          0.0020079314708709717,
+          0.004846975207328796,
+          0.000160932540893554
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "left",
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.46373647451400757,
+        "AMP_style_same_final_discriminator": 0.4276544451713562,
+        "mean_velocity": [
+          -0.00015156727749854326,
+          3.304150595795363e-05,
+          6.491362910310272e-06
+        ],
+        "velocity_error": 0.10024410187413522,
+        "yaw_rate_error": 0.051430728286504745,
+        "clearance_p95_mm": [
+          0.0012926757335662842,
+          0.002239271998405456,
+          0.004392117261886597,
+          -0.00011548399925231934
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "right",
+        "command": [
+          0.0,
+          -0.1,
+          0.0
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.4620759189128876,
+        "AMP_style_same_final_discriminator": 0.4152573049068451,
+        "mean_velocity": [
+          -0.00014838550123386085,
+          -2.6300087483832613e-05,
+          0.00017685281636659056
+        ],
+        "velocity_error": 0.1002534405297867,
+        "yaw_rate_error": 0.05213959515094757,
+        "clearance_p95_mm": [
+          0.0015012919902801514,
+          0.0023961067199707023,
+          0.004757195711135864,
+          -0.00014528632164001465
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "turn_left",
+        "command": [
+          0.0,
+          0.0,
+          0.4
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.3417579233646393,
+        "AMP_style_same_final_discriminator": 0.3632631301879883,
+        "mean_velocity": [
+          -0.00012117392179789022,
+          -0.00027248755213804543,
+          -0.0030812222976237535
+        ],
+        "velocity_error": 0.017760648478051692,
+        "yaw_rate_error": 0.4030812382698059,
+        "clearance_p95_mm": [
+          0.00173225998878479,
+          0.0023510307073593135,
+          0.007029622793197632,
+          0.000644847750663757
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "turn_right",
+        "command": [
+          0.0,
+          0.0,
+          -0.4
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.42249611020088196,
+        "AMP_style_same_final_discriminator": 0.42521312832832336,
+        "mean_velocity": [
+          1.8614173313835636e-05,
+          0.00035191079950891435,
+          0.0018575158901512623
+        ],
+        "velocity_error": 0.01704600154501498,
+        "yaw_rate_error": 0.40185755491256714,
+        "clearance_p95_mm": [
+          0.0017326325178146358,
+          0.0015016645193099971,
+          0.003401935100555419,
+          0.0011809170246124268
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "forward_left",
+        "command": [
+          0.2,
+          0.08,
+          0.0
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.3678097426891327,
+        "AMP_style_same_final_discriminator": 0.37241166830062866,
+        "mean_velocity": [
+          -0.00015464058378711343,
+          7.496505986637203e-06,
+          -3.716289938893169e-05
+        ],
+        "velocity_error": 0.21602369246623174,
+        "yaw_rate_error": 0.050053343176841736,
+        "clearance_p95_mm": [
+          0.0012185424566268917,
+          0.001978501677513122,
+          0.003952533006668091,
+          -0.00011362135410309007
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "forward_right",
+        "command": [
+          0.2,
+          -0.08,
+          0.0
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.4066372215747833,
+        "AMP_style_same_final_discriminator": 0.36757972836494446,
+        "mean_velocity": [
+          -0.00016625405987724662,
+          -2.9756189178442582e-05,
+          7.238065882120281e-05
+        ],
+        "velocity_error": 0.21644397619169461,
+        "yaw_rate_error": 0.050590675324201584,
+        "clearance_p95_mm": [
+          0.0012855976819992061,
+          0.002246350049972534,
+          0.004429742693901062,
+          -0.0005848705768585205
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "arc_left",
+        "command": [
+          0.22,
+          0.0,
+          0.3
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.33136168122291565,
+        "AMP_style_same_final_discriminator": 0.31349265575408936,
+        "mean_velocity": [
+          -0.00017564055451657623,
+          1.5071422239998356e-05,
+          -0.00031912559643387794
+        ],
+        "velocity_error": 0.22092971839878428,
+        "yaw_rate_error": 0.3003191649913788,
+        "clearance_p95_mm": [
+          0.0012628734111785889,
+          0.0022836029529571533,
+          0.00599399209022522,
+          0.000607222318649292
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      },
+      {
+        "clip": "arc_right",
+        "command": [
+          0.22,
+          0.0,
+          -0.3
+        ],
+        "valid_samples": 1000,
+        "reference_foot_quality": 0.4305534064769745,
+        "AMP_style_same_final_discriminator": 0.3833732604980469,
+        "mean_velocity": [
+          -0.0001742278109304607,
+          8.86953785084188e-05,
+          -0.001280107069760561
+        ],
+        "velocity_error": 0.22080733806801317,
+        "yaw_rate_error": 0.2987199127674103,
+        "clearance_p95_mm": [
+          0.0014193356037139893,
+          0.0020977109670639034,
+          0.00303611159324646,
+          0.0012632459402084346
+        ],
+        "flight_fraction": 0.0,
+        "illegal_support_fraction": 0.0,
+        "resets": 0
+      }
+    ]
+  },
+  "finite": true,
+  "long_training_started": false,
+  "gait_acceptance_proven": false,
+  "short_learning_signal_passed": true,
+  "speed_expansion_approved": false
+}

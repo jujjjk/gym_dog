@@ -133,7 +133,10 @@ class TaskRegistry:
                 + train_cfg.runner.run_name,
             )
         train_cfg_dict = class_to_dict(train_cfg)
-        if train_cfg_dict["runner"].get("amp_enabled", False):
+        if train_cfg_dict["runner"].get("cts_amp_enabled", False):
+            from legged_gym.algorithms.urdf4_amp_cts import Urdf4AMPCTSRunner
+            runner_class = Urdf4AMPCTSRunner
+        elif train_cfg_dict["runner"].get("amp_enabled", False):
             from legged_gym.algorithms.rs01_amp import Rs01AMPOnPolicyRunner
             runner_class = Rs01AMPOnPolicyRunner
         elif train_cfg_dict["runner"].get("phase_residual_policy", False):
