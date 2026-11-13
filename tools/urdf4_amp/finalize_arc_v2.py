@@ -1,0 +1,11 @@
+from pathlib import Path
+import json,hashlib,numpy as np
+from batch_v2 import evaluate,MOVES
+ROOT=Path(__file__).resolve().parents[2];BASE=ROOT/'artifacts/urdf4_amp_design_20261113_v2';out=BASE/'arc_right_final_trim';out.mkdir(exist_ok=False);prior=json.loads((BASE/'batch_screen/arc_right_ranking.json').read_text());b=next(x for x in prior if not x['rejection_reasons']);chosen=None
+for i,(vg,yg) in enumerate([(3.5,1.),(5.,1.),(3.5,2.),(5.,2.)]):
+ c=dict(b);c['design']=dict(b['design']);c['design'].update(velocity_gain=vg,yaw_velocity_gain=yg);r=evaluate(out/str(i),MOVES['arc_right'],c,60);print(i,r['rejection_reasons'],r['mean_velocity'],flush=True)
+ if not r['rejection_reasons']:chosen=r;break
+if chosen is None:raise RuntimeError('Arc-right candidates failed; do not approve')
+r=chosen;name='arc_right';dataset=BASE/'amp_reference_v2';a=np.load(Path(r['source_folder'])/'physical.npz');cut=slice(100,2600);feat=a['features'][cut];ct=a['contact'][cut];q=a['qpos'][cut];lift=a['foot_clearance'][cut];time=a['time'][cut];T=r['design']['period_s'];duty=r['design']['stance_ratio'];phase0=(time[:,None]/T+np.array([0,.5,.5,0]))%1;match,offset=max((float((ct==((phase0+x)%1<duty)).mean()),float(x)) for x in np.linspace(-.25,.25,101));valid=np.ones(len(feat),bool);valid[-1]=False;cmd=MOVES[name]
+np.savez_compressed(dataset/(name+'.npz'),amp_features=feat.astype(np.float32),transition_valid=valid,command=np.tile(cmd,(len(feat),1)).astype(np.float32),joint_pos_rad=feat[:,:12],joint_vel_rad_s=feat[:,12:24],root_pos_world_m=q[:,:3],root_quat_wxyz=q[:,3:7],leg_phase=(phase0+offset)%1,controller_leg_phase=phase0,foot_height_m=lift,contact=ct,foot_normal_force_N=a['foot_normal_force_N'][cut],raw_torque_Nm=a['raw'][cut],motor_torque_Nm=a['motor'][cut],applied_torque_Nm=a['applied'][cut],time_s=time-time[0])
+r.update(clip=name,frames=len(feat),cadence_hz=1/T,stance_ratio_target=duty,phase_alignment_offset_cycles=offset,phase_aligned_contact_match=match,physically_executed=True,physical_screen_passed=True,amp_training_approved=False,sha256=hashlib.sha256((dataset/(name+'.npz')).read_bytes()).hexdigest(),measured_command=r['mean_velocity']);m=json.loads((dataset/'manifest.json').read_text());m['clips']=[c for c in m['clips'] if c['clip']!=name]+[r];m['rejected_clips']=[];(dataset/'manifest.json').write_text(json.dumps(m,indent=2)+'\n')

@@ -1,0 +1,1350 @@
+{
+  "schema": "rs01_style_reference_v1",
+  "dataset_version": "V2 faster / higher clearance / measured diagonal coordination",
+  "kind": "urdf4_designed_physical_demonstrations_v2",
+  "amp_training_approved": false,
+  "validation_status": "mujoco_physical_screen_and_format_checks_passed",
+  "note": "Independent V2; V1 retained unchanged. No learned policy loaded. Requires new-URDF Isaac Gym AMP validation before automatic training approval.",
+  "frame_dt_s": 0.02,
+  "joint_order": [
+    "FL_hip_joint",
+    "FL_thigh_joint",
+    "FL_calf_joint",
+    "FR_hip_joint",
+    "FR_thigh_joint",
+    "FR_calf_joint",
+    "RL_hip_joint",
+    "RL_thigh_joint",
+    "RL_calf_joint",
+    "RR_hip_joint",
+    "RR_thigh_joint",
+    "RR_calf_joint"
+  ],
+  "foot_order": [
+    "FL",
+    "FR",
+    "RL",
+    "RR"
+  ],
+  "quaternion_order": "wxyz",
+  "feature_size": 46,
+  "urdf_sha256": "528c088ff240916b04dfc98611ae9437b92a31cfafc9a297399632e8d0774b91",
+  "amp_features_order": [
+    "joint_pos_rad:12",
+    "joint_vel_rad_s:12",
+    "foot_pos_body_m:12",
+    "base_lin_vel_body_m_s:3",
+    "base_ang_vel_body_rad_s:3",
+    "projected_gravity:3",
+    "root_height_m:1"
+  ],
+  "settings": {
+    "robot": "urdf4_rs01",
+    "policy_dt_s": 0.02,
+    "physics_dt_s": 0.0025,
+    "kp": 40,
+    "kd": 1,
+    "delay_s": 0.04,
+    "response_tau_s": 0.0319,
+    "response_gain": 0.928,
+    "motor_cap_Nm": 14,
+    "source": "fresh foot trajectories + IK + centroidal support and optional yaw step-placement feedback"
+  },
+  "phase_annotation": "Actual contact-aligned phase labels; controller_leg_phase preserves planned phase. Physical states unchanged.",
+  "clips": [
+    {
+      "controller_version": "v2_body_frame_moment_and_per_leg_lead",
+      "coordination": {
+        "diagonal_touchdown_p95_ms": 20.000000000003126,
+        "diagonal_touchdown_max_ms": 40.000000000000036,
+        "diagonal_liftoff_p95_ms": 0.0,
+        "diagonal_liftoff_max_ms": 20.000000000000018,
+        "body_z_std_mm": 3.621629309428814,
+        "yaw_rate_rms_rad_s": 0.10441432630083829,
+        "lift_events_per_foot": [
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "command": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "lead": 0.085,
+      "feed": 1.25,
+      "height": 0.29,
+      "seconds": 60,
+      "stop": "completed",
+      "mean_velocity": [
+        0.009788959281663106,
+        -0.0019184923546577191,
+        -0.0279160331857293
+      ],
+      "max_roll_pitch_deg": [
+        1.4603471731831468,
+        0.9424879061798114
+      ],
+      "clearance_p95_mm": [
+        28.596256653733022,
+        30.090137683529502,
+        29.222263810326258,
+        28.430307224769255
+      ],
+      "flight_fraction": 0.0,
+      "single_fraction": 0.0,
+      "illegal_two_fraction": 0.0,
+      "raw_peak_Nm": 10.272452987243453,
+      "saturation_fraction": 0.0,
+      "actual_body_height_mean_m": 0.29163580411699863,
+      "joint_speed_max_rad_s": [
+        1.0342689256170536,
+        2.518779824799691,
+        3.053507043000786,
+        1.0327946924994715,
+        2.0180151734242555,
+        3.1791679161776516,
+        1.1703053606544824,
+        2.2637446651733786,
+        2.940655814623022,
+        0.8742131167369688,
+        1.5009401079252715,
+        3.180304677035588
+      ],
+      "loss": 0.0934849073157487,
+      "amp_training_approved": false,
+      "design": {
+        "period_s": 0.5,
+        "stance_ratio": 0.6,
+        "clearance_m": 0.03,
+        "front_clearance_m": 0.038,
+        "rear_clearance_m": 0.034,
+        "foot_x_offset_m": -0.025,
+        "front_lead_offset_s": 0.0,
+        "rear_lead_offset_s": 0.0,
+        "feedforward_alpha": 0.7,
+        "leg_clearance_m": [
+          0.04344976573363634,
+          0.03499896117900833,
+          0.03825375189357775,
+          0.02926229326316571
+        ],
+        "leg_lead_offsets_s": [
+          0.005,
+          -0.015,
+          0.005,
+          -0.01
+        ],
+        "velocity_gain": 2.0,
+        "yaw_velocity_gain": 2.0,
+        "height_kp": 100.0,
+        "height_kd": 15.0
+      },
+      "source_index": 67,
+      "rejection_reasons": [],
+      "physical_screen_passed": true,
+      "source_folder": "/home/nszb/gym/artifacts/urdf4_amp_design_20261113_v2/validation60/march_attempt0",
+      "score": 1.086605752674628,
+      "motion": "march",
+      "clip": "march",
+      "frames": 2500,
+      "cadence_hz": 2.0,
+      "stance_ratio_target": 0.6,
+      "phase_alignment_offset_cycles": -0.044999999999999984,
+      "phase_aligned_contact_match": 0.9723,
+      "physically_executed": true,
+      "sha256": "e5ae86f18e7528eeff732199ff8f6e9253ad5fff12974c8c888483e1f68b5f6a",
+      "measured_command": [
+        0.009788959281663106,
+        -0.0019184923546577191,
+        -0.0279160331857293
+      ]
+    },
+    {
+      "controller_version": "v2_body_frame_moment_and_per_leg_lead",
+      "coordination": {
+        "diagonal_touchdown_p95_ms": 0.0,
+        "diagonal_touchdown_max_ms": 20.000000000000018,
+        "diagonal_liftoff_p95_ms": 20.000000000003126,
+        "diagonal_liftoff_max_ms": 40.000000000000036,
+        "body_z_std_mm": 6.016800859587101,
+        "yaw_rate_rms_rad_s": 0.13335893719475675,
+        "lift_events_per_foot": [
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "command": [
+        0.18,
+        0.0,
+        0.0
+      ],
+      "lead": 0.07,
+      "feed": 1.45,
+      "height": 0.275,
+      "seconds": 60,
+      "stop": "completed",
+      "mean_velocity": [
+        0.20630252215475672,
+        -0.0005372209841198763,
+        -0.012352510666460672
+      ],
+      "max_roll_pitch_deg": [
+        1.0908062475321303,
+        0.9342202273566088
+      ],
+      "clearance_p95_mm": [
+        30.51809554836004,
+        32.22514419594727,
+        32.972466380473605,
+        33.97967638139794
+      ],
+      "flight_fraction": 0.0,
+      "single_fraction": 0.0,
+      "illegal_two_fraction": 0.0,
+      "raw_peak_Nm": 10.829023695740378,
+      "saturation_fraction": 0.0,
+      "actual_body_height_mean_m": 0.2801867763046642,
+      "joint_speed_max_rad_s": [
+        1.095907204058946,
+        2.173511898196161,
+        2.8524545898605114,
+        0.8386263452780096,
+        2.806939034703025,
+        2.833020246316225,
+        0.9710040690349709,
+        3.1421215825916935,
+        2.8453402537655856,
+        1.1979734850300525,
+        2.2419028209236456,
+        2.887971778975058
+      ],
+      "loss": 0.19479584021724816,
+      "amp_training_approved": false,
+      "design": {
+        "period_s": 0.5,
+        "stance_ratio": 0.68,
+        "clearance_m": 0.03,
+        "front_clearance_m": 0.03,
+        "rear_clearance_m": 0.044,
+        "foot_x_offset_m": -0.025,
+        "front_lead_offset_s": -0.02,
+        "rear_lead_offset_s": 0.0,
+        "feedforward_alpha": 0.35,
+        "leg_clearance_m": [
+          0.03170760519269523,
+          0.03879150408740922,
+          0.049098057757837155,
+          0.039274605059869044
+        ],
+        "leg_lead_offsets_s": [
+          -0.01,
+          0.0,
+          -0.01,
+          -0.01
+        ]
+      },
+      "source_index": null,
+      "rejection_reasons": [],
+      "physical_screen_passed": true,
+      "source_folder": "/home/nszb/gym/artifacts/urdf4_amp_design_20261113_v2/validation60/forward_slow_attempt0",
+      "score": 1.9837710148012735,
+      "motion": "forward_slow",
+      "clip": "forward_slow",
+      "frames": 2500,
+      "cadence_hz": 2.0,
+      "stance_ratio_target": 0.68,
+      "phase_alignment_offset_cycles": -0.16,
+      "phase_aligned_contact_match": 0.9235,
+      "physically_executed": true,
+      "sha256": "f97bc227fde47ed1f183830c7b0e4d8d3b83b7c9927e78e80f49c152a70a6a96",
+      "measured_command": [
+        0.20630252215475672,
+        -0.0005372209841198763,
+        -0.012352510666460672
+      ]
+    },
+    {
+      "controller_version": "v2_body_frame_moment_and_per_leg_lead",
+      "coordination": {
+        "diagonal_touchdown_p95_ms": 20.000000000003126,
+        "diagonal_touchdown_max_ms": 40.000000000000036,
+        "diagonal_liftoff_p95_ms": 20.000000000003126,
+        "diagonal_liftoff_max_ms": 20.000000000003126,
+        "body_z_std_mm": 5.956053601183026,
+        "yaw_rate_rms_rad_s": 0.3099301832504598,
+        "lift_events_per_foot": [
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "command": [
+        0.28,
+        0.0,
+        0.0
+      ],
+      "lead": 0.09,
+      "feed": 1.45,
+      "height": 0.29,
+      "seconds": 60,
+      "stop": "completed",
+      "mean_velocity": [
+        0.29007593522912895,
+        0.004856338198847277,
+        -0.015179222032631287
+      ],
+      "max_roll_pitch_deg": [
+        2.9532929060314768,
+        1.7565830679829608
+      ],
+      "clearance_p95_mm": [
+        26.579111873867976,
+        29.855266987965514,
+        31.059173233128313,
+        35.19222339565729
+      ],
+      "flight_fraction": 0.0,
+      "single_fraction": 0.0,
+      "illegal_two_fraction": 0.0,
+      "raw_peak_Nm": 9.93550994293102,
+      "saturation_fraction": 0.0,
+      "actual_body_height_mean_m": 0.2956525018444724,
+      "joint_speed_max_rad_s": [
+        1.2669580320571128,
+        2.3341119353614124,
+        2.734518879960783,
+        1.3174563166286817,
+        3.2731227267361644,
+        2.912954022231981,
+        1.0550308550636363,
+        2.7308102201225255,
+        2.9008535618109046,
+        1.4776295745474912,
+        2.423166592530423,
+        3.1633660018646834
+      ],
+      "loss": 0.6876145561979665,
+      "amp_training_approved": false,
+      "design": {
+        "period_s": 0.5,
+        "stance_ratio": 0.68,
+        "clearance_m": 0.03,
+        "front_clearance_m": 0.038,
+        "rear_clearance_m": 0.044,
+        "foot_x_offset_m": -0.02,
+        "front_lead_offset_s": 0.0,
+        "rear_lead_offset_s": 0.0,
+        "feedforward_alpha": 0.35,
+        "leg_clearance_m": [
+          0.0410667772145805,
+          0.04805570068816806,
+          0.04168874916897354,
+          0.04565947224486048
+        ],
+        "leg_lead_offsets_s": [
+          0.01,
+          -0.01,
+          0.0,
+          0.0
+        ]
+      },
+      "source_index": null,
+      "rejection_reasons": [],
+      "physical_screen_passed": true,
+      "source_folder": "/home/nszb/gym/artifacts/urdf4_amp_design_20261113_v2/validation60/forward_attempt0",
+      "score": 2.20167931821472,
+      "motion": "forward",
+      "clip": "forward",
+      "frames": 2500,
+      "cadence_hz": 2.0,
+      "stance_ratio_target": 0.68,
+      "phase_alignment_offset_cycles": -0.07999999999999999,
+      "phase_aligned_contact_match": 0.9266,
+      "physically_executed": true,
+      "sha256": "227736f92141b6f411c39ad358f9d2ae9fee8e7205915ded9d8e52cf32ca689e",
+      "measured_command": [
+        0.29007593522912895,
+        0.004856338198847277,
+        -0.015179222032631287
+      ]
+    },
+    {
+      "controller_version": "v2_body_frame_moment_and_per_leg_lead",
+      "coordination": {
+        "diagonal_touchdown_p95_ms": 20.000000000003126,
+        "diagonal_touchdown_max_ms": 40.000000000000036,
+        "diagonal_liftoff_p95_ms": 20.000000000003126,
+        "diagonal_liftoff_max_ms": 40.000000000000036,
+        "body_z_std_mm": 5.1771434659548445,
+        "yaw_rate_rms_rad_s": 0.15635894091240016,
+        "lift_events_per_foot": [
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "command": [
+        -0.18,
+        0.0,
+        0.0
+      ],
+      "lead": 0.09,
+      "feed": 1.45,
+      "height": 0.285,
+      "seconds": 60,
+      "stop": "completed",
+      "mean_velocity": [
+        -0.20168309582196414,
+        0.0007789688384334977,
+        0.022561786282474284
+      ],
+      "max_roll_pitch_deg": [
+        3.9524455536723155,
+        1.9463635158545511
+      ],
+      "clearance_p95_mm": [
+        31.02239269303633,
+        29.108546745275003,
+        29.801185142547588,
+        28.048476257981825
+      ],
+      "flight_fraction": 0.0,
+      "single_fraction": 0.0,
+      "illegal_two_fraction": 0.0,
+      "raw_peak_Nm": 9.808667823040675,
+      "saturation_fraction": 0.0,
+      "actual_body_height_mean_m": 0.2889708902970577,
+      "joint_speed_max_rad_s": [
+        1.5694361708547364,
+        2.6484313907355626,
+        3.156944329640112,
+        1.5329592797226117,
+        2.7249955975471063,
+        3.220264217316773,
+        1.3102341311997496,
+        2.574060737243828,
+        2.8491259310466477,
+        1.5280137355702637,
+        2.9803502876970476,
+        2.77724425832127
+      ],
+      "loss": 0.2927474814061362,
+      "amp_training_approved": false,
+      "design": {
+        "period_s": 0.5,
+        "stance_ratio": 0.68,
+        "clearance_m": 0.03,
+        "front_clearance_m": 0.038,
+        "rear_clearance_m": 0.044,
+        "foot_x_offset_m": -0.025,
+        "front_lead_offset_s": 0.0,
+        "rear_lead_offset_s": 0.0,
+        "feedforward_alpha": 0.35,
+        "leg_clearance_m": [
+          0.040306026765031824,
+          0.039544386103756685,
+          0.034112374426514935,
+          0.05019801572673221
+        ],
+        "leg_lead_offsets_s": [
+          0.0,
+          0.0,
+          0.01,
+          0.0
+        ]
+      },
+      "source_index": null,
+      "rejection_reasons": [],
+      "physical_screen_passed": true,
+      "source_folder": "/home/nszb/gym/artifacts/urdf4_amp_design_20261113_v2/validation60/backward_attempt0",
+      "score": 1.9055964967205559,
+      "motion": "backward",
+      "clip": "backward",
+      "frames": 2500,
+      "cadence_hz": 2.0,
+      "stance_ratio_target": 0.68,
+      "phase_alignment_offset_cycles": -0.07999999999999999,
+      "phase_aligned_contact_match": 0.9315,
+      "physically_executed": true,
+      "sha256": "9182132888debc02c93be8a3248293ada82b759907af6153374359c9b7eff21f",
+      "measured_command": [
+        -0.20168309582196414,
+        0.0007789688384334977,
+        0.022561786282474284
+      ]
+    },
+    {
+      "controller_version": "v2_body_frame_moment_and_per_leg_lead",
+      "coordination": {
+        "diagonal_touchdown_p95_ms": 20.000000000003126,
+        "diagonal_touchdown_max_ms": 40.0000000000027,
+        "diagonal_liftoff_p95_ms": 20.000000000003126,
+        "diagonal_liftoff_max_ms": 20.000000000003126,
+        "body_z_std_mm": 5.759150280287618,
+        "yaw_rate_rms_rad_s": 0.20433583928707588,
+        "lift_events_per_foot": [
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "command": [
+        0.0,
+        0.1,
+        0.0
+      ],
+      "lead": 0.09,
+      "feed": 1.45,
+      "height": 0.285,
+      "seconds": 60,
+      "stop": "completed",
+      "mean_velocity": [
+        0.018603214334937748,
+        0.11103694904198473,
+        -0.002353219334041941
+      ],
+      "max_roll_pitch_deg": [
+        3.1846996790764046,
+        1.6539349794590388
+      ],
+      "clearance_p95_mm": [
+        33.437035058273835,
+        25.63995905475684,
+        34.994505275955746,
+        37.78771360794123
+      ],
+      "flight_fraction": 0.0,
+      "single_fraction": 0.0,
+      "illegal_two_fraction": 0.0,
+      "raw_peak_Nm": 10.770380562622863,
+      "saturation_fraction": 0.0,
+      "actual_body_height_mean_m": 0.28980752254436265,
+      "joint_speed_max_rad_s": [
+        1.927900574151969,
+        1.869111931241132,
+        3.1077754222444955,
+        1.5552446055931428,
+        2.158596032087532,
+        2.8866324425353307,
+        2.4605547528318104,
+        1.6237654128358605,
+        2.8179518416383145,
+        0.9160252759468794,
+        2.2555136500667965,
+        3.157630655395538
+      ],
+      "loss": 0.35531307900342674,
+      "amp_training_approved": false,
+      "design": {
+        "period_s": 0.5,
+        "stance_ratio": 0.68,
+        "clearance_m": 0.03,
+        "front_clearance_m": 0.038,
+        "rear_clearance_m": 0.044,
+        "foot_x_offset_m": -0.025,
+        "front_lead_offset_s": 0.0,
+        "rear_lead_offset_s": 0.0,
+        "feedforward_alpha": 0.35,
+        "leg_clearance_m": [
+          0.040306026765031824,
+          0.04554438610375668,
+          0.032112374426514934,
+          0.05019801572673221
+        ],
+        "leg_lead_offsets_s": [
+          0.0,
+          0.0,
+          0.01,
+          0.0
+        ],
+        "yaw_step_feedback": 0.5,
+        "yaw_step_integral": 0.6
+      },
+      "source_index": 10,
+      "rejection_reasons": [],
+      "physical_screen_passed": true,
+      "source_folder": "/home/nszb/gym/artifacts/urdf4_amp_design_20261113_v2/validation60/left_attempt0",
+      "score": 2.3749800783006987,
+      "motion": "left",
+      "clip": "left",
+      "frames": 2500,
+      "cadence_hz": 2.0,
+      "stance_ratio_target": 0.68,
+      "phase_alignment_offset_cycles": -0.07999999999999999,
+      "phase_aligned_contact_match": 0.9185,
+      "physically_executed": true,
+      "sha256": "5c80f6b8ab2d1ca99cbb965328c2d3f816697c934b143e7586e7f2dba6af8c69",
+      "measured_command": [
+        0.018603214334937748,
+        0.11103694904198473,
+        -0.002353219334041941
+      ]
+    },
+    {
+      "controller_version": "v2_body_frame_moment_and_per_leg_lead",
+      "coordination": {
+        "diagonal_touchdown_p95_ms": 20.00000000000135,
+        "diagonal_touchdown_max_ms": 20.000000000003126,
+        "diagonal_liftoff_p95_ms": 39.99999999999915,
+        "diagonal_liftoff_max_ms": 40.000000000000036,
+        "body_z_std_mm": 5.753256456459859,
+        "yaw_rate_rms_rad_s": 0.14167328171613863,
+        "lift_events_per_foot": [
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "command": [
+        0.0,
+        -0.1,
+        0.0
+      ],
+      "lead": 0.07500000000000001,
+      "feed": 1.4,
+      "height": 0.272,
+      "seconds": 60,
+      "stop": "completed",
+      "mean_velocity": [
+        0.010726170516877569,
+        -0.11055235769374062,
+        0.016569716373517455
+      ],
+      "max_roll_pitch_deg": [
+        2.1742533058412556,
+        1.2095468330421157
+      ],
+      "clearance_p95_mm": [
+        27.262945260621063,
+        34.57866230574747,
+        30.932982693831775,
+        37.132625833014615
+      ],
+      "flight_fraction": 0.0,
+      "single_fraction": 0.0,
+      "illegal_two_fraction": 0.0,
+      "raw_peak_Nm": 10.4136988954459,
+      "saturation_fraction": 0.0,
+      "actual_body_height_mean_m": 0.275982686396214,
+      "joint_speed_max_rad_s": [
+        1.1965052222992116,
+        2.1005770523245855,
+        2.941166023010235,
+        1.9769756289068972,
+        1.732112475950704,
+        3.0557172146743703,
+        1.1795454876135227,
+        2.2554035345286443,
+        2.8975433433361033,
+        2.038415360645946,
+        1.6778961863886739,
+        2.927601410746953
+      ],
+      "loss": 0.17910448384871833,
+      "amp_training_approved": false,
+      "design": {
+        "period_s": 0.5,
+        "stance_ratio": 0.68,
+        "clearance_m": 0.03,
+        "front_clearance_m": 0.03,
+        "rear_clearance_m": 0.044,
+        "foot_x_offset_m": -0.025,
+        "front_lead_offset_s": -0.02,
+        "rear_lead_offset_s": 0.0,
+        "feedforward_alpha": 0.35,
+        "leg_clearance_m": [
+          0.038560405862381165,
+          0.03774917299379871,
+          0.05134195341880558,
+          0.037376455289662755
+        ],
+        "leg_lead_offsets_s": [
+          -0.01,
+          0.0,
+          -0.01,
+          -0.01
+        ],
+        "velocity_gain": 5.0,
+        "yaw_velocity_gain": 2.0,
+        "height_kp": 100.0,
+        "height_kd": 15.0
+      },
+      "source_index": 56,
+      "rejection_reasons": [],
+      "physical_screen_passed": true,
+      "source_folder": "/home/nszb/gym/artifacts/urdf4_amp_design_20261113_v2/validation60/right_attempt0",
+      "score": 2.407032282616161,
+      "motion": "right",
+      "clip": "right",
+      "frames": 2500,
+      "cadence_hz": 2.0,
+      "stance_ratio_target": 0.68,
+      "phase_alignment_offset_cycles": -0.16,
+      "phase_aligned_contact_match": 0.9241,
+      "physically_executed": true,
+      "sha256": "c41c5d1390e9b560ea7023dd131b6f0871243ff908e06cb5efecdbccf4940310",
+      "measured_command": [
+        0.010726170516877569,
+        -0.11055235769374062,
+        0.016569716373517455
+      ]
+    },
+    {
+      "controller_version": "v2_body_frame_moment_and_per_leg_lead",
+      "coordination": {
+        "diagonal_touchdown_p95_ms": 20.000000000003126,
+        "diagonal_touchdown_max_ms": 20.000000000003126,
+        "diagonal_liftoff_p95_ms": 20.000000000003126,
+        "diagonal_liftoff_max_ms": 20.000000000003126,
+        "body_z_std_mm": 4.906784154363344,
+        "yaw_rate_rms_rad_s": 0.3072767979704497,
+        "lift_events_per_foot": [
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "command": [
+        0.0,
+        0.0,
+        0.4
+      ],
+      "lead": 0.08,
+      "feed": 1.45,
+      "height": 0.295,
+      "seconds": 60,
+      "stop": "completed",
+      "mean_velocity": [
+        0.008238877416540351,
+        0.004603953878200883,
+        0.42958772033942744
+      ],
+      "max_roll_pitch_deg": [
+        1.4586817565902153,
+        0.6798847747651426
+      ],
+      "clearance_p95_mm": [
+        34.87402266978937,
+        27.655815301978237,
+        28.44492197915832,
+        40.04955192179121
+      ],
+      "flight_fraction": 0.0,
+      "single_fraction": 0.0,
+      "illegal_two_fraction": 0.0,
+      "raw_peak_Nm": 8.4716611144175,
+      "saturation_fraction": 0.0,
+      "actual_body_height_mean_m": 0.30002808150795407,
+      "joint_speed_max_rad_s": [
+        1.5464136751626478,
+        2.075659214694767,
+        3.1689137250117145,
+        1.6562666788373188,
+        2.544883879116827,
+        3.0006507541882588,
+        1.549071241029645,
+        2.6666725498257207,
+        3.10190465049807,
+        1.6933228783186147,
+        2.3146667670148977,
+        3.1298538378451255
+      ],
+      "loss": 0.5187946978581147,
+      "amp_training_approved": false,
+      "design": {
+        "period_s": 0.5,
+        "stance_ratio": 0.68,
+        "clearance_m": 0.03,
+        "front_clearance_m": 0.038,
+        "rear_clearance_m": 0.044,
+        "foot_x_offset_m": -0.02,
+        "front_lead_offset_s": 0.0,
+        "rear_lead_offset_s": 0.0,
+        "feedforward_alpha": 0.35,
+        "leg_clearance_m": [
+          0.040882981689656483,
+          0.043920788642412105,
+          0.04217107245305257,
+          0.04613099417789572
+        ],
+        "leg_lead_offsets_s": [
+          0.01,
+          0.0,
+          0.0,
+          0.01
+        ]
+      },
+      "source_index": null,
+      "rejection_reasons": [],
+      "physical_screen_passed": true,
+      "source_folder": "/home/nszb/gym/artifacts/urdf4_amp_design_20261113_v2/validation60/turn_left_attempt0",
+      "score": 2.069033268613313,
+      "motion": "turn_left",
+      "clip": "turn_left",
+      "frames": 2500,
+      "cadence_hz": 2.0,
+      "stance_ratio_target": 0.68,
+      "phase_alignment_offset_cycles": -0.07999999999999999,
+      "phase_aligned_contact_match": 0.9126,
+      "physically_executed": true,
+      "sha256": "02103fc6315af08f1901136b7781fa1d30da76aebec42d3b62dedc3e74e181d7",
+      "measured_command": [
+        0.008238877416540351,
+        0.004603953878200883,
+        0.42958772033942744
+      ]
+    },
+    {
+      "controller_version": "v2_body_frame_moment_and_per_leg_lead",
+      "coordination": {
+        "diagonal_touchdown_p95_ms": 0.0,
+        "diagonal_touchdown_max_ms": 20.000000000003126,
+        "diagonal_liftoff_p95_ms": 19.999999999999684,
+        "diagonal_liftoff_max_ms": 20.000000000003126,
+        "body_z_std_mm": 5.175653134921735,
+        "yaw_rate_rms_rad_s": 0.25661648899476014,
+        "lift_events_per_foot": [
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "command": [
+        0.0,
+        0.0,
+        -0.4
+      ],
+      "lead": 0.08,
+      "feed": 1.45,
+      "height": 0.295,
+      "seconds": 60,
+      "stop": "completed",
+      "mean_velocity": [
+        0.031530254695303704,
+        0.00441702413344254,
+        -0.4248120244627852
+      ],
+      "max_roll_pitch_deg": [
+        1.2735889863774084,
+        0.9139057977007181
+      ],
+      "clearance_p95_mm": [
+        29.687461036987617,
+        36.51330853451682,
+        36.734591142192805,
+        30.010063419230192
+      ],
+      "flight_fraction": 0.0,
+      "single_fraction": 0.0,
+      "illegal_two_fraction": 0.0,
+      "raw_peak_Nm": 9.603507677122126,
+      "saturation_fraction": 0.0,
+      "actual_body_height_mean_m": 0.2996144244218483,
+      "joint_speed_max_rad_s": [
+        1.1291763782826534,
+        1.9667188827433255,
+        2.976381011180137,
+        1.4900371687965033,
+        1.9723897672710708,
+        3.1995979536576966,
+        1.712688895072915,
+        2.300765846930631,
+        3.099819425909859,
+        1.3269771849426406,
+        2.3239784400485872,
+        3.244796613085349
+      ],
+      "loss": 0.4108209232286732,
+      "amp_training_approved": false,
+      "design": {
+        "period_s": 0.5,
+        "stance_ratio": 0.68,
+        "clearance_m": 0.03,
+        "front_clearance_m": 0.038,
+        "rear_clearance_m": 0.044,
+        "foot_x_offset_m": -0.02,
+        "front_lead_offset_s": 0.0,
+        "rear_lead_offset_s": 0.0,
+        "feedforward_alpha": 0.35,
+        "leg_clearance_m": [
+          0.040882981689656483,
+          0.043920788642412105,
+          0.04217107245305257,
+          0.04613099417789572
+        ],
+        "leg_lead_offsets_s": [
+          0.01,
+          0.0,
+          0.0,
+          0.01
+        ]
+      },
+      "source_index": null,
+      "rejection_reasons": [],
+      "physical_screen_passed": true,
+      "source_folder": "/home/nszb/gym/artifacts/urdf4_amp_design_20261113_v2/validation60/turn_right_attempt0",
+      "score": 1.9247828296529639,
+      "motion": "turn_right",
+      "clip": "turn_right",
+      "frames": 2500,
+      "cadence_hz": 2.0,
+      "stance_ratio_target": 0.68,
+      "phase_alignment_offset_cycles": -0.07999999999999999,
+      "phase_aligned_contact_match": 0.9062,
+      "physically_executed": true,
+      "sha256": "d704e7230bbbad7c7a00ae94ebe1c117d30bfd1436a1cedae471b5416a32bd52",
+      "measured_command": [
+        0.031530254695303704,
+        0.00441702413344254,
+        -0.4248120244627852
+      ]
+    },
+    {
+      "controller_version": "v2_body_frame_moment_and_per_leg_lead",
+      "coordination": {
+        "diagonal_touchdown_p95_ms": 20.000000000003126,
+        "diagonal_touchdown_max_ms": 40.000000000000036,
+        "diagonal_liftoff_p95_ms": 20.000000000003126,
+        "diagonal_liftoff_max_ms": 20.000000000003126,
+        "body_z_std_mm": 6.057729861195363,
+        "yaw_rate_rms_rad_s": 0.44992465558381967,
+        "lift_events_per_foot": [
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "command": [
+        0.2,
+        0.08,
+        0.0
+      ],
+      "lead": 0.09,
+      "feed": 1.45,
+      "height": 0.29,
+      "seconds": 60,
+      "stop": "completed",
+      "mean_velocity": [
+        0.19763149184169201,
+        0.09432095918743734,
+        -0.004573883297624133
+      ],
+      "max_roll_pitch_deg": [
+        2.961997113920566,
+        1.6342822421032392
+      ],
+      "clearance_p95_mm": [
+        31.708904748982388,
+        32.185834465058946,
+        34.23568426881867,
+        40.69207551782993
+      ],
+      "flight_fraction": 0.0,
+      "single_fraction": 0.0,
+      "illegal_two_fraction": 0.0,
+      "raw_peak_Nm": 10.49425658910962,
+      "saturation_fraction": 0.0,
+      "actual_body_height_mean_m": 0.2963213697170926,
+      "joint_speed_max_rad_s": [
+        1.8023436340500467,
+        2.4287925003406645,
+        3.1124636699991743,
+        1.8472181574574364,
+        3.672599791353269,
+        2.8853817248951223,
+        1.8334074051560039,
+        2.380055946451013,
+        3.2509190360731663,
+        1.4370972842940255,
+        2.45223862725861,
+        3.3839851825710623
+      ],
+      "loss": 1.24085601432798,
+      "amp_training_approved": false,
+      "design": {
+        "period_s": 0.5,
+        "stance_ratio": 0.68,
+        "clearance_m": 0.03,
+        "front_clearance_m": 0.038,
+        "rear_clearance_m": 0.044,
+        "foot_x_offset_m": -0.02,
+        "front_lead_offset_s": 0.0,
+        "rear_lead_offset_s": 0.0,
+        "feedforward_alpha": 0.35,
+        "leg_clearance_m": [
+          0.0410667772145805,
+          0.04805570068816806,
+          0.04168874916897354,
+          0.04565947224486048
+        ],
+        "leg_lead_offsets_s": [
+          0.01,
+          -0.01,
+          0.0,
+          0.0
+        ],
+        "yaw_step_feedback": 0.5,
+        "yaw_step_integral": 0.6
+      },
+      "source_index": 2,
+      "rejection_reasons": [],
+      "physical_screen_passed": true,
+      "source_folder": "/home/nszb/gym/artifacts/urdf4_amp_design_20261113_v2/validation60/forward_left_attempt0",
+      "score": 2.43006893914668,
+      "motion": "forward_left",
+      "clip": "forward_left",
+      "frames": 2500,
+      "cadence_hz": 2.0,
+      "stance_ratio_target": 0.68,
+      "phase_alignment_offset_cycles": -0.07999999999999999,
+      "phase_aligned_contact_match": 0.9235,
+      "physically_executed": true,
+      "sha256": "2a807f859198ad5394fd09ccbbbf909b13a0b2664f5e83f1caf6efef90b7850e",
+      "measured_command": [
+        0.19763149184169201,
+        0.09432095918743734,
+        -0.004573883297624133
+      ]
+    },
+    {
+      "controller_version": "v2_body_frame_moment_and_per_leg_lead",
+      "coordination": {
+        "diagonal_touchdown_p95_ms": 39.99999999999915,
+        "diagonal_touchdown_max_ms": 40.00000000000625,
+        "diagonal_liftoff_p95_ms": 40.000000000000924,
+        "diagonal_liftoff_max_ms": 40.000000000000924,
+        "body_z_std_mm": 5.927260908115796,
+        "yaw_rate_rms_rad_s": 0.13997306243477167,
+        "lift_events_per_foot": [
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "command": [
+        0.2,
+        -0.08,
+        0.0
+      ],
+      "lead": 0.095,
+      "feed": 1.5,
+      "height": 0.287,
+      "seconds": 60,
+      "stop": "completed",
+      "mean_velocity": [
+        0.23175625656266471,
+        -0.08546384246790718,
+        0.006459760979103322
+      ],
+      "max_roll_pitch_deg": [
+        3.3248256907640927,
+        1.9248114012183626
+      ],
+      "clearance_p95_mm": [
+        30.013065617426403,
+        36.792574233052704,
+        28.170534840593408,
+        34.45322884398939
+      ],
+      "flight_fraction": 0.0,
+      "single_fraction": 0.0,
+      "illegal_two_fraction": 0.0,
+      "raw_peak_Nm": 10.51603389928697,
+      "saturation_fraction": 0.0,
+      "actual_body_height_mean_m": 0.2921934490008892,
+      "joint_speed_max_rad_s": [
+        1.1867028169625162,
+        2.2440679192336037,
+        2.953729453609756,
+        1.6322133512571835,
+        2.5592879365378884,
+        3.0919343740214966,
+        0.8983154933762261,
+        3.2022537050922293,
+        2.8296505559733522,
+        1.5412280299806447,
+        2.342123823644075,
+        2.802755282916416
+      ],
+      "loss": 0.2707953078632619,
+      "amp_training_approved": false,
+      "design": {
+        "period_s": 0.5,
+        "stance_ratio": 0.68,
+        "clearance_m": 0.03,
+        "front_clearance_m": 0.038,
+        "rear_clearance_m": 0.044,
+        "foot_x_offset_m": -0.02,
+        "front_lead_offset_s": 0.0,
+        "rear_lead_offset_s": 0.0,
+        "feedforward_alpha": 0.35,
+        "leg_clearance_m": [
+          0.04764153835311023,
+          0.05209133987121821,
+          0.047623668367062146,
+          0.04761357720093713
+        ],
+        "leg_lead_offsets_s": [
+          0.005,
+          -0.01,
+          -0.005,
+          -0.005
+        ],
+        "velocity_gain": 5.0,
+        "yaw_velocity_gain": 3.0,
+        "height_kp": 120.0,
+        "height_kd": 15.0
+      },
+      "source_index": 67,
+      "rejection_reasons": [],
+      "physical_screen_passed": true,
+      "source_folder": "/home/nszb/gym/artifacts/urdf4_amp_design_20261113_v2/validation60/forward_right_attempt0",
+      "score": 2.784903922226345,
+      "motion": "forward_right",
+      "clip": "forward_right",
+      "frames": 2500,
+      "cadence_hz": 2.0,
+      "stance_ratio_target": 0.68,
+      "phase_alignment_offset_cycles": -0.07999999999999999,
+      "phase_aligned_contact_match": 0.9264,
+      "physically_executed": true,
+      "sha256": "f952fabeff0269c189754b572bf181885f843a5d0d058dad7b0871917dd0cb5e",
+      "measured_command": [
+        0.23175625656266471,
+        -0.08546384246790718,
+        0.006459760979103322
+      ]
+    },
+    {
+      "controller_version": "v2_body_frame_moment_and_per_leg_lead",
+      "coordination": {
+        "diagonal_touchdown_p95_ms": 19.999999999999574,
+        "diagonal_touchdown_max_ms": 40.000000000000036,
+        "diagonal_liftoff_p95_ms": 20.000000000003126,
+        "diagonal_liftoff_max_ms": 20.000000000003126,
+        "body_z_std_mm": 5.592425362834156,
+        "yaw_rate_rms_rad_s": 0.21493837356080459,
+        "lift_events_per_foot": [
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "command": [
+        0.22,
+        0.0,
+        0.3
+      ],
+      "lead": 0.095,
+      "feed": 1.5,
+      "height": 0.293,
+      "seconds": 60,
+      "stop": "completed",
+      "mean_velocity": [
+        0.22146944173342065,
+        0.006244351038131608,
+        0.28956476045308127
+      ],
+      "max_roll_pitch_deg": [
+        2.7770503209392534,
+        1.8226183312739541
+      ],
+      "clearance_p95_mm": [
+        29.803956171212366,
+        26.98670056388327,
+        29.69638097584625,
+        32.41625621179193
+      ],
+      "flight_fraction": 0.0,
+      "single_fraction": 0.0,
+      "illegal_two_fraction": 0.0,
+      "raw_peak_Nm": 9.834150309689056,
+      "saturation_fraction": 0.0,
+      "actual_body_height_mean_m": 0.2980626259447548,
+      "joint_speed_max_rad_s": [
+        1.2430598936847361,
+        2.224861907274708,
+        3.075610488147758,
+        0.9284553284731596,
+        3.6098412689952024,
+        2.908159650846936,
+        1.3629811973922275,
+        2.8476820190721637,
+        2.8603380821530737,
+        1.4012630530403682,
+        2.4328419488948296,
+        3.042538913002794
+      ],
+      "loss": 0.38005694881603524,
+      "amp_training_approved": false,
+      "design": {
+        "period_s": 0.5,
+        "stance_ratio": 0.68,
+        "clearance_m": 0.03,
+        "front_clearance_m": 0.038,
+        "rear_clearance_m": 0.044,
+        "foot_x_offset_m": -0.02,
+        "front_lead_offset_s": 0.0,
+        "rear_lead_offset_s": 0.0,
+        "feedforward_alpha": 0.35,
+        "leg_clearance_m": [
+          0.03780612536876931,
+          0.053801791425016995,
+          0.04703638337170573,
+          0.04844898729004653
+        ],
+        "leg_lead_offsets_s": [
+          0.01,
+          -0.005,
+          -0.005,
+          -0.005
+        ],
+        "velocity_gain": 3.5,
+        "yaw_velocity_gain": 2.0,
+        "height_kp": 120.0,
+        "height_kd": 15.0
+      },
+      "source_index": 45,
+      "rejection_reasons": [],
+      "physical_screen_passed": true,
+      "source_folder": "/home/nszb/gym/artifacts/urdf4_amp_design_20261113_v2/validation60/arc_left_attempt0",
+      "score": 1.9236423087142716,
+      "motion": "arc_left",
+      "clip": "arc_left",
+      "frames": 2500,
+      "cadence_hz": 2.0,
+      "stance_ratio_target": 0.68,
+      "phase_alignment_offset_cycles": -0.07999999999999999,
+      "phase_aligned_contact_match": 0.9254,
+      "physically_executed": true,
+      "sha256": "e3126116c567d30548179b8f80b807e785ff1e8c511d8aa01f7dbf2ca9485c81",
+      "measured_command": [
+        0.22146944173342065,
+        0.006244351038131608,
+        0.28956476045308127
+      ]
+    },
+    {
+      "controller_version": "v2_body_frame_moment_and_per_leg_lead",
+      "coordination": {
+        "diagonal_touchdown_p95_ms": 20.000000000003126,
+        "diagonal_touchdown_max_ms": 20.000000000003126,
+        "diagonal_liftoff_p95_ms": 20.000000000003126,
+        "diagonal_liftoff_max_ms": 20.000000000003126,
+        "body_z_std_mm": 5.415216956566503,
+        "yaw_rate_rms_rad_s": 0.18982920144103185,
+        "lift_events_per_foot": [
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "command": [
+        0.22,
+        0.0,
+        -0.3
+      ],
+      "lead": 0.09,
+      "feed": 1.45,
+      "height": 0.285,
+      "seconds": 60,
+      "stop": "completed",
+      "mean_velocity": [
+        0.24584672920349693,
+        -0.0010114261265357512,
+        -0.31505097965458934
+      ],
+      "max_roll_pitch_deg": [
+        1.1874874839234535,
+        1.1388039220039052
+      ],
+      "clearance_p95_mm": [
+        26.552325236066398,
+        34.8409732977474,
+        26.386504348442326,
+        31.028221779599964
+      ],
+      "flight_fraction": 0.0,
+      "single_fraction": 0.0,
+      "illegal_two_fraction": 0.0,
+      "raw_peak_Nm": 10.296769896022349,
+      "saturation_fraction": 0.0,
+      "actual_body_height_mean_m": 0.28968208582325927,
+      "joint_speed_max_rad_s": [
+        0.7213075069710589,
+        2.326642287948203,
+        2.785252628220959,
+        1.1544685116235909,
+        2.444711629474094,
+        3.1069902086577157,
+        1.5110313656616885,
+        2.531451091912705,
+        2.5671475806458397,
+        1.5829794958896288,
+        2.3025262658511703,
+        3.0124083318786883
+      ],
+      "loss": 0.3219036597015142,
+      "amp_training_approved": false,
+      "design": {
+        "period_s": 0.5,
+        "stance_ratio": 0.68,
+        "clearance_m": 0.03,
+        "front_clearance_m": 0.038,
+        "rear_clearance_m": 0.044,
+        "foot_x_offset_m": -0.025,
+        "front_lead_offset_s": 0.0,
+        "rear_lead_offset_s": 0.0,
+        "feedforward_alpha": 0.35,
+        "leg_clearance_m": [
+          0.040306026765031824,
+          0.039544386103756685,
+          0.034112374426514935,
+          0.05019801572673221
+        ],
+        "leg_lead_offsets_s": [
+          0.0,
+          0.0,
+          0.01,
+          0.0
+        ],
+        "velocity_gain": 3.5,
+        "yaw_velocity_gain": 1.0
+      },
+      "source_index": null,
+      "rejection_reasons": [],
+      "physical_screen_passed": true,
+      "source_folder": "/home/nszb/gym/artifacts/urdf4_amp_design_20261113_v2/arc_right_final_trim/0",
+      "score": 2.227820916579856,
+      "clip": "arc_right",
+      "frames": 2500,
+      "cadence_hz": 2.0,
+      "stance_ratio_target": 0.68,
+      "phase_alignment_offset_cycles": -0.07999999999999999,
+      "phase_aligned_contact_match": 0.936,
+      "physically_executed": true,
+      "sha256": "b7d2444624c865e45ac04980f4017fc32774fe5378d6034006458d108fa128f8",
+      "measured_command": [
+        0.24584672920349693,
+        -0.0010114261265357512,
+        -0.31505097965458934
+      ]
+    }
+  ],
+  "rejected_clips": []
+}

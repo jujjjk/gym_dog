@@ -1,0 +1,74 @@
+[
+  {
+    "clip": "march",
+    "reference_foot_quality": 0.9996166869297988,
+    "instant_linear_quality": 0.9575965803129953,
+    "cycle_linear_quality": 0.9917973814592754
+  },
+  {
+    "clip": "forward_slow",
+    "reference_foot_quality": 0.9998739635613029,
+    "instant_linear_quality": 0.8713011191059515,
+    "cycle_linear_quality": 0.9428442520083856
+  },
+  {
+    "clip": "forward",
+    "reference_foot_quality": 0.9995558926417419,
+    "instant_linear_quality": 0.797493374251259,
+    "cycle_linear_quality": 0.9854133390893701
+  },
+  {
+    "clip": "backward",
+    "reference_foot_quality": 0.9915559218204442,
+    "instant_linear_quality": 0.8707755016968193,
+    "cycle_linear_quality": 0.9500266800287479
+  },
+  {
+    "clip": "left",
+    "reference_foot_quality": 0.9997410270642333,
+    "instant_linear_quality": 0.858462854457607,
+    "cycle_linear_quality": 0.9620499249645569
+  },
+  {
+    "clip": "right",
+    "reference_foot_quality": 0.9992645600064992,
+    "instant_linear_quality": 0.9161598198292406,
+    "cycle_linear_quality": 0.980199687001325
+  },
+  {
+    "clip": "turn_left",
+    "reference_foot_quality": 0.999088018048642,
+    "instant_linear_quality": 0.9428045191078105,
+    "cycle_linear_quality": 0.988233489940763
+  },
+  {
+    "clip": "turn_right",
+    "reference_foot_quality": 0.9985597315384719,
+    "instant_linear_quality": 0.8954923463265754,
+    "cycle_linear_quality": 0.9198848450070014
+  },
+  {
+    "clip": "forward_left",
+    "reference_foot_quality": 0.9960417643980131,
+    "instant_linear_quality": 0.7658560808062049,
+    "cycle_linear_quality": 0.9723328188447166
+  },
+  {
+    "clip": "forward_right",
+    "reference_foot_quality": 0.9997063347136598,
+    "instant_linear_quality": 0.8375084663844135,
+    "cycle_linear_quality": 0.9152695339015885
+  },
+  {
+    "clip": "arc_left",
+    "reference_foot_quality": 0.9997832305055082,
+    "instant_linear_quality": 0.855220542974674,
+    "cycle_linear_quality": 0.9959490278509
+  },
+  {
+    "clip": "arc_right",
+    "reference_foot_quality": 0.9997312230486964,
+    "instant_linear_quality": 0.8296300116277776,
+    "cycle_linear_quality": 0.9435378212640986
+  }
+]

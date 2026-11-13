@@ -1,0 +1,91 @@
+{
+  "task": "urdf4_omni_v1",
+  "mode": "fk",
+  "dataset_manifest_sha256": "e5e1f0fff2f593b153cd2ac090861833d9319a2e0c1aec1847872aeed7bd7b86",
+  "urdf_sha256": "528c088ff240916b04dfc98611ae9437b92a31cfafc9a297399632e8d0774b91",
+  "joint_order": [
+    "FL_hip_joint",
+    "FL_thigh_joint",
+    "FL_calf_joint",
+    "FR_hip_joint",
+    "FR_thigh_joint",
+    "FR_calf_joint",
+    "RL_hip_joint",
+    "RL_thigh_joint",
+    "RL_calf_joint",
+    "RR_hip_joint",
+    "RR_thigh_joint",
+    "RR_calf_joint"
+  ],
+  "seed": null,
+  "physics_dt_s": 0.0024999999441206455,
+  "control_dt_s": 0.019999999552965164,
+  "amp_training_approved": false,
+  "passed": true,
+  "tolerance_m": 2e-05,
+  "samples": 612,
+  "cases": [
+    {
+      "clip": "march",
+      "samples": 51,
+      "foot_fk_max_error_m": 1.3887882232666016e-05
+    },
+    {
+      "clip": "forward_slow",
+      "samples": 51,
+      "foot_fk_max_error_m": 4.872679710388184e-06
+    },
+    {
+      "clip": "forward",
+      "samples": 51,
+      "foot_fk_max_error_m": 5.498528480529785e-06
+    },
+    {
+      "clip": "backward",
+      "samples": 51,
+      "foot_fk_max_error_m": 5.796551704406738e-06
+    },
+    {
+      "clip": "left",
+      "samples": 51,
+      "foot_fk_max_error_m": 6.973743438720703e-06
+    },
+    {
+      "clip": "right",
+      "samples": 51,
+      "foot_fk_max_error_m": 4.589557647705078e-06
+    },
+    {
+      "clip": "turn_left",
+      "samples": 51,
+      "foot_fk_max_error_m": 6.616115570068359e-06
+    },
+    {
+      "clip": "turn_right",
+      "samples": 51,
+      "foot_fk_max_error_m": 7.4356794357299805e-06
+    },
+    {
+      "clip": "forward_left",
+      "samples": 51,
+      "foot_fk_max_error_m": 7.241964340209961e-06
+    },
+    {
+      "clip": "forward_right",
+      "samples": 51,
+      "foot_fk_max_error_m": 5.9157609939575195e-06
+    },
+    {
+      "clip": "arc_left",
+      "samples": 51,
+      "foot_fk_max_error_m": 6.645917892456055e-06
+    },
+    {
+      "clip": "arc_right",
+      "samples": 51,
+      "foot_fk_max_error_m": 7.495284080505371e-06
+    }
+  ],
+  "note": "One zero-gravity step above the floor, without torques; pose writes are only a kinematic test.",
+  "dataset_manifest_unchanged": true
+}

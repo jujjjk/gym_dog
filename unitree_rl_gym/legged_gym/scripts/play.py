@@ -13,6 +13,9 @@ def play_urdf4(args):
     env_cfg, train_cfg = task_registry.get_cfgs(name=args.task)
     env_cfg.env.num_envs = args.num_envs or 1
     env_cfg.env.test = True
+    cts = args.task == "urdf4_amp_cts_v1"
+    if cts:
+        env_cfg.amp_cts.student_only = True
     env_cfg.env.episode_length_s = args.duration_s + 10.0
     env_cfg.noise.add_noise = False
     env_cfg.push.enabled = False
@@ -25,15 +28,20 @@ def play_urdf4(args):
     commands = (
         ("forward", 0.6, 0.0, 0.0),
         ("backward", -0.4, 0.0, 0.0),
-        ("left", 0.0, 0.3, 0.0),
-        ("right", 0.0, -0.3, 0.0),
-        ("turn left", 0.0, 0.0, 1.0),
-        ("turn right", 0.0, 0.0, -1.0),
+        ("left", 0.0, 0.4 if cts else 0.3, 0.0),
+        ("right", 0.0, -0.4 if cts else -0.3, 0.0),
+        ("turn left", 0.0, 0.0, 1.2 if cts else 1.0),
+        ("turn right", 0.0, 0.0, -1.2 if cts else -1.0),
         ("diagonal", 0.4, 0.2, 0.0),
         ("arc", 0.3, 0.0, 0.6),
         ("mixed", 0.3, -0.2, -0.5),
         ("stand", 0.0, 0.0, 0.0),
     ) if args.sweep else (("fixed", args.vx, args.vy, args.wz),)
+    if cts and args.sweep and env_cfg.amp_cts.stage == 'v2_style':
+        import json
+        from pathlib import Path
+        manifest=json.loads((Path(env_cfg.amp_cts.reference)/'manifest.json').read_text())
+        commands=tuple((c['clip'],*c['command']) for c in manifest['clips'])+(("stand",0.,0.,0.),)
     env_cfg.commands.fixed_command = list(commands[0][1:])
     env, _ = task_registry.make_env(name=args.task, args=args, env_cfg=env_cfg)
     train_cfg.runner.resume = True
@@ -49,7 +57,8 @@ def play_urdf4(args):
             if case != last_case:
                 label, vx, vy, wz = commands[case]
                 env.set_command_override(
-                    torch.tensor([vx, vy, wz], device=env.device).repeat(env.num_envs, 1)
+                    torch.tensor([vx, vy, wz], device=env.device).repeat(env.num_envs, 1),
+                    **({"gait_enabled": abs(vx)+abs(vy)+abs(wz)>0 or label=='march' or args.march} if cts else {})
                 )
                 print(f"[native play] {label}: vx={vx}, vy={vy}, wz={wz}", flush=True)
                 last_case = case
@@ -57,7 +66,7 @@ def play_urdf4(args):
 
 
 def play(args):
-    if args.task == "urdf4_omni_v1":
+    if args.task in ("urdf4_omni_v1", "urdf4_amp_cts_v1"):
         return play_urdf4(args)
     env_cfg, train_cfg = task_registry.get_cfgs(name=(args.task))
     env_cfg.env.num_envs = min(env_cfg.env.num_envs, 100)
@@ -146,8 +155,10 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--sweep", action="store_true", help="URDF4: change direction every 10 seconds")
+    parser.add_argument("--march", action="store_true", help="CTS: step in place on a zero velocity command")
     flags, remaining = parser.parse_known_args()
     sys.argv = sys.argv[:1] + remaining
     args = get_args()
     args.sweep = flags.sweep
+    args.march = flags.march
     play(args)

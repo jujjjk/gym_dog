@@ -1,0 +1,23 @@
+{
+  "dataset": "artifacts/urdf4_amp_design_20261113_v2/amp_reference_v2",
+  "dataset_manifest_sha256": "e5e1f0fff2f593b153cd2ac090861833d9319a2e0c1aec1847872aeed7bd7b86",
+  "urdf_sha256": "528c088ff240916b04dfc98611ae9437b92a31cfafc9a297399632e8d0774b91",
+  "nominal_isaac_reference_tracking_passed": true,
+  "isaac_fk_passed": true,
+  "AMP_discriminator_numerics_passed": true,
+  "one_AMP_PPO_integration_update_passed": true,
+  "full_AMP_training_validated": false,
+  "production_AMP_task_registered": false,
+  "original_dataset_manifest_modified": false,
+  "original_amp_training_approved": false,
+  "scope": "nominal PhysX tracking plus bounded AMP/PPO smoke; no domain-randomized or real-robot acceptance",
+  "dataset_file_hashes_match": true,
+  "source_sha256": {
+    "tools/urdf4_amp/capture_isaac_commands.py": "07395871e85acbc11093260b5eb9c4acb6c2d243331c6a90acc9a9731d86644c",
+    "tools/urdf4_amp/validate_isaac.py": "1b5f219792e072a4fdb9ef00e12d7c308c8b966ee2cb6b7db4c8023ced187fd4",
+    "tools/urdf4_amp/smoke_amp_ppo_isaac.py": "18a8916dae91b8809dedc651910e5baef019d3dd1f230a2073a20dbeed1082f2",
+    "unitree_rl_gym/legged_gym/envs/urdf4/amp_reference.py": "6c766c459cc4e22dd3a957bce32a2f88e6c1b363e966cbd31a7326aa8c0d49a2",
+    "unitree_rl_gym/legged_gym/envs/urdf4/urdf4_omni_env.py": "9238e0ba39d786db9ff8423acd3c6df1b1426d79d2401712b3dedeba39dada27",
+    "unitree_rl_gym/legged_gym/envs/rs01_go2_straight/rs01_actuator.py": "4b4ea8c378a7beb0fb713bd459ac0439f6e0c14607db10e5f3e7a929447132c0"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "task": "urdf4_omni_v1",
+  "num_envs": 64,
+  "policy_steps_per_env": 24,
+  "PPO_updates": 1,
+  "discriminator_updates": 1,
+  "policy_loaded": false,
+  "existing_checkpoints_modified": false,
+  "validated_transition_count": 1536,
+  "ppo_losses": [
+    0.12307784333825111,
+    0.06074455752968788
+  ],
+  "amp_metrics": {
+    "disc_loss": 1.3285127878189087,
+    "expert_score": 0.02394688129425049,
+    "policy_score": 0.1324245035648346,
+    "gradient_penalty": 0.020361118018627167
+  },
+  "amp_bonus_mean_per_step": 0.0040579646786985295,
+  "finite": true,
+  "unapproved_reference_guard": true,
+  "wrong_urdf_guard": true,
+  "numerical_smoke_only": true,
+  "gait_learning_proven": false,
+  "production_amp_task_registered": false
+}
