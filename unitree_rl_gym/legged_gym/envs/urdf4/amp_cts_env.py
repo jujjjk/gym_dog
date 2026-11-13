@@ -1,5 +1,7 @@
 """CTS packed observations + causally captured AMP transitions for the new URDF."""
 import json
+import hashlib
+from isaacgym import gymtorch
 from pathlib import Path
 import torch
 import numpy as np
@@ -13,6 +15,11 @@ def yaw_from_quat(q):
 class Urdf4AMPCTSRobot(Urdf4OmniRobot):
     def _init_buffers(self):
         n,device=self.num_envs,self.device
+        self._rsi_hold_history=torch.zeros(n,device=device,dtype=torch.bool)
+        self.last_reference_bank_ids=torch.full((n,),-1,device=device,dtype=torch.long)
+        self.reference_bank=None
+        self.reference_bank_sha256=None
+        self.reference_reset_probability=0. if self.cfg.env.test else self.cfg.amp_cts.reference_reset_probability
         self.heading_target=torch.zeros(n,device=device)
         self.heading_error=torch.zeros(n,device=device)
         self.gait_enabled=torch.ones(n,device=device,dtype=torch.bool)
@@ -40,6 +47,14 @@ class Urdf4AMPCTSRobot(Urdf4OmniRobot):
         self.cfg.env.num_observations=self.cfg.env.public_obs_size
         try:super()._init_buffers()
         finally:self.cfg.env.num_observations=packed
+        path=Path(self.cfg.amp_cts.reference_bank)
+        if path.exists():
+            data=torch.load(str(path),map_location=device)
+            if data['contract']!=self.reference_state_contract():raise ValueError('Reference bank plant contract mismatch')
+            self.reference_bank=data
+            self.reference_bank_sha256=hashlib.sha256(path.read_bytes()).hexdigest()
+        elif self.reference_reset_probability>0:
+            raise ValueError('Build the validated reference bank with prepare_cts_bootstrap.py first')
 
     def _resample_commands(self,env_ids):
         if not len(env_ids):return
@@ -68,6 +83,61 @@ class Urdf4AMPCTSRobot(Urdf4OmniRobot):
 
     def _moving(self):return self.gait_enabled
 
+    def reset(self):
+        # The base reset silently executes a zero action. That would perturb a
+        # reference actuator snapshot before the first network action.
+        self.reset_idx(torch.arange(self.num_envs,device=self.device))
+        self.compute_observations()
+        return self.obs_buf,self.privileged_obs_buf
+
+    def reference_state_contract(self):
+        from legged_gym.utils.helpers import class_to_dict
+        return dict(joints=list(self.dof_names),feet=list(self.foot_legs),dt=float(self.dt),
+                    actuator=class_to_dict(self.cfg.rs01_actuator),control=class_to_dict(self.cfg.control),
+                    reference_manifest=hashlib.sha256((Path(self.cfg.amp_cts.reference)/'manifest.json').read_bytes()).hexdigest())
+
+    @staticmethod
+    def _restore_cycle_mean(mean,ids,values):
+        indices=(mean.head-torch.arange(mean.window.shape[1],device=values.device))%mean.window.shape[1]
+        mean.window[ids[:,None],indices[None,:]]=values
+
+    def restore_reference_states(self,ids,bank_ids):
+        """Write simulator and actuator state only at reset boundaries."""
+        bank=self.reference_bank['snapshots']
+        self.last_reference_bank_ids[ids]=bank_ids
+        self.dof_pos[ids]=bank['dof_pos'][bank_ids];self.dof_vel[ids]=bank['dof_vel'][bank_ids]
+        self.root_states[ids]=bank['root'][bank_ids]
+        self.root_states[ids,:3]+=self.env_origins[ids]
+        for name in ('position_target','target_rate','response_target','actions','last_actions','torques','raw_pd_torques','motor_torques'):
+            getattr(self,name)[ids]=bank[name][bank_ids]
+        self.delay_buffer[:,ids]=bank['delay_buffer'][bank_ids].transpose(0,1)
+        self.feet_pos[ids]=bank['feet_pos'][bank_ids]+self.env_origins[ids,None,:]
+        self.feet_vel[ids]=bank['feet_vel'][bank_ids]
+        self.foot_contact_mask[ids]=bank['contact'][bank_ids]
+        self.clock_offset[ids]=bank['clock'][bank_ids];self.episode_length_buf[ids]=0
+        self.heading_error[ids]=bank['heading_error'][bank_ids]
+        self.heading_target[ids]=yaw_from_quat(self.root_states[ids,3:7])+self.heading_error[ids]
+        self.velocity_drift[ids]=bank['velocity_drift'][bank_ids]
+        self._restore_cycle_mean(self.velocity_error,ids,bank['velocity_window'][bank_ids])
+        self._reset_sensors(ids)
+        self._restore_cycle_mean(self.measured_yaw_error,ids,bank['yaw_window'][bank_ids])
+        self.obs_history[ids]=bank['obs_history'][bank_ids]
+        self._history_stale[ids]=False;self._rsi_hold_history[ids]=True
+        ids32=ids.to(torch.int32)
+        self.gym.set_actor_root_state_tensor_indexed(self.sim,gymtorch.unwrap_tensor(self.root_states),gymtorch.unwrap_tensor(ids32),len(ids32))
+        self.gym.set_dof_state_tensor_indexed(self.sim,gymtorch.unwrap_tensor(self.dof_state),gymtorch.unwrap_tensor(ids32),len(ids32))
+
+    def reset_idx(self,ids):
+        self.last_reference_bank_ids[ids]=-1
+        super().reset_idx(ids)
+        if not len(ids) or self.reference_bank is None or self.reference_reset_probability<=0:return
+        selected=ids[(torch.rand(len(ids),device=self.device)<self.reference_reset_probability)&self.gait_enabled[ids]]
+        if not len(selected):return
+        table=self.reference_bank['clip_indices']
+        choices=torch.randint(table.shape[1],(len(selected),),device=self.device)
+        bank_ids=table[self.reference_id[selected],choices]
+        self.restore_reference_states(selected,bank_ids)
+
     def set_command_override(self,commands,gait_enabled=True):
         super().set_command_override(commands)
         self.override_gait_enabled=bool(gait_enabled)
@@ -92,8 +162,18 @@ class Urdf4AMPCTSRobot(Urdf4OmniRobot):
         return torch.cat((base,self.heading_error.sin()[:,None],(self.heading_error.cos()-1)[:,None],self.gait_enabled.float()[:,None]),1)
 
     def compute_observations(self):
+        held=self._rsi_hold_history.nonzero().flatten()
+        saved=self.obs_history[held].clone()
+        mean=self.measured_yaw_error
+        indices=(mean.head-torch.arange(mean.window.shape[1],device=self.device))%mean.window.shape[1]
+        saved_yaw=mean.window[held[:,None],indices[None,:]].clone()
         super().compute_observations()
-        public=self.obs_buf;privileged=self.privileged_obs_buf
+        self.obs_history[held]=saved
+        # Building the initial observation must not consume another sensor tick
+        # for restored histories. Other robots still advance normally.
+        self._restore_cycle_mean(mean,held,saved_yaw)
+        self._rsi_hold_history[held]=False
+        public=self.obs_history.reshape(self.num_envs,-1);privileged=self.privileged_obs_buf
         if public.shape[1]!=self.cfg.env.public_obs_size or privileged.shape[1]!=self.cfg.env.teacher_state_size:
             raise ValueError('CTS public/privileged feature layout changed')
         packed=torch.cat((public,privileged,self.teacher_mask.float()[:,None]),1)
@@ -137,14 +217,18 @@ class Urdf4AMPCTSRobot(Urdf4OmniRobot):
         # Track cycle means: natural within-cycle body motion in the V2
         # demonstrations must not compete with the style objective.
         mean_yaw=self.commands[:,2]-self.velocity_drift[:,2]
-        linear=self.velocity_drift[:,:2].square().sum(1)/cfg.command_linear_sigma_m_s**2
-        yaw=(mean_yaw-target_yaw).square()/cfg.command_yaw_sigma_rad_s**2
-        self.command_quality=torch.exp(-.5*(linear+yaw))
-        return self.command_quality
+        error=torch.cat((self.velocity_drift[:,:2]/cfg.command_linear_sigma_m_s,
+                         ((mean_yaw-target_yaw)/cfg.command_yaw_sigma_rad_s)[:,None]),1).abs()
+        loss=torch.where(error<=1,.5*error.square(),error-.5).sum(1)
+        self.command_quality=torch.exp(-loss)
+        return -loss
 
     def compute_reward(self):
         self.amp_terminal=amp_features(self).clone()
         super().compute_reward()
+        if 'command_tracking' not in self.reward_scales:
+            self._reward_command_tracking()  # Keep tracking diagnostics when style-only training disables its reward.
+        self._reward_phase_reference()  # diagnostic only; never added to reward
         slots=[self.foot_legs.index(x) for x in ['FL','FR','RL','RR']]
         self.amp_terminal_contact=self.get_foot_contact_mask()[:,slots].clone()
         self.amp_terminal_command=self.commands[:,:3].clone()

@@ -1,0 +1,6 @@
+# Keep compact validation evidence in Git; generated training assets stay local.
+before/
+run/
+*.pt
+*.npz
+events.out.tfevents.*

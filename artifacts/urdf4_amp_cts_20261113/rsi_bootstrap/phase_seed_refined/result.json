@@ -1,0 +1,8 @@
+{
+  "reference_action_mse": 5.056858188995884e-05,
+  "steps": 1500,
+  "LBFGS_max_steps": 300,
+  "checkpoint": "artifacts/urdf4_amp_cts_20261113/rsi_bootstrap/phase_seed_refined/run/model_0.pt",
+  "actor_inactive_inputs_initially_zero": true,
+  "behavior_accepted": false
+}

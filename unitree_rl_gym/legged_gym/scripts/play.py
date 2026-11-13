@@ -49,9 +49,16 @@ def play_urdf4(args):
         env=env, name=args.task, args=args, train_cfg=train_cfg
     )
     policy = runner.get_inference_policy(device=env.device)
+    if cts:
+        env.set_command_override(torch.zeros(env.num_envs,3,device=env.device),gait_enabled=False)
     obs, _ = env.reset()
     last_case = None
     with torch.no_grad():
+        if cts:
+            # Match behavior evaluation: settle the real plant before the first
+            # network action; preserve native mouse/camera interaction.
+            for _ in range(round(2./env.dt)):
+                obs,_,_,_,_=env.step(torch.zeros(env.num_envs,12,device=env.device))
         for step in range(int(round(args.duration_s / env.dt))):
             case = int(step * env.dt / 10.0) % len(commands)
             if case != last_case:
@@ -60,6 +67,9 @@ def play_urdf4(args):
                     torch.tensor([vx, vy, wz], device=env.device).repeat(env.num_envs, 1),
                     **({"gait_enabled": abs(vx)+abs(vy)+abs(wz)>0 or label=='march' or args.march} if cts else {})
                 )
+                if cts:
+                    env.compute_observations()
+                    obs=env.get_observations()
                 print(f"[native play] {label}: vx={vx}, vy={vy}, wz={wz}", flush=True)
                 last_case = case
             obs, _, _, _, _ = env.step(policy(obs))
