@@ -1,0 +1,3064 @@
+{
+  "checkpoint": "/home/nszb/gym/unitree_rl_gym/logs/urdf4_amp_cts_gait_first/Nov13_21-24-21_gait_first_30000/model_17800.pt",
+  "checkpoint_sha256": "42845cb95de28a0eb94ad41ff8538673d67f6071e3c7edfb231deb877479d355",
+  "numpy_export_max_error": 4.5299530029296875e-06,
+  "scene_sha256": "0c74e3bbae875927342ea345bb84c72b06e1e43d9d531dc321731ea538791c77",
+  "physics_dt_s": 0.0025,
+  "policy_dt_s": 0.019999999552965164,
+  "root_or_joint_overwrite_during_rollout": false,
+  "automatic_resets": false,
+  "tracking_used_as_gait_gate": false,
+  "results": [
+    {
+      "motion": "march",
+      "command": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "seed": 1,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        -0.0019544011981189316,
+        0.007828464172594573,
+        -0.032630774066244525
+      ],
+      "cycle_linear_error_m_s": 0.018207183429838802,
+      "cycle_yaw_error_rad_s": 0.03262875650199478,
+      "velocity_cycle_p05": [
+        -0.014731762112351134,
+        -0.013651831526076422,
+        -0.04509118221292738
+      ],
+      "velocity_cycle_p95": [
+        0.01084471096051857,
+        0.02956684018718079,
+        -0.020221803281456226
+      ],
+      "foot_clearance_p95_mm": [
+        33.8370523147391,
+        37.299657801604106,
+        29.445007191192364,
+        30.405125269870084
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.4690549384467353,
+      "diagonal_touchdown_p95_s": 0.03999999910593033,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.8714320912972713,
+          "rms_Nm": 2.806396867483841,
+          "steady_peak_Nm": 9.880975723266602,
+          "whole_rollout_peak_Nm": 10.324494361877441,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.8714320912972713,
+          "rms_Nm": 2.806396867483841,
+          "steady_peak_Nm": 9.880975723266602,
+          "whole_rollout_peak_Nm": 10.324494361877441,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.867579775715876,
+          "rms_Nm": 2.800481582838528,
+          "steady_peak_Nm": 9.841706751082523,
+          "whole_rollout_peak_Nm": 10.16849436187744,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 3.4175302206726106,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.09111111111111111
+    },
+    {
+      "motion": "forward_slow",
+      "command": [
+        0.18,
+        0.0,
+        0.0
+      ],
+      "seed": 1,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.22831537826193704,
+        0.005199388657285319,
+        0.03184325618972825
+      ],
+      "cycle_linear_error_m_s": 0.04861418356253122,
+      "cycle_yaw_error_rad_s": 0.031824079013118046,
+      "velocity_cycle_p05": [
+        0.22719820916652678,
+        0.003945314219454304,
+        0.028261066128034147
+      ],
+      "velocity_cycle_p95": [
+        0.22944698646664619,
+        0.006440195679533645,
+        0.03506495511624962
+      ],
+      "foot_clearance_p95_mm": [
+        30.94026658087951,
+        36.599006435545505,
+        37.512337551394666,
+        33.53960122705342
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.7046706730210914,
+      "diagonal_touchdown_p95_s": 0.019999999552965164,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.8574935618503792,
+          "rms_Nm": 2.865713192477377,
+          "steady_peak_Nm": 10.61311149597168,
+          "whole_rollout_peak_Nm": 10.640844345092773,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.8574935618503792,
+          "rms_Nm": 2.865713192477377,
+          "steady_peak_Nm": 10.61311149597168,
+          "whole_rollout_peak_Nm": 10.640844345092773,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.87450470323645,
+          "rms_Nm": 2.8678123922119956,
+          "steady_peak_Nm": 10.570099386789627,
+          "whole_rollout_peak_Nm": 10.570099386789627,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.1826675106478133,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.09407407407407407
+    },
+    {
+      "motion": "forward",
+      "command": [
+        0.28,
+        0.0,
+        0.0
+      ],
+      "seed": 1,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.3088006668620639,
+        0.00776882172805716,
+        0.01958016938633389
+      ],
+      "cycle_linear_error_m_s": 0.02980930651224734,
+      "cycle_yaw_error_rad_s": 0.019602897560917865,
+      "velocity_cycle_p05": [
+        0.3063802570104599,
+        0.005770028309780174,
+        0.014993329010903854
+      ],
+      "velocity_cycle_p95": [
+        0.3102710235118866,
+        0.009601224893704054,
+        0.023549922425299873
+      ],
+      "foot_clearance_p95_mm": [
+        30.81962895958369,
+        35.51301778716824,
+        34.457069583720234,
+        37.87079854681325
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.5737502035373936,
+      "diagonal_touchdown_p95_s": 0.019999999552965164,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.6711527945966185,
+          "rms_Nm": 2.627733347748255,
+          "steady_peak_Nm": 10.67731761932373,
+          "whole_rollout_peak_Nm": 10.68445110321045,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.6711527945966185,
+          "rms_Nm": 2.627733347748255,
+          "steady_peak_Nm": 10.67731761932373,
+          "whole_rollout_peak_Nm": 10.68445110321045,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.670723123805074,
+          "rms_Nm": 2.623790053129666,
+          "steady_peak_Nm": 10.62403372746946,
+          "whole_rollout_peak_Nm": 10.62403372746946,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.525467509067075,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.09555555555555556
+    },
+    {
+      "motion": "backward",
+      "command": [
+        -0.18,
+        0.0,
+        0.0
+      ],
+      "seed": 1,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        -0.2119847834220639,
+        0.008985817084371605,
+        -0.022171884924518288
+      ],
+      "cycle_linear_error_m_s": 0.03321577911087459,
+      "cycle_yaw_error_rad_s": 0.022173431663918643,
+      "velocity_cycle_p05": [
+        -0.2129552499949932,
+        0.008476261929790781,
+        -0.02696777813136577
+      ],
+      "velocity_cycle_p95": [
+        -0.21100643724203108,
+        0.009767163085052745,
+        -0.020398970632813873
+      ],
+      "foot_clearance_p95_mm": [
+        28.052824808197165,
+        26.693660836139877,
+        29.65680332248741,
+        28.592364578791578
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.7321341610484673,
+      "diagonal_touchdown_p95_s": 0.019999999552965164,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.9571343818267148,
+          "rms_Nm": 2.8507488686058635,
+          "steady_peak_Nm": 8.73812198638916,
+          "whole_rollout_peak_Nm": 9.769186019897461,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.9571343818267148,
+          "rms_Nm": 2.8507488686058635,
+          "steady_peak_Nm": 8.73812198638916,
+          "whole_rollout_peak_Nm": 9.769186019897461,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.9356191152803202,
+          "rms_Nm": 2.843218413129811,
+          "steady_peak_Nm": 8.741192772898968,
+          "whole_rollout_peak_Nm": 9.613186019897487,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.2226935027986487,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.12
+    },
+    {
+      "motion": "left",
+      "command": [
+        0.0,
+        0.1,
+        0.0
+      ],
+      "seed": 1,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.02110029482575892,
+        0.11337353181507852,
+        0.0035633331171831943
+      ],
+      "cycle_linear_error_m_s": 0.02499498203522864,
+      "cycle_yaw_error_rad_s": 0.003797675362117568,
+      "velocity_cycle_p05": [
+        0.020469419797882436,
+        0.11232259228825568,
+        -0.0007556034246226822
+      ],
+      "velocity_cycle_p95": [
+        0.022309399130754175,
+        0.11439640589058399,
+        0.006389426919631667
+      ],
+      "foot_clearance_p95_mm": [
+        35.02364345908978,
+        28.70235060910192,
+        28.927345881699356,
+        35.49825817873299
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.662515411614212,
+      "diagonal_touchdown_p95_s": 0.0,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.797540446379194,
+          "rms_Nm": 2.747219588982453,
+          "steady_peak_Nm": 10.724340438842773,
+          "whole_rollout_peak_Nm": 10.820504188537598,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.797540446379194,
+          "rms_Nm": 2.747219588982453,
+          "steady_peak_Nm": 10.724340438842773,
+          "whole_rollout_peak_Nm": 10.820504188537598,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.813794398466179,
+          "rms_Nm": 2.7419981600009047,
+          "steady_peak_Nm": 10.880193622471173,
+          "whole_rollout_peak_Nm": 10.880193622471173,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.5430692258935306,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.12296296296296297
+    },
+    {
+      "motion": "right",
+      "command": [
+        0.0,
+        -0.1,
+        0.0
+      ],
+      "seed": 1,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.010695580570097297,
+        -0.10979968136659375,
+        0.021927274880236602
+      ],
+      "cycle_linear_error_m_s": 0.014547193079084756,
+      "cycle_yaw_error_rad_s": 0.021904702992672786,
+      "velocity_cycle_p05": [
+        0.009092307686223652,
+        -0.11147962182760238,
+        0.01608990580280079
+      ],
+      "velocity_cycle_p95": [
+        0.012442860595765525,
+        -0.10813992835581303,
+        0.028211805457249287
+      ],
+      "foot_clearance_p95_mm": [
+        28.758598899812096,
+        34.37381714804403,
+        30.28776142716382,
+        37.848704264235124
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.275433928441629,
+      "diagonal_touchdown_p95_s": 0.0,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.8999473735740995,
+          "rms_Nm": 2.9198055540612238,
+          "steady_peak_Nm": 9.730169296264648,
+          "whole_rollout_peak_Nm": 9.999712944030762,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.8999473735740995,
+          "rms_Nm": 2.9198055540612238,
+          "steady_peak_Nm": 9.730169296264648,
+          "whole_rollout_peak_Nm": 9.999712944030762,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.9138666260595618,
+          "rms_Nm": 2.915508841449781,
+          "steady_peak_Nm": 9.695522874875916,
+          "whole_rollout_peak_Nm": 10.054797522774845,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.380409925556954,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.1348148148148148
+    },
+    {
+      "motion": "turn_left",
+      "command": [
+        0.0,
+        0.0,
+        0.4
+      ],
+      "seed": 1,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.0043923218870703645,
+        0.013100616882008278,
+        0.4572427428060608
+      ],
+      "cycle_linear_error_m_s": 0.01386792567367356,
+      "cycle_yaw_error_rad_s": 0.057181913017308975,
+      "velocity_cycle_p05": [
+        0.0023618476222327443,
+        0.010265338174649514,
+        0.45222780160605913
+      ],
+      "velocity_cycle_p95": [
+        0.006269759926944972,
+        0.015448443016503006,
+        0.4630712485220283
+      ],
+      "foot_clearance_p95_mm": [
+        34.64066709830204,
+        31.289051228432584,
+        32.83579676872188,
+        42.06848890374574
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.0795191008892928,
+      "diagonal_touchdown_p95_s": 0.0,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.5924544590537832,
+          "rms_Nm": 2.487886448642233,
+          "steady_peak_Nm": 8.273200988769531,
+          "whole_rollout_peak_Nm": 10.043621063232422,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.5924544590537832,
+          "rms_Nm": 2.487886448642233,
+          "steady_peak_Nm": 8.273200988769531,
+          "whole_rollout_peak_Nm": 10.043621063232422,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.6029399870126186,
+          "rms_Nm": 2.4810265339185973,
+          "steady_peak_Nm": 8.429200315435333,
+          "whole_rollout_peak_Nm": 9.887621063232421,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.1175011227038003,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.10444444444444445
+    },
+    {
+      "motion": "turn_right",
+      "command": [
+        0.0,
+        0.0,
+        -0.4
+      ],
+      "seed": 1,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.02211114505079523,
+        0.010587974831168712,
+        -0.4419654740800184
+      ],
+      "cycle_linear_error_m_s": 0.024524090158758644,
+      "cycle_yaw_error_rad_s": 0.041957650015588564,
+      "velocity_cycle_p05": [
+        0.02163387061096728,
+        0.010216444672551003,
+        -0.4431242322735488
+      ],
+      "velocity_cycle_p95": [
+        0.022680727944243702,
+        0.010967443783301861,
+        -0.4410844255052507
+      ],
+      "foot_clearance_p95_mm": [
+        27.6167181260968,
+        37.83588367034077,
+        36.58205045566041,
+        31.422901546694206
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.3098113444818722,
+      "diagonal_touchdown_p95_s": 0.0,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.664339610450401,
+          "rms_Nm": 2.562024750012954,
+          "steady_peak_Nm": 8.719315528869629,
+          "whole_rollout_peak_Nm": 9.500336647033691,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.664339610450401,
+          "rms_Nm": 2.562024750012954,
+          "steady_peak_Nm": 8.719315528869629,
+          "whole_rollout_peak_Nm": 9.500336647033691,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.6748672809265168,
+          "rms_Nm": 2.5538529625273054,
+          "steady_peak_Nm": 8.87531551670847,
+          "whole_rollout_peak_Nm": 9.34433664703369,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 0.8967843660563569,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.14666666666666667
+    },
+    {
+      "motion": "forward_left",
+      "command": [
+        0.2,
+        0.08,
+        0.0
+      ],
+      "seed": 1,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.22391432738966413,
+        0.10193918205366505,
+        0.009936395070205132
+      ],
+      "cycle_linear_error_m_s": 0.0415376515318869,
+      "cycle_yaw_error_rad_s": 0.01750096695402112,
+      "velocity_cycle_p05": [
+        0.19937196835875512,
+        0.07010564111173151,
+        -0.01898840412497519
+      ],
+      "velocity_cycle_p95": [
+        0.24830705791711807,
+        0.13374965958297255,
+        0.040174992540851225
+      ],
+      "foot_clearance_p95_mm": [
+        34.57629429747965,
+        39.92469138985359,
+        36.82416295252579,
+        42.310790179878126
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.2699713056316568,
+      "diagonal_touchdown_p95_s": 0.019999999552965164,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.6662312867003206,
+          "rms_Nm": 2.6128404909597847,
+          "steady_peak_Nm": 10.779031753540039,
+          "whole_rollout_peak_Nm": 10.779031753540039,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.6662312867003206,
+          "rms_Nm": 2.6128404909597847,
+          "steady_peak_Nm": 10.779031753540039,
+          "whole_rollout_peak_Nm": 10.779031753540039,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.6784929740026067,
+          "rms_Nm": 2.6096842500654116,
+          "steady_peak_Nm": 10.935031616347931,
+          "whole_rollout_peak_Nm": 10.935031616347931,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 2.9429092989033885,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.04148148148148148
+    },
+    {
+      "motion": "forward_right",
+      "command": [
+        0.2,
+        -0.08,
+        0.0
+      ],
+      "seed": 1,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.2180960116231883,
+        -0.07917397362628469,
+        0.01991484559483878
+      ],
+      "cycle_linear_error_m_s": 0.018450545363716025,
+      "cycle_yaw_error_rad_s": 0.019720732061280014,
+      "velocity_cycle_p05": [
+        0.20959034502506255,
+        -0.08365181859582663,
+        0.013052731138304807
+      ],
+      "velocity_cycle_p95": [
+        0.2220489093661308,
+        -0.07519082732498646,
+        0.03433942291885614
+      ],
+      "foot_clearance_p95_mm": [
+        26.89770208750219,
+        38.14620983186073,
+        29.54803069664935,
+        33.93928464011053
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.5747885925958514,
+      "diagonal_touchdown_p95_s": 0.019999999552965164,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.823691560302999,
+          "rms_Nm": 2.795086750761205,
+          "steady_peak_Nm": 10.306436538696289,
+          "whole_rollout_peak_Nm": 10.306436538696289,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.823691560302999,
+          "rms_Nm": 2.795086750761205,
+          "steady_peak_Nm": 10.306436538696289,
+          "whole_rollout_peak_Nm": 10.306436538696289,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.8411341972297655,
+          "rms_Nm": 2.7958010696489857,
+          "steady_peak_Nm": 10.46243653869629,
+          "whole_rollout_peak_Nm": 10.46243653869629,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.3908607480996737,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.07703703703703704
+    },
+    {
+      "motion": "arc_left",
+      "command": [
+        0.22,
+        0.0,
+        0.3
+      ],
+      "seed": 1,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.20145211784927933,
+        0.014419654624134973,
+        0.29398520997809774
+      ],
+      "cycle_linear_error_m_s": 0.026587278644185957,
+      "cycle_yaw_error_rad_s": 0.01343837744778454,
+      "velocity_cycle_p05": [
+        0.19707684576511383,
+        -0.009353814236819745,
+        0.2706605101749301
+      ],
+      "velocity_cycle_p95": [
+        0.20595805928111077,
+        0.037846717120701215,
+        0.31671209958149116
+      ],
+      "foot_clearance_p95_mm": [
+        32.327882885343,
+        30.376056609777866,
+        32.20241943716768,
+        37.36555810500166
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.2962642455162268,
+      "diagonal_touchdown_p95_s": 0.03999999910593033,
+      "lifts_per_foot": [
+        54,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.6954052213920245,
+          "rms_Nm": 2.580311569544587,
+          "steady_peak_Nm": 9.443156242370605,
+          "whole_rollout_peak_Nm": 9.826475143432617,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.6954052213920245,
+          "rms_Nm": 2.580311569544587,
+          "steady_peak_Nm": 9.443156242370605,
+          "whole_rollout_peak_Nm": 9.826475143432617,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.7050779287015676,
+          "rms_Nm": 2.574170604431512,
+          "steady_peak_Nm": 9.287156242370605,
+          "whole_rollout_peak_Nm": 9.670475143432617,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.7357342888753298,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.08666666666666667
+    },
+    {
+      "motion": "arc_right",
+      "command": [
+        0.22,
+        0.0,
+        -0.3
+      ],
+      "seed": 1,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.2521874628133244,
+        0.0014283907222960369,
+        -0.3456058563540379
+      ],
+      "cycle_linear_error_m_s": 0.03222837696015408,
+      "cycle_yaw_error_rad_s": 0.04562842089497397,
+      "velocity_cycle_p05": [
+        0.25051939964294434,
+        -0.00044864421943202626,
+        -0.34913061693310743
+      ],
+      "velocity_cycle_p95": [
+        0.2540473942458629,
+        0.003143965234048664,
+        -0.34264537632465364
+      ],
+      "foot_clearance_p95_mm": [
+        28.39441965992632,
+        38.698696942739076,
+        32.88732645977456,
+        35.49853491003946
+      ],
+      "max_clearance_difference_vs_gym_mm": 2.494502834634339,
+      "diagonal_touchdown_p95_s": 0.019999999552965164,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.8048983470320556,
+          "rms_Nm": 2.75585643011102,
+          "steady_peak_Nm": 10.2152738571167,
+          "whole_rollout_peak_Nm": 10.582300186157227,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.8048983470320556,
+          "rms_Nm": 2.75585643011102,
+          "steady_peak_Nm": 10.2152738571167,
+          "whole_rollout_peak_Nm": 10.582300186157227,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.8270321920529629,
+          "rms_Nm": 2.7543235014143916,
+          "steady_peak_Nm": 10.21712926441235,
+          "whole_rollout_peak_Nm": 10.426300186157226,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.1393510938146196,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.052592592592592594
+    },
+    {
+      "motion": "stand",
+      "command": [
+        0,
+        0,
+        0
+      ],
+      "seed": 1,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        -0.010157993476303225,
+        -0.0007210220032613034,
+        0.009312024575278716
+      ],
+      "cycle_linear_error_m_s": 0.010184314828618497,
+      "cycle_yaw_error_rad_s": 0.009278295571251377,
+      "velocity_cycle_p05": [
+        -0.010757326014572756,
+        -0.001106901979073878,
+        0.007763666962273418
+      ],
+      "velocity_cycle_p95": [
+        -0.0095824694307521,
+        0.00026727978140115693,
+        0.012244065133854742
+      ],
+      "foot_clearance_p95_mm": [
+        23.002289788129563,
+        28.757472324605263,
+        -0.0012971294007700718,
+        -0.016653545609712078
+      ],
+      "max_clearance_difference_vs_gym_mm": null,
+      "diagonal_touchdown_p95_s": 4.019999910145995,
+      "lifts_per_foot": [
+        55,
+        54,
+        16,
+        0
+      ],
+      "diagonal_alternations": 2,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.927040070050657,
+          "rms_Nm": 2.6562063646948473,
+          "steady_peak_Nm": 7.686086654663086,
+          "whole_rollout_peak_Nm": 9.054187774658203,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.927040070050657,
+          "rms_Nm": 2.6562063646948473,
+          "steady_peak_Nm": 7.686086654663086,
+          "whole_rollout_peak_Nm": 9.054187774658203,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.9228140287474802,
+          "rms_Nm": 2.647937347328682,
+          "steady_peak_Nm": 7.530086654675983,
+          "whole_rollout_peak_Nm": 8.89818780749517,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 4.231284516035707,
+      "rejection_reasons": [
+        "standing_not_static"
+      ],
+      "gait_passed": false,
+      "gait_enabled": false,
+      "all_feet_support_fraction": 0.15407407407407409
+    },
+    {
+      "motion": "march",
+      "command": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "seed": 2,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        -0.0018738960687888148,
+        0.007689906659070402,
+        -0.032914998096595004
+      ],
+      "cycle_linear_error_m_s": 0.018123749158996273,
+      "cycle_yaw_error_rad_s": 0.03285585620366971,
+      "velocity_cycle_p05": [
+        -0.014461061652982606,
+        -0.013655194194288924,
+        -0.04505002185993362
+      ],
+      "velocity_cycle_p95": [
+        0.010647840343881398,
+        0.029380017787916587,
+        -0.02043316628551111
+      ],
+      "foot_clearance_p95_mm": [
+        33.789515996321235,
+        37.27837743676355,
+        29.47044032829336,
+        30.39736077738551
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.494488075547732,
+      "diagonal_touchdown_p95_s": 0.03999999910593033,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.8707902559940848,
+          "rms_Nm": 2.8055673884539245,
+          "steady_peak_Nm": 9.85983943939209,
+          "whole_rollout_peak_Nm": 10.26072883605957,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.8707902559940848,
+          "rms_Nm": 2.8055673884539245,
+          "steady_peak_Nm": 9.85983943939209,
+          "whole_rollout_peak_Nm": 10.26072883605957,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.8669105053582065,
+          "rms_Nm": 2.7995698815148775,
+          "steady_peak_Nm": 9.843164137856036,
+          "whole_rollout_peak_Nm": 10.10472883605957,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 3.4030052966298356,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.08962962962962963
+    },
+    {
+      "motion": "forward_slow",
+      "command": [
+        0.18,
+        0.0,
+        0.0
+      ],
+      "seed": 2,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.22826922088861465,
+        0.0051511942614487684,
+        0.0317683041184662
+      ],
+      "cycle_linear_error_m_s": 0.04855891154431061,
+      "cycle_yaw_error_rad_s": 0.031803478840071744,
+      "velocity_cycle_p05": [
+        0.2271998517215252,
+        0.0038446318195201456,
+        0.029014839006122204
+      ],
+      "velocity_cycle_p95": [
+        0.22915258347988132,
+        0.006331095434725285,
+        0.03530278276186436
+      ],
+      "foot_clearance_p95_mm": [
+        30.938067745004457,
+        36.6478834013118,
+        37.537415033873984,
+        33.547399675782174
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.712469121749848,
+      "diagonal_touchdown_p95_s": 0.019999999552965164,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.8577123528076651,
+          "rms_Nm": 2.865916016993959,
+          "steady_peak_Nm": 10.610126495361328,
+          "whole_rollout_peak_Nm": 10.642657279968262,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.8577123528076651,
+          "rms_Nm": 2.865916016993959,
+          "steady_peak_Nm": 10.610126495361328,
+          "whole_rollout_peak_Nm": 10.642657279968262,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.8747767917339766,
+          "rms_Nm": 2.868025194861783,
+          "steady_peak_Nm": 10.569716487448222,
+          "whole_rollout_peak_Nm": 10.569716487448222,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.1715292349491178,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.09555555555555556
+    },
+    {
+      "motion": "forward",
+      "command": [
+        0.28,
+        0.0,
+        0.0
+      ],
+      "seed": 2,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.3089069284001986,
+        0.007695514431222734,
+        0.019889832178337705
+      ],
+      "cycle_linear_error_m_s": 0.02991666555189811,
+      "cycle_yaw_error_rad_s": 0.019926850314408,
+      "velocity_cycle_p05": [
+        0.30708191215991976,
+        0.005677584325894713,
+        0.015604552384465929
+      ],
+      "velocity_cycle_p95": [
+        0.3104077297449112,
+        0.00982080969202798,
+        0.023891383633017536
+      ],
+      "foot_clearance_p95_mm": [
+        30.821247785221548,
+        35.544384234895155,
+        34.40366931650379,
+        37.84594031131923
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.5753690291752527,
+      "diagonal_touchdown_p95_s": 0.019999999552965164,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.6711730398633589,
+          "rms_Nm": 2.6284516211606714,
+          "steady_peak_Nm": 10.680404663085938,
+          "whole_rollout_peak_Nm": 10.708714485168457,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.6711730398633589,
+          "rms_Nm": 2.6284516211606714,
+          "steady_peak_Nm": 10.680404663085938,
+          "whole_rollout_peak_Nm": 10.708714485168457,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.670892688854501,
+          "rms_Nm": 2.6246125452209297,
+          "steady_peak_Nm": 10.625049953576818,
+          "whole_rollout_peak_Nm": 10.625049953576818,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.544970375650423,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.09481481481481481
+    },
+    {
+      "motion": "backward",
+      "command": [
+        -0.18,
+        0.0,
+        0.0
+      ],
+      "seed": 2,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        -0.21194503279747787,
+        0.008922403557079869,
+        -0.02180005237830941
+      ],
+      "cycle_linear_error_m_s": 0.033167474125803946,
+      "cycle_yaw_error_rad_s": 0.021769404479651536,
+      "velocity_cycle_p05": [
+        -0.21265041321516034,
+        0.008231709707761183,
+        -0.026255709067918367
+      ],
+      "velocity_cycle_p95": [
+        -0.21065588757395745,
+        0.00956906614563195,
+        -0.019900206588208683
+      ],
+      "foot_clearance_p95_mm": [
+        28.044049981622184,
+        26.719709100961172,
+        29.63861745761574,
+        28.59781063010091
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.713948296176799,
+      "diagonal_touchdown_p95_s": 0.019999999552965164,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.9573057991051566,
+          "rms_Nm": 2.8511427686296664,
+          "steady_peak_Nm": 8.730454444885254,
+          "whole_rollout_peak_Nm": 9.72584342956543,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.9573057991051566,
+          "rms_Nm": 2.8511427686296664,
+          "steady_peak_Nm": 8.730454444885254,
+          "whole_rollout_peak_Nm": 9.72584342956543,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.9358580015018334,
+          "rms_Nm": 2.84367702761413,
+          "steady_peak_Nm": 8.721581162663318,
+          "whole_rollout_peak_Nm": 9.569843429565838,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.2670225937842925,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.12
+    },
+    {
+      "motion": "left",
+      "command": [
+        0.0,
+        0.1,
+        0.0
+      ],
+      "seed": 2,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.02113950287974957,
+        0.1133221029435043,
+        0.00394939939086153
+      ],
+      "cycle_linear_error_m_s": 0.02501750578174426,
+      "cycle_yaw_error_rad_s": 0.004041399097791416,
+      "velocity_cycle_p05": [
+        0.020169251747429374,
+        0.11208027198910714,
+        -0.0004367911710869481
+      ],
+      "velocity_cycle_p95": [
+        0.022427182439714668,
+        0.1147092266380787,
+        0.01038558992091566
+      ],
+      "foot_clearance_p95_mm": [
+        35.036151964562606,
+        28.85319731772248,
+        28.97952687836261,
+        35.5002428170607
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.7146964082774652,
+      "diagonal_touchdown_p95_s": 0.0,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.7979621485014838,
+          "rms_Nm": 2.747505146349168,
+          "steady_peak_Nm": 10.736790657043457,
+          "whole_rollout_peak_Nm": 10.771352767944336,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.7979621485014838,
+          "rms_Nm": 2.747505146349168,
+          "steady_peak_Nm": 10.736790657043457,
+          "whole_rollout_peak_Nm": 10.771352767944336,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.8142730315119995,
+          "rms_Nm": 2.7422843627984834,
+          "steady_peak_Nm": 10.89249492198696,
+          "whole_rollout_peak_Nm": 10.89249492198696,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.5398954283409942,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.12962962962962962
+    },
+    {
+      "motion": "right",
+      "command": [
+        0.0,
+        -0.1,
+        0.0
+      ],
+      "seed": 2,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.01076938682388842,
+        -0.10984438306203595,
+        0.021567815489187424
+      ],
+      "cycle_linear_error_m_s": 0.01463116822095495,
+      "cycle_yaw_error_rad_s": 0.021566254440923315,
+      "velocity_cycle_p05": [
+        0.00936724768485874,
+        -0.11123037517070769,
+        0.016995390090160076
+      ],
+      "velocity_cycle_p95": [
+        0.01223158700944623,
+        -0.10806910336017611,
+        0.02734424091409892
+      ],
+      "foot_clearance_p95_mm": [
+        28.55709997038102,
+        34.31624105405975,
+        30.11533439490452,
+        37.7385126261315
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.165242290338007,
+      "diagonal_touchdown_p95_s": 0.0,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.9019076950219604,
+          "rms_Nm": 2.9225966744924063,
+          "steady_peak_Nm": 9.695937156677246,
+          "whole_rollout_peak_Nm": 10.086556434631348,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.9019076950219604,
+          "rms_Nm": 2.9225966744924063,
+          "steady_peak_Nm": 9.695937156677246,
+          "whole_rollout_peak_Nm": 10.086556434631348,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.9159371450053249,
+          "rms_Nm": 2.9183875339335117,
+          "steady_peak_Nm": 9.671910997714251,
+          "whole_rollout_peak_Nm": 10.15672726358936,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.3929696024083706,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.1274074074074074
+    },
+    {
+      "motion": "turn_left",
+      "command": [
+        0.0,
+        0.0,
+        0.4
+      ],
+      "seed": 2,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.00450206838393502,
+        0.013076608848558088,
+        0.4579895084786727
+      ],
+      "cycle_linear_error_m_s": 0.013855529546027513,
+      "cycle_yaw_error_rad_s": 0.05796631977361531,
+      "velocity_cycle_p05": [
+        0.0027780318493023505,
+        0.010313453910821408,
+        0.45193247407209125
+      ],
+      "velocity_cycle_p95": [
+        0.006235700972029007,
+        0.015306085387128406,
+        0.46431164933601393
+      ],
+      "foot_clearance_p95_mm": [
+        34.778140802165346,
+        31.39683198885483,
+        32.88821817416469,
+        42.15544044612275
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.1664706432663081,
+      "diagonal_touchdown_p95_s": 0.0,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.5915126832537885,
+          "rms_Nm": 2.4879365969569296,
+          "steady_peak_Nm": 8.278401374816895,
+          "whole_rollout_peak_Nm": 9.972816467285156,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.5915126832537885,
+          "rms_Nm": 2.4879365969569296,
+          "steady_peak_Nm": 8.278401374816895,
+          "whole_rollout_peak_Nm": 9.972816467285156,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.6020775275556045,
+          "rms_Nm": 2.4812172451008636,
+          "steady_peak_Nm": 8.43440101828726,
+          "whole_rollout_peak_Nm": 9.816816467285156,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.0733786086841752,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.1037037037037037
+    },
+    {
+      "motion": "turn_right",
+      "command": [
+        0.0,
+        0.0,
+        -0.4
+      ],
+      "seed": 2,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.022137556728837944,
+        0.010597560917872383,
+        -0.4419624533759499
+      ],
+      "cycle_linear_error_m_s": 0.02454292716089442,
+      "cycle_yaw_error_rad_s": 0.042001265553872714,
+      "velocity_cycle_p05": [
+        0.021602654467569666,
+        0.010072611683281137,
+        -0.44321028254926204
+      ],
+      "velocity_cycle_p95": [
+        0.022775216177105907,
+        0.011057663299143313,
+        -0.440926930513233
+      ],
+      "foot_clearance_p95_mm": [
+        27.65727792239875,
+        37.8615442922449,
+        36.61190355663926,
+        31.41253686852242
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.2994466663100859,
+      "diagonal_touchdown_p95_s": 0.0,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.664125988045923,
+          "rms_Nm": 2.56188976573586,
+          "steady_peak_Nm": 8.725424766540527,
+          "whole_rollout_peak_Nm": 9.457066535949707,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.664125988045923,
+          "rms_Nm": 2.56188976573586,
+          "steady_peak_Nm": 8.725424766540527,
+          "whole_rollout_peak_Nm": 9.457066535949707,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.6746313218061355,
+          "rms_Nm": 2.5537023815562945,
+          "steady_peak_Nm": 8.881424754652992,
+          "whole_rollout_peak_Nm": 9.301066535949706,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 0.92893801484733,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.14666666666666667
+    },
+    {
+      "motion": "forward_left",
+      "command": [
+        0.2,
+        0.08,
+        0.0
+      ],
+      "seed": 2,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.22377572474656282,
+        0.10202270323376136,
+        0.011247339287634802
+      ],
+      "cycle_linear_error_m_s": 0.04142746103223115,
+      "cycle_yaw_error_rad_s": 0.018175382472526952,
+      "velocity_cycle_p05": [
+        0.1992999269068241,
+        0.07006249953992665,
+        -0.016638601282611486
+      ],
+      "velocity_cycle_p95": [
+        0.24803550615906717,
+        0.13386309131979945,
+        0.04149818641133604
+      ],
+      "foot_clearance_p95_mm": [
+        34.41424965749669,
+        39.87867344086576,
+        36.82277409816361,
+        42.363070699492575
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.1927789309082115,
+      "diagonal_touchdown_p95_s": 0.019999999552965164,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.6662227210218954,
+          "rms_Nm": 2.6122949102933974,
+          "steady_peak_Nm": 10.700573921203613,
+          "whole_rollout_peak_Nm": 10.700573921203613,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.6662227210218954,
+          "rms_Nm": 2.6122949102933974,
+          "steady_peak_Nm": 10.700573921203613,
+          "whole_rollout_peak_Nm": 10.700573921203613,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.6784624397028394,
+          "rms_Nm": 2.6089770495702713,
+          "steady_peak_Nm": 10.856572754027178,
+          "whole_rollout_peak_Nm": 10.856572754027178,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 2.848538289038606,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.04148148148148148
+    },
+    {
+      "motion": "forward_right",
+      "command": [
+        0.2,
+        -0.08,
+        0.0
+      ],
+      "seed": 2,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.21246603666632263,
+        -0.07767496793220441,
+        0.029035795192898218
+      ],
+      "cycle_linear_error_m_s": 0.012853772919733036,
+      "cycle_yaw_error_rad_s": 0.028995877660076632,
+      "velocity_cycle_p05": [
+        0.207252479493618,
+        -0.08153604049235583,
+        0.016995924132643267
+      ],
+      "velocity_cycle_p95": [
+        0.22067677617073062,
+        -0.0745193249732256,
+        0.036620035571977495
+      ],
+      "foot_clearance_p95_mm": [
+        25.98887984561894,
+        38.8730517492619,
+        29.677816734690154,
+        34.4901984256369
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.9774312988844258,
+      "diagonal_touchdown_p95_s": 0.03999999910593033,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.8410671375150847,
+          "rms_Nm": 2.805914045440235,
+          "steady_peak_Nm": 10.257749557495117,
+          "whole_rollout_peak_Nm": 10.257749557495117,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.8410671375150847,
+          "rms_Nm": 2.805914045440235,
+          "steady_peak_Nm": 10.257749557495117,
+          "whole_rollout_peak_Nm": 10.257749557495117,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.8576916593054047,
+          "rms_Nm": 2.805942756363128,
+          "steady_peak_Nm": 10.413749557495118,
+          "whole_rollout_peak_Nm": 10.413749557495118,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.4393985850808422,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.07629629629629629
+    },
+    {
+      "motion": "arc_left",
+      "command": [
+        0.22,
+        0.0,
+        0.3
+      ],
+      "seed": 2,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.20147795254433595,
+        0.01440983472084379,
+        0.29291249665319574
+      ],
+      "cycle_linear_error_m_s": 0.026553712641889923,
+      "cycle_yaw_error_rad_s": 0.01344187369986281,
+      "velocity_cycle_p05": [
+        0.19695122301578524,
+        -0.009051865966757756,
+        0.2704108970053494
+      ],
+      "velocity_cycle_p95": [
+        0.20560645192861557,
+        0.03752893233904615,
+        0.3156367687531747
+      ],
+      "foot_clearance_p95_mm": [
+        32.40177539097724,
+        30.356925387698343,
+        32.13276804157962,
+        37.24607948330283
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.3701567511504678,
+      "diagonal_touchdown_p95_s": 0.03999999910593033,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.6959618438602648,
+          "rms_Nm": 2.581364178203397,
+          "steady_peak_Nm": 9.400971412658691,
+          "whole_rollout_peak_Nm": 9.77376651763916,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.6959618438602648,
+          "rms_Nm": 2.581364178203397,
+          "steady_peak_Nm": 9.400971412658691,
+          "whole_rollout_peak_Nm": 9.77376651763916,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.70577577082744,
+          "rms_Nm": 2.575297132963728,
+          "steady_peak_Nm": 9.24497141265869,
+          "whole_rollout_peak_Nm": 9.61776651763916,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.7605864670797522,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.08666666666666667
+    },
+    {
+      "motion": "arc_right",
+      "command": [
+        0.22,
+        0.0,
+        -0.3
+      ],
+      "seed": 2,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.2521927758389049,
+        0.001425924333497177,
+        -0.3451971000695118
+      ],
+      "cycle_linear_error_m_s": 0.032230972812109925,
+      "cycle_yaw_error_rad_s": 0.04518124913822069,
+      "velocity_cycle_p05": [
+        0.25060725942254064,
+        -0.0005567170341964807,
+        -0.34893964979797604
+      ],
+      "velocity_cycle_p95": [
+        0.2539431595802307,
+        0.0032490859471727158,
+        -0.3412905598059297
+      ],
+      "foot_clearance_p95_mm": [
+        28.45112409801991,
+        38.641617396532965,
+        32.855547695694625,
+        35.44841190383193
+      ],
+      "max_clearance_difference_vs_gym_mm": 2.4443798284268112,
+      "diagonal_touchdown_p95_s": 0.019999999552965164,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.805329408368917,
+          "rms_Nm": 2.755943110694733,
+          "steady_peak_Nm": 10.223785400390625,
+          "whole_rollout_peak_Nm": 10.53481388092041,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.805329408368917,
+          "rms_Nm": 2.755943110694733,
+          "steady_peak_Nm": 10.223785400390625,
+          "whole_rollout_peak_Nm": 10.53481388092041,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.8275271663082604,
+          "rms_Nm": 2.7544350931355726,
+          "steady_peak_Nm": 10.191810967083955,
+          "whole_rollout_peak_Nm": 10.37881388092041,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.1756976472887894,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.052592592592592594
+    },
+    {
+      "motion": "stand",
+      "command": [
+        0,
+        0,
+        0
+      ],
+      "seed": 2,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        -0.010215303444441546,
+        -0.0007171176041097001,
+        0.009310169481430892
+      ],
+      "cycle_linear_error_m_s": 0.01024773792151029,
+      "cycle_yaw_error_rad_s": 0.009275764404412579,
+      "velocity_cycle_p05": [
+        -0.010819084583781658,
+        -0.001070287581533191,
+        0.00785793799906969
+      ],
+      "velocity_cycle_p95": [
+        -0.009656341485679149,
+        -0.00037619059672579013,
+        0.010603457251563668
+      ],
+      "foot_clearance_p95_mm": [
+        23.002966608420095,
+        28.757570359750144,
+        -0.0016822442431181648,
+        -0.016630950055581545
+      ],
+      "max_clearance_difference_vs_gym_mm": null,
+      "diagonal_touchdown_p95_s": 6.519999854266641,
+      "lifts_per_foot": [
+        55,
+        54,
+        13,
+        0
+      ],
+      "diagonal_alternations": 0,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.9271751952560239,
+          "rms_Nm": 2.6564236158518257,
+          "steady_peak_Nm": 7.679689884185791,
+          "whole_rollout_peak_Nm": 9.007682800292969,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.9271751952560239,
+          "rms_Nm": 2.6564236158518257,
+          "steady_peak_Nm": 7.679689884185791,
+          "whole_rollout_peak_Nm": 9.007682800292969,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.9229673613294074,
+          "rms_Nm": 2.6481917286947207,
+          "steady_peak_Nm": 7.523689884197239,
+          "whole_rollout_peak_Nm": 8.851682832856776,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 4.230127212531671,
+      "rejection_reasons": [
+        "standing_not_static"
+      ],
+      "gait_passed": false,
+      "gait_enabled": false,
+      "all_feet_support_fraction": 0.15555555555555556
+    },
+    {
+      "motion": "march",
+      "command": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "seed": 3,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        -0.0019369325001241157,
+        0.0078098243424783165,
+        -0.03274150856689731
+      ],
+      "cycle_linear_error_m_s": 0.01838886439659521,
+      "cycle_yaw_error_rad_s": 0.032746950962107446,
+      "velocity_cycle_p05": [
+        -0.014723408296704292,
+        -0.013927752830204553,
+        -0.04506414390634746
+      ],
+      "velocity_cycle_p95": [
+        0.01088972144993022,
+        0.029822417391696946,
+        -0.020275348300347114
+      ],
+      "foot_clearance_p95_mm": [
+        33.84282373379652,
+        37.48832640717952,
+        29.413766189183985,
+        30.423140352454645
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.4378139364383564,
+      "diagonal_touchdown_p95_s": 0.03999999910593033,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.8710464655236416,
+          "rms_Nm": 2.805782400850169,
+          "steady_peak_Nm": 9.859898567199707,
+          "whole_rollout_peak_Nm": 10.18411922454834,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.8710464655236416,
+          "rms_Nm": 2.805782400850169,
+          "steady_peak_Nm": 9.859898567199707,
+          "whole_rollout_peak_Nm": 10.18411922454834,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.8670739496290307,
+          "rms_Nm": 2.799709932127405,
+          "steady_peak_Nm": 9.829919773400862,
+          "whole_rollout_peak_Nm": 10.02811922454834,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 3.4412799824439473,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.08888888888888889
+    },
+    {
+      "motion": "forward_slow",
+      "command": [
+        0.18,
+        0.0,
+        0.0
+      ],
+      "seed": 3,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.22847315749636402,
+        0.005018470922767409,
+        0.031595210315782524
+      ],
+      "cycle_linear_error_m_s": 0.048734229992939464,
+      "cycle_yaw_error_rad_s": 0.031562367920673975,
+      "velocity_cycle_p05": [
+        0.22746817544102668,
+        0.003948774816817605,
+        0.028488834787858647
+      ],
+      "velocity_cycle_p95": [
+        0.2295340134203434,
+        0.006188613445265218,
+        0.0349885733181145
+      ],
+      "foot_clearance_p95_mm": [
+        30.723182034918533,
+        36.56156611816296,
+        37.51453423705202,
+        33.603434510388844
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.7685039563565184,
+      "diagonal_touchdown_p95_s": 0.019999999552965164,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.8582205359192772,
+          "rms_Nm": 2.86533992471873,
+          "steady_peak_Nm": 10.625170707702637,
+          "whole_rollout_peak_Nm": 10.744646072387695,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.8582205359192772,
+          "rms_Nm": 2.86533992471873,
+          "steady_peak_Nm": 10.625170707702637,
+          "whole_rollout_peak_Nm": 10.744646072387695,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.875051707997956,
+          "rms_Nm": 2.8673826406009395,
+          "steady_peak_Nm": 10.559620235262456,
+          "whole_rollout_peak_Nm": 10.67454439062357,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.1836598555770963,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.10148148148148148
+    },
+    {
+      "motion": "forward",
+      "command": [
+        0.28,
+        0.0,
+        0.0
+      ],
+      "seed": 3,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.30870413375121575,
+        0.007680985287583166,
+        0.019403244849570372
+      ],
+      "cycle_linear_error_m_s": 0.029731553570864124,
+      "cycle_yaw_error_rad_s": 0.019425984091050983,
+      "velocity_cycle_p05": [
+        0.3060313415527344,
+        0.005407286962727085,
+        0.014065810386091499
+      ],
+      "velocity_cycle_p95": [
+        0.3104453088343143,
+        0.010000300998799505,
+        0.024314146935939796
+      ],
+      "foot_clearance_p95_mm": [
+        30.849420132828474,
+        35.42661264086994,
+        34.46278693921479,
+        37.792605060964036
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.6035413767821787,
+      "diagonal_touchdown_p95_s": 0.019999999552965164,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.6718978522200982,
+          "rms_Nm": 2.628207762963596,
+          "steady_peak_Nm": 10.669318199157715,
+          "whole_rollout_peak_Nm": 10.707560539245605,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.6718978522200982,
+          "rms_Nm": 2.628207762963596,
+          "steady_peak_Nm": 10.669318199157715,
+          "whole_rollout_peak_Nm": 10.707560539245605,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.6715533308467405,
+          "rms_Nm": 2.624289082836455,
+          "steady_peak_Nm": 10.634610439630041,
+          "whole_rollout_peak_Nm": 10.634610439630041,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.5273905626452167,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.09407407407407407
+    },
+    {
+      "motion": "backward",
+      "command": [
+        -0.18,
+        0.0,
+        0.0
+      ],
+      "seed": 3,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        -0.21177141515193162,
+        0.008948611745081844,
+        -0.022993981337123034
+      ],
+      "cycle_linear_error_m_s": 0.033016830943851924,
+      "cycle_yaw_error_rad_s": 0.02298709831827392,
+      "velocity_cycle_p05": [
+        -0.21286282822489738,
+        0.008087260597094428,
+        -0.028165690079331406
+      ],
+      "velocity_cycle_p95": [
+        -0.2102829721570015,
+        0.009771907578688115,
+        -0.019947887202724817
+      ],
+      "foot_clearance_p95_mm": [
+        28.229924968398393,
+        26.75204442434587,
+        29.710114412039626,
+        28.587895386174292
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.7854452506006844,
+      "diagonal_touchdown_p95_s": 0.019999999552965164,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.9563013233174786,
+          "rms_Nm": 2.8511878120965886,
+          "steady_peak_Nm": 8.72713851928711,
+          "whole_rollout_peak_Nm": 9.691156387329102,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.9563013233174786,
+          "rms_Nm": 2.8511878120965886,
+          "steady_peak_Nm": 8.72713851928711,
+          "whole_rollout_peak_Nm": 9.691156387329102,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.9347433258692799,
+          "rms_Nm": 2.8436808506325817,
+          "steady_peak_Nm": 8.731206406029738,
+          "whole_rollout_peak_Nm": 9.535156387329277,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.212407395157698,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.12
+    },
+    {
+      "motion": "left",
+      "command": [
+        0.0,
+        0.1,
+        0.0
+      ],
+      "seed": 3,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.021225833593160603,
+        0.11331083381065615,
+        0.003358255040053606
+      ],
+      "cycle_linear_error_m_s": 0.025082050394586455,
+      "cycle_yaw_error_rad_s": 0.003755264449770248,
+      "velocity_cycle_p05": [
+        0.02017069990746676,
+        0.11200371041893958,
+        -0.001332763566169894
+      ],
+      "velocity_cycle_p95": [
+        0.02260505937505513,
+        0.11466733261942866,
+        0.0077881208070902964
+      ],
+      "foot_clearance_p95_mm": [
+        35.058511125719974,
+        28.828917954409146,
+        28.96230387738789,
+        35.49768750660775
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.6974734073027449,
+      "diagonal_touchdown_p95_s": 0.0,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.7988619076118288,
+          "rms_Nm": 2.747922208801483,
+          "steady_peak_Nm": 10.730728149414062,
+          "whole_rollout_peak_Nm": 10.730728149414062,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.7988619076118288,
+          "rms_Nm": 2.747922208801483,
+          "steady_peak_Nm": 10.730728149414062,
+          "whole_rollout_peak_Nm": 10.730728149414062,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.8152475637881877,
+          "rms_Nm": 2.742670446252225,
+          "steady_peak_Nm": 10.88640939145905,
+          "whole_rollout_peak_Nm": 10.88640939145905,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.5524256481983942,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.1288888888888889
+    },
+    {
+      "motion": "right",
+      "command": [
+        0.0,
+        -0.1,
+        0.0
+      ],
+      "seed": 3,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.010645922830865823,
+        -0.10978578163517846,
+        0.021626549257640296
+      ],
+      "cycle_linear_error_m_s": 0.014482451660317607,
+      "cycle_yaw_error_rad_s": 0.021604734527839217,
+      "velocity_cycle_p05": [
+        0.008910498935729266,
+        -0.1114178764820099,
+        0.016204186240211128
+      ],
+      "velocity_cycle_p95": [
+        0.012155873740266542,
+        -0.1079011219739914,
+        0.028361220601946117
+      ],
+      "foot_clearance_p95_mm": [
+        28.699347386271096,
+        34.31699365706111,
+        30.19090808623149,
+        37.82811057247844
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.2548402366849416,
+      "diagonal_touchdown_p95_s": 0.0,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.8995755874989324,
+          "rms_Nm": 2.91983784123367,
+          "steady_peak_Nm": 9.713172912597656,
+          "whole_rollout_peak_Nm": 10.077279090881348,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.8995755874989324,
+          "rms_Nm": 2.91983784123367,
+          "steady_peak_Nm": 9.713172912597656,
+          "whole_rollout_peak_Nm": 10.077279090881348,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.9136097064577136,
+          "rms_Nm": 2.915616337712517,
+          "steady_peak_Nm": 9.69769156606149,
+          "whole_rollout_peak_Nm": 10.148502652644813,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.3886077741375085,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.13333333333333333
+    },
+    {
+      "motion": "turn_left",
+      "command": [
+        0.0,
+        0.0,
+        0.4
+      ],
+      "seed": 3,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.004548009602099902,
+        0.012974830596492919,
+        0.458157163613381
+      ],
+      "cycle_linear_error_m_s": 0.013859436509040902,
+      "cycle_yaw_error_rad_s": 0.0581795989955002,
+      "velocity_cycle_p05": [
+        0.0020244556083343925,
+        0.009766007517755498,
+        0.4521293876320124
+      ],
+      "velocity_cycle_p95": [
+        0.0069017443426128006,
+        0.016050468327593985,
+        0.4646915272145997
+      ],
+      "foot_clearance_p95_mm": [
+        34.62660482895213,
+        31.368777855058454,
+        32.942467591904496,
+        42.06179702644948
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.0728272235930376,
+      "diagonal_touchdown_p95_s": 0.0,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.5915674522031478,
+          "rms_Nm": 2.4877259520819073,
+          "steady_peak_Nm": 8.293045043945312,
+          "whole_rollout_peak_Nm": 9.938185691833496,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.5915674522031478,
+          "rms_Nm": 2.4877259520819073,
+          "steady_peak_Nm": 8.293045043945312,
+          "whole_rollout_peak_Nm": 9.938185691833496,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.6021720771553094,
+          "rms_Nm": 2.4810724163958393,
+          "steady_peak_Nm": 8.449044272470061,
+          "whole_rollout_peak_Nm": 9.782185691833496,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.107651698510945,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.10666666666666667
+    },
+    {
+      "motion": "turn_right",
+      "command": [
+        0.0,
+        0.0,
+        -0.4
+      ],
+      "seed": 3,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.02210449230678259,
+        0.010598881730671835,
+        -0.44206315507353455
+      ],
+      "cycle_linear_error_m_s": 0.024522230824526623,
+      "cycle_yaw_error_rad_s": 0.04210420726038525,
+      "velocity_cycle_p05": [
+        0.021523056199075654,
+        0.010209946301765738,
+        -0.44364303980022674
+      ],
+      "velocity_cycle_p95": [
+        0.022721942204516378,
+        0.011034459911752493,
+        -0.4409122318215668
+      ],
+      "foot_clearance_p95_mm": [
+        27.629400336711395,
+        37.848913789639866,
+        36.61696377166249,
+        31.42010698399323
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.307016781780895,
+      "diagonal_touchdown_p95_s": 0.0,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.6641309241041646,
+          "rms_Nm": 2.5619397806779745,
+          "steady_peak_Nm": 8.756370544433594,
+          "whole_rollout_peak_Nm": 9.400674819946289,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.6641309241041646,
+          "rms_Nm": 2.5619397806779745,
+          "steady_peak_Nm": 8.756370544433594,
+          "whole_rollout_peak_Nm": 9.400674819946289,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.6746522814735025,
+          "rms_Nm": 2.553769820774965,
+          "steady_peak_Nm": 8.912370528707246,
+          "whole_rollout_peak_Nm": 9.244674819946288,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 0.8987460222124688,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.14666666666666667
+    },
+    {
+      "motion": "forward_left",
+      "command": [
+        0.2,
+        0.08,
+        0.0
+      ],
+      "seed": 3,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.22373762105350142,
+        0.10197769972306021,
+        0.010580846532075493
+      ],
+      "cycle_linear_error_m_s": 0.041370625817288675,
+      "cycle_yaw_error_rad_s": 0.01777596121785957,
+      "velocity_cycle_p05": [
+        0.19939109742641453,
+        0.0703510904684663,
+        -0.017560711866244673
+      ],
+      "velocity_cycle_p95": [
+        0.2480067050457001,
+        0.13393925443291665,
+        0.04039847251027823
+      ],
+      "foot_clearance_p95_mm": [
+        34.52911364428368,
+        39.8702569052335,
+        36.809286307644655,
+        42.387435513017415
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.222790652435691,
+      "diagonal_touchdown_p95_s": 0.019999999552965164,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.6661596683075115,
+          "rms_Nm": 2.6120012059007607,
+          "steady_peak_Nm": 10.80646800994873,
+          "whole_rollout_peak_Nm": 10.80646800994873,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.6661596683075115,
+          "rms_Nm": 2.6120012059007607,
+          "steady_peak_Nm": 10.80646800994873,
+          "whole_rollout_peak_Nm": 10.80646800994873,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.678414739467928,
+          "rms_Nm": 2.6087938604324763,
+          "steady_peak_Nm": 10.962467991161398,
+          "whole_rollout_peak_Nm": 10.962467991161398,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 2.963656379413528,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.04148148148148148
+    },
+    {
+      "motion": "forward_right",
+      "command": [
+        0.2,
+        -0.08,
+        0.0
+      ],
+      "seed": 3,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.21746876133812798,
+        -0.07901336588241435,
+        0.02088809798078728
+      ],
+      "cycle_linear_error_m_s": 0.01777717954430309,
+      "cycle_yaw_error_rad_s": 0.02071192501839383,
+      "velocity_cycle_p05": [
+        0.20915445640683178,
+        -0.08359825406223535,
+        0.01316222141409526
+      ],
+      "velocity_cycle_p95": [
+        0.22204847499728203,
+        -0.07508575528860092,
+        0.032297769505530594
+      ],
+      "foot_clearance_p95_mm": [
+        26.864159793116,
+        38.14679992452569,
+        29.571630880473823,
+        33.9626351799547
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.5983887764203253,
+      "diagonal_touchdown_p95_s": 0.019999999552965164,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.8258337641298343,
+          "rms_Nm": 2.796019176972123,
+          "steady_peak_Nm": 10.175400733947754,
+          "whole_rollout_peak_Nm": 10.175400733947754,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.8258337641298343,
+          "rms_Nm": 2.796019176972123,
+          "steady_peak_Nm": 10.175400733947754,
+          "whole_rollout_peak_Nm": 10.175400733947754,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.8431529177071952,
+          "rms_Nm": 2.79659343415463,
+          "steady_peak_Nm": 10.331400733947754,
+          "whole_rollout_peak_Nm": 10.331400733947754,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.3917046732141638,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.07925925925925927
+    },
+    {
+      "motion": "arc_left",
+      "command": [
+        0.22,
+        0.0,
+        0.3
+      ],
+      "seed": 3,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.2015933758903433,
+        0.014388543673326409,
+        0.29244599531684934
+      ],
+      "cycle_linear_error_m_s": 0.026584013717642786,
+      "cycle_yaw_error_rad_s": 0.013806739190825486,
+      "velocity_cycle_p05": [
+        0.19696317955851553,
+        -0.009189906839019385,
+        0.2699038324505091
+      ],
+      "velocity_cycle_p95": [
+        0.20595182865858075,
+        0.03750061366939917,
+        0.31489806355908506
+      ],
+      "foot_clearance_p95_mm": [
+        32.47098257853048,
+        30.347968432999348,
+        32.19838972124743,
+        37.275033270824785
+      ],
+      "max_clearance_difference_vs_gym_mm": 1.439363938703707,
+      "diagonal_touchdown_p95_s": 0.03999999910593033,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.6961397555630573,
+          "rms_Nm": 2.581531178154828,
+          "steady_peak_Nm": 9.405142784118652,
+          "whole_rollout_peak_Nm": 9.655635833740234,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.6961397555630573,
+          "rms_Nm": 2.581531178154828,
+          "steady_peak_Nm": 9.405142784118652,
+          "whole_rollout_peak_Nm": 9.655635833740234,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.7058856021510718,
+          "rms_Nm": 2.5754731890341835,
+          "steady_peak_Nm": 9.249142784118652,
+          "whole_rollout_peak_Nm": 9.636989456176758,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.766689520845631,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.08592592592592592
+    },
+    {
+      "motion": "arc_right",
+      "command": [
+        0.22,
+        0.0,
+        -0.3
+      ],
+      "seed": 3,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        0.2521494544545809,
+        0.0014447203154398906,
+        -0.3455166147552707
+      ],
+      "cycle_linear_error_m_s": 0.032175090824583676,
+      "cycle_yaw_error_rad_s": 0.045537737751180155,
+      "velocity_cycle_p05": [
+        0.25074215143918993,
+        -0.0004938083700835709,
+        -0.3493410311639309
+      ],
+      "velocity_cycle_p95": [
+        0.2540080091357231,
+        0.0032318853751348796,
+        -0.3423009988665581
+      ],
+      "foot_clearance_p95_mm": [
+        28.487663097737755,
+        38.66944877310319,
+        32.873929451431465,
+        35.47771797648914
+      ],
+      "max_clearance_difference_vs_gym_mm": 2.4736859010840178,
+      "diagonal_touchdown_p95_s": 0.019999999552965164,
+      "lifts_per_foot": [
+        55,
+        54,
+        54,
+        55
+      ],
+      "diagonal_alternations": 108,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.8054641775020333,
+          "rms_Nm": 2.7558974216875867,
+          "steady_peak_Nm": 10.233712196350098,
+          "whole_rollout_peak_Nm": 10.470571517944336,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.8054641775020333,
+          "rms_Nm": 2.7558974216875867,
+          "steady_peak_Nm": 10.233712196350098,
+          "whole_rollout_peak_Nm": 10.470571517944336,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.8276041209401537,
+          "rms_Nm": 2.7543578001727003,
+          "steady_peak_Nm": 10.197140689450878,
+          "whole_rollout_peak_Nm": 10.314571517944335,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 1.1691884335484601,
+      "rejection_reasons": [],
+      "gait_passed": true,
+      "gait_enabled": true,
+      "all_feet_support_fraction": 0.05185185185185185
+    },
+    {
+      "motion": "stand",
+      "command": [
+        0,
+        0,
+        0
+      ],
+      "seed": 3,
+      "duration_s": 30.0,
+      "stop": "completed",
+      "completed_steps": 1500,
+      "warmup_excluded_s": 2.9999999329447746,
+      "mean_velocity": [
+        -0.010158412158144293,
+        -0.0006854994346698125,
+        0.009386444705451141
+      ],
+      "cycle_linear_error_m_s": 0.010187214188394425,
+      "cycle_yaw_error_rad_s": 0.009389989996418458,
+      "velocity_cycle_p05": [
+        -0.01078949497663416,
+        -0.0010923244943842336,
+        0.00778966683894396
+      ],
+      "velocity_cycle_p95": [
+        -0.009660073712002485,
+        0.0004145470308139929,
+        0.012663259651235416
+      ],
+      "foot_clearance_p95_mm": [
+        23.010132557317892,
+        28.76700844830955,
+        -0.0016263398267581124,
+        -0.016659945562313292
+      ],
+      "max_clearance_difference_vs_gym_mm": null,
+      "diagonal_touchdown_p95_s": 4.019999910145995,
+      "lifts_per_foot": [
+        55,
+        54,
+        15,
+        0
+      ],
+      "diagonal_alternations": 0,
+      "flight_fraction": 0.0,
+      "illegal_support_fraction": 0.0,
+      "torque": {
+        "raw": {
+          "mean_abs_Nm": 1.9270573096834036,
+          "rms_Nm": 2.6561385339893007,
+          "steady_peak_Nm": 7.688169479370117,
+          "whole_rollout_peak_Nm": 8.926188468933105,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "motor": {
+          "mean_abs_Nm": 1.9270573096834036,
+          "rms_Nm": 2.6561385339893007,
+          "steady_peak_Nm": 7.688169479370117,
+          "whole_rollout_peak_Nm": 8.926188468933105,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        },
+        "applied": {
+          "mean_abs_Nm": 1.9228543740866608,
+          "rms_Nm": 2.6478692207255574,
+          "steady_peak_Nm": 7.5321694793820155,
+          "whole_rollout_peak_Nm": 8.77018847078133,
+          "fraction_over_14": 0.0,
+          "fraction_over_17": 0.0
+        }
+      },
+      "max_tilt_deg": 4.236465362007375,
+      "rejection_reasons": [
+        "standing_not_static"
+      ],
+      "gait_passed": false,
+      "gait_enabled": false,
+      "all_feet_support_fraction": 0.15555555555555556
+    }
+  ],
+  "gait_passed": false,
+  "trained_dynamic_gaits_passed": true,
+  "standing_assessment": "Static standing check added from saved contact/clearance traces; four-foot support >=95%, foot P95 <=5mm."
+}

@@ -1,0 +1,7 @@
+# Model weights, converted assets and complete trajectories stay local.
+*.npz
+!control_fixture.npz
+*.xml
+resolved.urdf
+viewer.*
+smoke10/

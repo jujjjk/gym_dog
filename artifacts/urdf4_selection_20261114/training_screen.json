@@ -1,0 +1,2998 @@
+{
+  "run": "unitree_rl_gym/logs/urdf4_amp_cts_gait_first/Nov13_21-24-21_gait_first_30000",
+  "checkpoint_count": 299,
+  "last_iteration": 30000,
+  "window": 100,
+  "results": [
+    {
+      "amp_raw_style_valid": 0.7380576598644256,
+      "reference_foot_quality": 0.7832117187976837,
+      "reset_fraction": 0.0010671997367171571,
+      "episode/gait_contact_match": 0.8094489050581393,
+      "episode/raw_torque_over_peak_fraction": 0.0010454939988752206,
+      "episode/rew_illegal_support": -0.0006200155320224756,
+      "iteration": 200,
+      "screen_score": 1.528845697031213
+    },
+    {
+      "amp_raw_style_valid": 0.7247689229249954,
+      "reference_foot_quality": 0.7753169858455657,
+      "reset_fraction": 0.0009656779264332726,
+      "episode/gait_contact_match": 0.8124618333504208,
+      "episode/raw_torque_over_peak_fraction": 8.663229588516212e-09,
+      "episode/rew_illegal_support": -0.0011630655519093039,
+      "iteration": 300,
+      "screen_score": 1.539494836242027
+    },
+    {
+      "amp_raw_style_valid": 0.7124465996026993,
+      "reference_foot_quality": 0.7715688747167587,
+      "reset_fraction": 0.0010489909152965992,
+      "episode/gait_contact_match": 0.8120024378430857,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0011415731193513425,
+      "iteration": 400,
+      "screen_score": 1.5311217667950143
+    },
+    {
+      "amp_raw_style_valid": 0.7022773283720016,
+      "reference_foot_quality": 0.7657955104112625,
+      "reset_fraction": 0.0009645589481806383,
+      "episode/gait_contact_match": 0.8088647523544111,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0012216366268869453,
+      "iteration": 500,
+      "screen_score": 1.5264323153566417
+    },
+    {
+      "amp_raw_style_valid": 0.6927639764547348,
+      "reference_foot_quality": 0.7608012700080872,
+      "reset_fraction": 0.0009667969029396773,
+      "episode/gait_contact_match": 0.8062216794163937,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0012233814948792,
+      "iteration": 600,
+      "screen_score": 1.518683104277497
+    },
+    {
+      "amp_raw_style_valid": 0.6859207290410996,
+      "reference_foot_quality": 0.7632245010137558,
+      "reset_fraction": 0.0010474650393007324,
+      "episode/gait_contact_match": 0.8067182632525879,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0011144510157962539,
+      "iteration": 700,
+      "screen_score": 1.517569512301307
+    },
+    {
+      "amp_raw_style_valid": 0.6862032097578049,
+      "reference_foot_quality": 0.7688457208871842,
+      "reset_fraction": 0.0009642537729814648,
+      "episode/gait_contact_match": 0.8025172843724636,
+      "episode/raw_torque_over_peak_fraction": 1.205318925633986e-08,
+      "episode/rew_illegal_support": -0.0009172596856769736,
+      "iteration": 800,
+      "screen_score": 1.523150196078682
+    },
+    {
+      "amp_raw_style_valid": 0.6790303725004196,
+      "reference_foot_quality": 0.7661810684204101,
+      "reset_fraction": 0.0010497029917314648,
+      "episode/gait_contact_match": 0.7970348087761044,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0009613484948871215,
+      "iteration": 900,
+      "screen_score": 1.5107307276099413
+    },
+    {
+      "amp_raw_style_valid": 0.672363224029541,
+      "reference_foot_quality": 0.7697632360458374,
+      "reset_fraction": 0.0009629313444020226,
+      "episode/gait_contact_match": 0.798026589772026,
+      "episode/raw_torque_over_peak_fraction": 1.2601061495264399e-08,
+      "episode/rew_illegal_support": -0.001047296813398077,
+      "iteration": 1000,
+      "screen_score": 1.5196431325871471
+    },
+    {
+      "amp_raw_style_valid": 0.6626441353559493,
+      "reference_foot_quality": 0.7683602750301362,
+      "reset_fraction": 0.0009659831004682929,
+      "episode/gait_contact_match": 0.7993080922798286,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.001127564902627756,
+      "iteration": 1100,
+      "screen_score": 1.51936921228655
+    },
+    {
+      "amp_raw_style_valid": 0.6453613042831421,
+      "reference_foot_quality": 0.7595070576667786,
+      "reset_fraction": 0.0010475667647551745,
+      "episode/gait_contact_match": 0.8008630954439433,
+      "episode/raw_torque_over_peak_fraction": 3.622805100652234e-08,
+      "episode/rew_illegal_support": -0.001497842347222392,
+      "iteration": 1200,
+      "screen_score": 1.5079914525924532
+    },
+    {
+      "amp_raw_style_valid": 0.6401096159219741,
+      "reference_foot_quality": 0.7564693027734757,
+      "reset_fraction": 0.000965271025779657,
+      "episode/gait_contact_match": 0.7973215467220992,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0015898878968793407,
+      "iteration": 1300,
+      "screen_score": 1.5055272982065921
+    },
+    {
+      "amp_raw_style_valid": 0.6289056348800659,
+      "reference_foot_quality": 0.7545220911502838,
+      "reset_fraction": 0.0010511271451832727,
+      "episode/gait_contact_match": 0.7972599609653623,
+      "episode/raw_torque_over_peak_fraction": 6.390701348235767e-08,
+      "episode/rew_illegal_support": -0.0016885873918360483,
+      "iteration": 1400,
+      "screen_score": 1.4992250557863478
+    },
+    {
+      "amp_raw_style_valid": 0.61897875726223,
+      "reference_foot_quality": 0.7556128281354905,
+      "reset_fraction": 0.0009618123667314649,
+      "episode/gait_contact_match": 0.7984459416386958,
+      "episode/raw_torque_over_peak_fraction": 6.244569340915872e-08,
+      "episode/rew_illegal_support": -0.0018813485949353559,
+      "iteration": 1500,
+      "screen_score": 1.5059675269806787
+    },
+    {
+      "amp_raw_style_valid": 0.616430115699768,
+      "reference_foot_quality": 0.7607931703329086,
+      "reset_fraction": 0.0009651692979969084,
+      "episode/gait_contact_match": 0.8005958679269343,
+      "episode/raw_torque_over_peak_fraction": 7.56063689715864e-09,
+      "episode/rew_illegal_support": -0.0016605619933904607,
+      "iteration": 1600,
+      "screen_score": 1.5131304977536286
+    },
+    {
+      "amp_raw_style_valid": 0.6056008434295654,
+      "reference_foot_quality": 0.7601693052053452,
+      "reset_fraction": 0.0010493978194426746,
+      "episode/gait_contact_match": 0.8041317751218225,
+      "episode/raw_torque_over_peak_fraction": 4.953174751513554e-09,
+      "episode/rew_illegal_support": -0.001593076547970147,
+      "iteration": 1700,
+      "screen_score": 1.5118311398232864
+    },
+    {
+      "amp_raw_style_valid": 0.6017039984464645,
+      "reference_foot_quality": 0.763291426897049,
+      "reset_fraction": 0.0009651693009072915,
+      "episode/gait_contact_match": 0.8029321126893249,
+      "episode/raw_torque_over_peak_fraction": 2.3156517598247702e-08,
+      "episode/rew_illegal_support": -0.001460134858774359,
+      "iteration": 1800,
+      "screen_score": 1.5179648429758332
+    },
+    {
+      "amp_raw_style_valid": 0.5998262166976929,
+      "reference_foot_quality": 0.7624887627363205,
+      "reset_fraction": 0.0010494995408225805,
+      "episode/gait_contact_match": 0.8016890446155557,
+      "episode/raw_torque_over_peak_fraction": 6.77191645014442e-08,
+      "episode/rew_illegal_support": -0.0013568758158618306,
+      "iteration": 1900,
+      "screen_score": 1.5117021531191022
+    },
+    {
+      "amp_raw_style_valid": 0.5936920636892319,
+      "reference_foot_quality": 0.7603080260753632,
+      "reset_fraction": 0.0009627278940752148,
+      "episode/gait_contact_match": 0.7993349299929317,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0014141441601861777,
+      "iteration": 2000,
+      "screen_score": 1.5115065613645342
+    },
+    {
+      "amp_raw_style_valid": 0.5876057887077332,
+      "reference_foot_quality": 0.7617867982387543,
+      "reset_fraction": 0.0009650675725424662,
+      "episode/gait_contact_match": 0.7975732384547487,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.001231918889816646,
+      "iteration": 2100,
+      "screen_score": 1.5111066580663797
+    },
+    {
+      "amp_raw_style_valid": 0.5817532062530517,
+      "reference_foot_quality": 0.7648562914133072,
+      "reset_fraction": 0.0010500081710051745,
+      "episode/gait_contact_match": 0.7989229634459434,
+      "episode/raw_torque_over_peak_fraction": 1.3861167644790839e-08,
+      "episode/rew_illegal_support": -0.0011786923467065743,
+      "iteration": 2200,
+      "screen_score": 1.5112787076973155
+    },
+    {
+      "amp_raw_style_valid": 0.5696376574039459,
+      "reference_foot_quality": 0.7622279185056686,
+      "reset_fraction": 0.0009652710263617337,
+      "episode/gait_contact_match": 0.7997499371792032,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0012690078301662714,
+      "iteration": 2300,
+      "screen_score": 1.5137143043667851
+    },
+    {
+      "amp_raw_style_valid": 0.5653625065088272,
+      "reference_foot_quality": 0.7599619257450104,
+      "reset_fraction": 0.0010505167936207727,
+      "episode/gait_contact_match": 0.7986661876854881,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0012278070374980013,
+      "iteration": 2400,
+      "screen_score": 1.5061022737494598
+    },
+    {
+      "amp_raw_style_valid": 0.5586235421895981,
+      "reference_foot_quality": 0.7640478521585464,
+      "reset_fraction": 0.0009612020151689649,
+      "episode/gait_contact_match": 0.8011173835744407,
+      "episode/raw_torque_over_peak_fraction": 1.8901591829489917e-08,
+      "episode/rew_illegal_support": -0.00123649636383223,
+      "iteration": 2500,
+      "screen_score": 1.5171049459586208
+    },
+    {
+      "amp_raw_style_valid": 0.5557070004940033,
+      "reference_foot_quality": 0.7681804829835892,
+      "reset_fraction": 0.0009662882756674662,
+      "episode/gait_contact_match": 0.8068976704570144,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0011697832593485712,
+      "iteration": 2600,
+      "screen_score": 1.5267637396572304
+    },
+    {
+      "amp_raw_style_valid": 0.5449895834922791,
+      "reference_foot_quality": 0.7591591995954513,
+      "reset_fraction": 0.00104736331384629,
+      "episode/gait_contact_match": 0.8033656552822975,
+      "episode/raw_torque_over_peak_fraction": 7.231913553803916e-09,
+      "episode/rew_illegal_support": -0.0014413945724296674,
+      "iteration": 2700,
+      "screen_score": 1.5101566168662988
+    },
+    {
+      "amp_raw_style_valid": 0.5462557244300842,
+      "reference_foot_quality": 0.75886574447155,
+      "reset_fraction": 0.0009680176083929837,
+      "episode/gait_contact_match": 0.8016650951722011,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0013272342985140037,
+      "iteration": 2800,
+      "screen_score": 1.5121299592241018
+    },
+    {
+      "amp_raw_style_valid": 0.5417400223016738,
+      "reference_foot_quality": 0.7591047239303589,
+      "reset_fraction": 0.0010476684867171571,
+      "episode/gait_contact_match": 0.7998386688449952,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.001155082321726548,
+      "iteration": 2900,
+      "screen_score": 1.5065599684394964
+    },
+    {
+      "amp_raw_style_valid": 0.5377676331996918,
+      "reference_foot_quality": 0.7596016162633896,
+      "reset_fraction": 0.0009634399705100805,
+      "episode/gait_contact_match": 0.7996010626017425,
+      "episode/raw_torque_over_peak_fraction": 1.4420779687716429e-08,
+      "episode/rew_illegal_support": -0.0011631016519722361,
+      "iteration": 3000,
+      "screen_score": 1.5110305361318312
+    },
+    {
+      "amp_raw_style_valid": 0.5376519519090652,
+      "reference_foot_quality": 0.7624153620004654,
+      "reset_fraction": 0.0009658813750138506,
+      "episode/gait_contact_match": 0.8009502407742543,
+      "episode/raw_torque_over_peak_fraction": 9.149034791731254e-09,
+      "episode/rew_illegal_support": -0.0012022471720096548,
+      "iteration": 3100,
+      "screen_score": 1.515071442533679
+    },
+    {
+      "amp_raw_style_valid": 0.5380521661043167,
+      "reference_foot_quality": 0.7634759825468064,
+      "reset_fraction": 0.0010462443355936557,
+      "episode/gait_contact_match": 0.8014955198563992,
+      "episode/raw_torque_over_peak_fraction": 2.813302356177559e-08,
+      "episode/rew_illegal_support": -0.001226473452990655,
+      "iteration": 3200,
+      "screen_score": 1.5126590042932873
+    },
+    {
+      "amp_raw_style_valid": 0.5344387179613114,
+      "reference_foot_quality": 0.7632942885160446,
+      "reset_fraction": 0.0009683227841742337,
+      "episode/gait_contact_match": 0.79976162935831,
+      "episode/raw_torque_over_peak_fraction": 6.93058367081297e-08,
+      "episode/rew_illegal_support": -0.0012400326991747984,
+      "iteration": 3300,
+      "screen_score": 1.5146390856072758
+    },
+    {
+      "amp_raw_style_valid": 0.5321987810730934,
+      "reference_foot_quality": 0.7611271107196808,
+      "reset_fraction": 0.0010469564102822916,
+      "episode/gait_contact_match": 0.798273804793343,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.001327929090902395,
+      "iteration": 3400,
+      "screen_score": 1.5070530949989092
+    },
+    {
+      "amp_raw_style_valid": 0.5260509717464447,
+      "reference_foot_quality": 0.7639503598213195,
+      "reset_fraction": 0.0009634399705100805,
+      "episode/gait_contact_match": 0.7983115717082089,
+      "episode/raw_torque_over_peak_fraction": 6.9305838223954194e-09,
+      "episode/rew_illegal_support": -0.0011807088194417037,
+      "iteration": 3500,
+      "screen_score": 1.5140898636981863
+    },
+    {
+      "amp_raw_style_valid": 0.5199022534489631,
+      "reference_foot_quality": 0.7646417403221131,
+      "reset_fraction": 0.0009673055284656584,
+      "episode/gait_contact_match": 0.8010113841201989,
+      "episode/raw_torque_over_peak_fraction": 2.184640504930175e-08,
+      "episode/rew_illegal_support": -0.0012347217784308589,
+      "iteration": 3600,
+      "screen_score": 1.5172876295549786
+    },
+    {
+      "amp_raw_style_valid": 0.5164693310856819,
+      "reference_foot_quality": 0.7661642879247665,
+      "reset_fraction": 0.001047871939954348,
+      "episode/gait_contact_match": 0.8023044976227321,
+      "episode/raw_torque_over_peak_fraction": 2.0716418844856072e-08,
+      "episode/rew_illegal_support": -0.0010614121649861997,
+      "iteration": 3700,
+      "screen_score": 1.516074981385593
+    },
+    {
+      "amp_raw_style_valid": 0.5215494266152382,
+      "reference_foot_quality": 0.770533185005188,
+      "reset_fraction": 0.0009670003555947914,
+      "episode/gait_contact_match": 0.801611852743953,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0010252470701333375,
+      "iteration": 3800,
+      "screen_score": 1.5237950199694015
+    },
+    {
+      "amp_raw_style_valid": 0.5179317799210549,
+      "reference_foot_quality": 0.7738781493902206,
+      "reset_fraction": 0.0010465495090465993,
+      "episode/gait_contact_match": 0.8022403648895202,
+      "episode/raw_torque_over_peak_fraction": 2.9630756526403012e-08,
+      "episode/rew_illegal_support": -0.0010056205266457798,
+      "iteration": 3900,
+      "screen_score": 1.5237907425198454
+    },
+    {
+      "amp_raw_style_valid": 0.5256247791647911,
+      "reference_foot_quality": 0.7713337802886963,
+      "reset_fraction": 0.0009642537729814648,
+      "episode/gait_contact_match": 0.800159283453827,
+      "episode/raw_torque_over_peak_fraction": 9.450795914744958e-09,
+      "episode/rew_illegal_support": -0.00109648235703564,
+      "iteration": 4000,
+      "screen_score": 1.5232802805854908
+    },
+    {
+      "amp_raw_style_valid": 0.518704973757267,
+      "reference_foot_quality": 0.7705929183959961,
+      "reset_fraction": 0.0009647623967612162,
+      "episode/gait_contact_match": 0.7995104667953704,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.001107971256315188,
+      "iteration": 4100,
+      "screen_score": 1.5218652653533056
+    },
+    {
+      "amp_raw_style_valid": 0.5165422415733337,
+      "reference_foot_quality": 0.7749780535697937,
+      "reset_fraction": 0.001050313346204348,
+      "episode/gait_contact_match": 0.803311528464032,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0010363786200255495,
+      "iteration": 4200,
+      "screen_score": 1.5257739147236082
+    },
+    {
+      "amp_raw_style_valid": 0.5154212340712547,
+      "reference_foot_quality": 0.7722480010986328,
+      "reset_fraction": 0.0009649658505804837,
+      "episode/gait_contact_match": 0.8018934713744374,
+      "episode/raw_torque_over_peak_fraction": 1.807978348907731e-08,
+      "episode/rew_illegal_support": -0.0010118413876524296,
+      "iteration": 4300,
+      "screen_score": 1.5258929991462111
+    },
+    {
+      "amp_raw_style_valid": 0.5129914277791977,
+      "reference_foot_quality": 0.7732696270942688,
+      "reset_fraction": 0.000966491725994274,
+      "episode/gait_contact_match": 0.8008413816021561,
+      "episode/raw_torque_over_peak_fraction": 8.663229588516212e-09,
+      "episode/rew_illegal_support": -0.0009203564062230924,
+      "iteration": 4400,
+      "screen_score": 1.5257863357644155
+    },
+    {
+      "amp_raw_style_valid": 0.5141829973459244,
+      "reference_foot_quality": 0.7764049899578095,
+      "reset_fraction": 0.0010459391598124058,
+      "episode/gait_contact_match": 0.8015074042295494,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000891708325226369,
+      "iteration": 4500,
+      "screen_score": 1.5256154361967385
+    },
+    {
+      "amp_raw_style_valid": 0.5064341622591019,
+      "reference_foot_quality": 0.7763680225610733,
+      "reset_fraction": 0.0009653727483237162,
+      "episode/gait_contact_match": 0.8031868108687861,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0009570880847250857,
+      "iteration": 4600,
+      "screen_score": 1.5312861960136734
+    },
+    {
+      "amp_raw_style_valid": 0.5084505060315132,
+      "reference_foot_quality": 0.7783731323480606,
+      "reset_fraction": 0.00104827884119004,
+      "episode/gait_contact_match": 0.8031685508494968,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0009113600375690559,
+      "iteration": 4700,
+      "screen_score": 1.5291277411380553
+    },
+    {
+      "amp_raw_style_valid": 0.5043866789340973,
+      "reference_foot_quality": 0.7748379921913147,
+      "reset_fraction": 0.0009647624002536759,
+      "episode/gait_contact_match": 0.8035649443032569,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008487581530004533,
+      "iteration": 4800,
+      "screen_score": 1.5301648164818877
+    },
+    {
+      "amp_raw_style_valid": 0.5044798201322556,
+      "reference_foot_quality": 0.7764627027511597,
+      "reset_fraction": 0.0009665934508666396,
+      "episode/gait_contact_match": 0.8045345438652631,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008416353685627584,
+      "iteration": 4900,
+      "screen_score": 1.5326675740730908
+    },
+    {
+      "amp_raw_style_valid": 0.5016947957873344,
+      "reference_foot_quality": 0.7864765977859497,
+      "reset_fraction": 0.0010477702144999056,
+      "episode/gait_contact_match": 0.8097894104504519,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008116356625219628,
+      "iteration": 5000,
+      "screen_score": 1.5438774975114065
+    },
+    {
+      "amp_raw_style_valid": 0.4998143857717514,
+      "reference_foot_quality": 0.7858389383554458,
+      "reset_fraction": 0.0009637451445451006,
+      "episode/gait_contact_match": 0.80665706164595,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008237797650421111,
+      "iteration": 5100,
+      "screen_score": 1.5443087427741409
+    },
+    {
+      "amp_raw_style_valid": 0.49821700900793076,
+      "reference_foot_quality": 0.7863933360576629,
+      "reset_fraction": 0.00105041507165879,
+      "episode/gait_contact_match": 0.8037899630139117,
+      "episode/raw_torque_over_peak_fraction": 6.463302411675881e-08,
+      "episode/rew_illegal_support": -0.0008714624647952514,
+      "iteration": 5200,
+      "screen_score": 1.5376618991583941
+    },
+    {
+      "amp_raw_style_valid": 0.49844314485788344,
+      "reference_foot_quality": 0.7893362021446229,
+      "reset_fraction": 0.0009628296201117337,
+      "episode/gait_contact_match": 0.8045665331877052,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008307961093565968,
+      "iteration": 5300,
+      "screen_score": 1.5457612543267414
+    },
+    {
+      "amp_raw_style_valid": 0.5056440815329551,
+      "reference_foot_quality": 0.7864826554059983,
+      "reset_fraction": 0.0009664917254121974,
+      "episode/gait_contact_match": 0.8028115386475609,
+      "episode/raw_torque_over_peak_fraction": 4.284360908389896e-08,
+      "episode/rew_illegal_support": -0.0009412449373129157,
+      "iteration": 5400,
+      "screen_score": 1.5409691793468585
+    },
+    {
+      "amp_raw_style_valid": 0.507716067135334,
+      "reference_foot_quality": 0.7861957466602325,
+      "reset_fraction": 0.0010474650387186557,
+      "episode/gait_contact_match": 0.803537789479336,
+      "episode/raw_torque_over_peak_fraction": 1.205318925633986e-08,
+      "episode/rew_illegal_support": -0.0009300338168078378,
+      "iteration": 5500,
+      "screen_score": 1.5373601636717433
+    },
+    {
+      "amp_raw_style_valid": 0.5082994118332863,
+      "reference_foot_quality": 0.7863372635841369,
+      "reset_fraction": 0.000965169298578985,
+      "episode/gait_contact_match": 0.8031434605193077,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008444978153719473,
+      "iteration": 5600,
+      "screen_score": 1.5412222591744955
+    },
+    {
+      "amp_raw_style_valid": 0.5068669414520264,
+      "reference_foot_quality": 0.7865371453762054,
+      "reset_fraction": 0.001050313346204348,
+      "episode/gait_contact_match": 0.8056028469669465,
+      "episode/raw_torque_over_peak_fraction": 2.204729181700542e-08,
+      "episode/rew_illegal_support": -0.0008446278225522158,
+      "iteration": 5700,
+      "screen_score": 1.5396241045600165
+    },
+    {
+      "amp_raw_style_valid": 0.4981136041879654,
+      "reference_foot_quality": 0.7925198638439178,
+      "reset_fraction": 0.0009622192685492337,
+      "episode/gait_contact_match": 0.8074405123914911,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008113446333197892,
+      "iteration": 5800,
+      "screen_score": 1.5518494128079472
+    },
+    {
+      "amp_raw_style_valid": 0.4899652296304703,
+      "reference_foot_quality": 0.7945871478319169,
+      "reset_fraction": 0.0009658813738496974,
+      "episode/gait_contact_match": 0.8094258416426398,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007785849957523361,
+      "iteration": 5900,
+      "screen_score": 1.5557189207820716
+    },
+    {
+      "amp_raw_style_valid": 0.5014211660623551,
+      "reference_foot_quality": 0.7946933442354203,
+      "reset_fraction": 0.0010491943679517134,
+      "episode/gait_contact_match": 0.8080094059180202,
+      "episode/raw_torque_over_peak_fraction": 9.039891744538655e-09,
+      "episode/rew_illegal_support": -0.000848951112941033,
+      "iteration": 6000,
+      "screen_score": 1.5502429413569374
+    },
+    {
+      "amp_raw_style_valid": 0.49854823589324954,
+      "reference_foot_quality": 0.7942298340797425,
+      "reset_fraction": 0.0009649658482521772,
+      "episode/gait_contact_match": 0.8053463234847633,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008408322533237431,
+      "iteration": 6100,
+      "screen_score": 1.551327865151897
+    },
+    {
+      "amp_raw_style_valid": 0.496980614066124,
+      "reference_foot_quality": 0.7990945094823837,
+      "reset_fraction": 0.001050313346204348,
+      "episode/gait_contact_match": 0.8082016731519583,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008147804092444499,
+      "iteration": 6200,
+      "screen_score": 1.5547805153241248
+    },
+    {
+      "amp_raw_style_valid": 0.5032900294661522,
+      "reference_foot_quality": 0.8013670647144318,
+      "reset_fraction": 0.0009607951150974259,
+      "episode/gait_contact_match": 0.8082297227742999,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000814215952988331,
+      "iteration": 6300,
+      "screen_score": 1.5615570317338605
+    },
+    {
+      "amp_raw_style_valid": 0.5000726506114006,
+      "reference_foot_quality": 0.7992106240987777,
+      "reset_fraction": 0.0009658813738496974,
+      "episode/gait_contact_match": 0.8073829514100386,
+      "episode/raw_torque_over_peak_fraction": 9.039891744538655e-09,
+      "episode/rew_illegal_support": -0.0008332696115533722,
+      "iteration": 6400,
+      "screen_score": 1.558299416417414
+    },
+    {
+      "amp_raw_style_valid": 0.4870807185769081,
+      "reference_foot_quality": 0.7939573776721954,
+      "reset_fraction": 0.0010503133456222712,
+      "episode/gait_contact_match": 0.8086515697662287,
+      "episode/raw_torque_over_peak_fraction": 7.56063689715864e-09,
+      "episode/rew_illegal_support": -0.0008217132587782446,
+      "iteration": 6500,
+      "screen_score": 1.5500932045509417
+    },
+    {
+      "amp_raw_style_valid": 0.4882356616854668,
+      "reference_foot_quality": 0.79452372610569,
+      "reset_fraction": 0.0009655761998146773,
+      "episode/gait_contact_match": 0.8092329715601657,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007855413984600862,
+      "iteration": 6600,
+      "screen_score": 1.5554778876751219
+    },
+    {
+      "amp_raw_style_valid": 0.4780159363150597,
+      "reference_foot_quality": 0.7939866238832474,
+      "reset_fraction": 0.001050008170423098,
+      "episode/gait_contact_match": 0.8086990946560326,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007773179829687448,
+      "iteration": 6700,
+      "screen_score": 1.550185310018125
+    },
+    {
+      "amp_raw_style_valid": 0.49538710713386536,
+      "reference_foot_quality": 0.7897045290470124,
+      "reset_fraction": 0.0009611002908786759,
+      "episode/gait_contact_match": 0.8058584013819534,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008269014007194269,
+      "iteration": 6800,
+      "screen_score": 1.547507915885032
+    },
+    {
+      "amp_raw_style_valid": 0.474243805706501,
+      "reference_foot_quality": 0.7818194645643234,
+      "reset_fraction": 0.0009665934508666396,
+      "episode/gait_contact_match": 0.8011109910336996,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0009448212667102041,
+      "iteration": 6900,
+      "screen_score": 1.534600783054691
+    },
+    {
+      "amp_raw_style_valid": 0.47426388919353485,
+      "reference_foot_quality": 0.7790277493000031,
+      "reset_fraction": 0.0010466512362472713,
+      "episode/gait_contact_match": 0.7990414369362359,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0009214928115350987,
+      "iteration": 7000,
+      "screen_score": 1.5257366244238755
+    },
+    {
+      "amp_raw_style_valid": 0.46884256690740583,
+      "reference_foot_quality": 0.7867324322462081,
+      "reset_fraction": 0.0009674072545021772,
+      "episode/gait_contact_match": 0.802403098875767,
+      "episode/raw_torque_over_peak_fraction": 9.450795914744958e-09,
+      "episode/rew_illegal_support": -0.0008729162217639247,
+      "iteration": 7100,
+      "screen_score": 1.540765073888907
+    },
+    {
+      "amp_raw_style_valid": 0.4823298454284668,
+      "reference_foot_quality": 0.7892746746540069,
+      "reset_fraction": 0.0010486857418436557,
+      "episode/gait_contact_match": 0.8051961069521839,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008864714139837472,
+      "iteration": 7200,
+      "screen_score": 1.542036494514008
+    },
+    {
+      "amp_raw_style_valid": 0.4683685556054115,
+      "reference_foot_quality": 0.7868364101648331,
+      "reset_fraction": 0.0009638468729099258,
+      "episode/gait_contact_match": 0.8035902686047168,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008429571379616163,
+      "iteration": 7300,
+      "screen_score": 1.5422343351240535
+    },
+    {
+      "amp_raw_style_valid": 0.47447195410728454,
+      "reference_foot_quality": 0.7893751627206802,
+      "reset_fraction": 0.0009658813738496974,
+      "episode/gait_contact_match": 0.803725957697141,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008299400383511311,
+      "iteration": 7400,
+      "screen_score": 1.5448070517253363
+    },
+    {
+      "amp_raw_style_valid": 0.475695917904377,
+      "reference_foot_quality": 0.79168525993824,
+      "reset_fraction": 0.0010462443355936557,
+      "episode/gait_contact_match": 0.8053526367604275,
+      "episode/raw_torque_over_peak_fraction": 1.7326459177032424e-08,
+      "episode/rew_illegal_support": -0.0008407219926136155,
+      "iteration": 7500,
+      "screen_score": 1.544725506654393
+    },
+    {
+      "amp_raw_style_valid": 0.4784670507907867,
+      "reference_foot_quality": 0.7961438518762588,
+      "reset_fraction": 0.0009681193309370429,
+      "episode/gait_contact_match": 0.8074616138046121,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007709045234827864,
+      "iteration": 7600,
+      "screen_score": 1.5551994991340188
+    },
+    {
+      "amp_raw_style_valid": 0.4817850214242935,
+      "reference_foot_quality": 0.7941598826646805,
+      "reset_fraction": 0.0010463460610480979,
+      "episode/gait_contact_match": 0.8060773937610439,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007367050116804669,
+      "iteration": 7700,
+      "screen_score": 1.5479199733733195
+    },
+    {
+      "amp_raw_style_valid": 0.4747257423400879,
+      "reference_foot_quality": 0.7859011298418045,
+      "reset_fraction": 0.0009647624002536759,
+      "episode/gait_contact_match": 0.8012245965578084,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008191136574167072,
+      "iteration": 7800,
+      "screen_score": 1.538887606386929
+    },
+    {
+      "amp_raw_style_valid": 0.46567034870386126,
+      "reference_foot_quality": 0.7893069046735763,
+      "reset_fraction": 0.0009667969011934474,
+      "episode/gait_contact_match": 0.8035970857980093,
+      "episode/raw_torque_over_peak_fraction": 1.807978348907731e-08,
+      "episode/rew_illegal_support": -0.0008337096904243288,
+      "iteration": 7900,
+      "screen_score": 1.5445639646140783
+    },
+    {
+      "amp_raw_style_valid": 0.4746454793214798,
+      "reference_foot_quality": 0.7906330609321595,
+      "reset_fraction": 0.0010476684890454635,
+      "episode/gait_contact_match": 0.8049413436858214,
+      "episode/raw_torque_over_peak_fraction": 4.950417178406497e-09,
+      "episode/rew_illegal_support": -0.0008382770483450948,
+      "iteration": 8000,
+      "screen_score": 1.543190930661536
+    },
+    {
+      "amp_raw_style_valid": 0.47892773628234864,
+      "reference_foot_quality": 0.79498271048069,
+      "reset_fraction": 0.0009658813755959272,
+      "episode/gait_contact_match": 0.8053512470479149,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007839642136184872,
+      "iteration": 8100,
+      "screen_score": 1.5520398887488085
+    },
+    {
+      "amp_raw_style_valid": 0.4841640841960907,
+      "reference_foot_quality": 0.7969941586256027,
+      "reset_fraction": 0.0010474650387186557,
+      "episode/gait_contact_match": 0.8051062003059926,
+      "episode/raw_torque_over_peak_fraction": 2.718764622129485e-10,
+      "episode/rew_illegal_support": -0.000809632369907664,
+      "iteration": 8200,
+      "screen_score": 1.5497271042768979
+    },
+    {
+      "amp_raw_style_valid": 0.4808492797613144,
+      "reference_foot_quality": 0.8009830814599991,
+      "reset_fraction": 0.0009635416971286759,
+      "episode/gait_contact_match": 0.808828079082954,
+      "episode/raw_torque_over_peak_fraction": 5.4571523596299206e-11,
+      "episode/rew_illegal_support": -0.0008108308665960776,
+      "iteration": 8300,
+      "screen_score": 1.561634075140804
+    },
+    {
+      "amp_raw_style_valid": 0.4772321218252182,
+      "reference_foot_quality": 0.8030292880535126,
+      "reset_fraction": 0.0009652710217051208,
+      "episode/gait_contact_match": 0.8091648888295149,
+      "episode/raw_torque_over_peak_fraction": 2.60548276287409e-10,
+      "episode/rew_illegal_support": -0.0007950916642268413,
+      "iteration": 8400,
+      "screen_score": 1.5639306231922887
+    },
+    {
+      "amp_raw_style_valid": 0.48075812935829165,
+      "reference_foot_quality": 0.8041904211044312,
+      "reset_fraction": 0.00105041507165879,
+      "episode/gait_contact_match": 0.8090306488478807,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007534197594235332,
+      "iteration": 8500,
+      "screen_score": 1.5607003163693722
+    },
+    {
+      "amp_raw_style_valid": 0.47283208936452864,
+      "reference_foot_quality": 0.8009522557258606,
+      "reset_fraction": 0.0009653727494878695,
+      "episode/gait_contact_match": 0.8063239930970635,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000763335586660869,
+      "iteration": 8600,
+      "screen_score": 1.5590076113485307
+    },
+    {
+      "amp_raw_style_valid": 0.4818548610806465,
+      "reference_foot_quality": 0.7973392993211746,
+      "reset_fraction": 0.0009667969041038304,
+      "episode/gait_contact_match": 0.8056954519849768,
+      "episode/raw_torque_over_peak_fraction": 5.6944198535268735e-11,
+      "episode/rew_illegal_support": -0.0007269352584958201,
+      "iteration": 8700,
+      "screen_score": 1.554694905531518
+    },
+    {
+      "amp_raw_style_valid": 0.476631193459034,
+      "reference_foot_quality": 0.8008548039197921,
+      "reset_fraction": 0.0010460408864310011,
+      "episode/gait_contact_match": 0.8064354666012556,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007605055260602714,
+      "iteration": 8800,
+      "screen_score": 1.5549882261994976
+    },
+    {
+      "amp_raw_style_valid": 0.46249314963817595,
+      "reference_foot_quality": 0.8009432202577591,
+      "reset_fraction": 0.0009648641204694286,
+      "episode/gait_contact_match": 0.80890392642152,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007979515891591842,
+      "iteration": 8900,
+      "screen_score": 1.5616039406558078
+    },
+    {
+      "amp_raw_style_valid": 0.47782247364521024,
+      "reference_foot_quality": 0.8041088205575943,
+      "reset_fraction": 0.0010488891927525402,
+      "episode/gait_contact_match": 0.8085405982036543,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007409702860851961,
+      "iteration": 9000,
+      "screen_score": 1.5602049591236216
+    },
+    {
+      "amp_raw_style_valid": 0.46731685757637026,
+      "reference_foot_quality": 0.8010553729534149,
+      "reset_fraction": 0.0009645589475985616,
+      "episode/gait_contact_match": 0.8080159603603115,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007966432928185606,
+      "iteration": 9100,
+      "screen_score": 1.5608433859337985
+    },
+    {
+      "amp_raw_style_valid": 0.4354657742381096,
+      "reference_foot_quality": 0.7881401115655899,
+      "reset_fraction": 0.0009657796507235617,
+      "episode/gait_contact_match": 0.8070194049692665,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008464776051128768,
+      "iteration": 9200,
+      "screen_score": 1.5468705339986784
+    },
+    {
+      "amp_raw_style_valid": 0.452365046441555,
+      "reference_foot_quality": 0.7857877933979034,
+      "reset_fraction": 0.0010478719417005777,
+      "episode/gait_contact_match": 0.8053680406874597,
+      "episode/raw_torque_over_peak_fraction": 2.3030200667483813e-08,
+      "episode/rew_illegal_support": -0.000885354792819385,
+      "iteration": 9300,
+      "screen_score": 1.5387620066983276
+    },
+    {
+      "amp_raw_style_valid": 0.46699911266565325,
+      "reference_foot_quality": 0.7922717422246933,
+      "reset_fraction": 0.0009638468676712364,
+      "episode/gait_contact_match": 0.8037581159471879,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008245740351741161,
+      "iteration": 9400,
+      "screen_score": 1.5478375147883194
+    },
+    {
+      "amp_raw_style_valid": 0.4660077512264252,
+      "reference_foot_quality": 0.792503273487091,
+      "reset_fraction": 0.0010506185225676746,
+      "episode/gait_contact_match": 0.8047202319381614,
+      "episode/raw_torque_over_peak_fraction": 2.60548276287409e-10,
+      "episode/rew_illegal_support": -0.0008100515721509516,
+      "iteration": 9500,
+      "screen_score": 1.544692576691386
+    },
+    {
+      "amp_raw_style_valid": 0.46410549610853197,
+      "reference_foot_quality": 0.7948065847158432,
+      "reset_fraction": 0.0009626261674566195,
+      "episode/gait_contact_match": 0.8053858163320656,
+      "episode/raw_torque_over_peak_fraction": 1.15509730373257e-08,
+      "episode/rew_illegal_support": -0.0008391542909128463,
+      "iteration": 9600,
+      "screen_score": 1.5520609771653475
+    },
+    {
+      "amp_raw_style_valid": 0.4547851973772049,
+      "reference_foot_quality": 0.7954886990785599,
+      "reset_fraction": 0.0009654744749423116,
+      "episode/gait_contact_match": 0.8052389669196627,
+      "episode/raw_torque_over_peak_fraction": 2.7119675233615968e-08,
+      "episode/rew_illegal_support": -0.0008440241884309814,
+      "iteration": 9700,
+      "screen_score": 1.5524536710543546
+    },
+    {
+      "amp_raw_style_valid": 0.45872117191553113,
+      "reference_foot_quality": 0.7941819953918458,
+      "reset_fraction": 0.0010486857435898856,
+      "episode/gait_contact_match": 0.8039301004047769,
+      "episode/raw_torque_over_peak_fraction": 1.4744395740282442e-08,
+      "episode/rew_illegal_support": -0.00079948134940555,
+      "iteration": 9800,
+      "screen_score": 1.5456776611731708
+    },
+    {
+      "amp_raw_style_valid": 0.4422601717710495,
+      "reference_foot_quality": 0.7938929009437561,
+      "reset_fraction": 0.0009649658459238708,
+      "episode/gait_contact_match": 0.805922521782568,
+      "episode/raw_torque_over_peak_fraction": 1.2601061495264399e-08,
+      "episode/rew_illegal_support": -0.0008189751471171523,
+      "iteration": 9900,
+      "screen_score": 1.5515670044195156
+    },
+    {
+      "amp_raw_style_valid": 0.4597239950299263,
+      "reference_foot_quality": 0.7944913351535797,
+      "reset_fraction": 0.0010503133467864244,
+      "episode/gait_contact_match": 0.8055173762989106,
+      "episode/raw_torque_over_peak_fraction": 5.6944198535268735e-11,
+      "episode/rew_illegal_support": -0.0008630989417010323,
+      "iteration": 10000,
+      "screen_score": 1.547493043543727
+    },
+    {
+      "amp_raw_style_valid": 0.453001606464386,
+      "reference_foot_quality": 0.7920332205295563,
+      "reset_fraction": 0.0009620158158941194,
+      "episode/gait_contact_match": 0.8047320376156937,
+      "episode/raw_torque_over_peak_fraction": 9.450795914744958e-09,
+      "episode/rew_illegal_support": -0.0008298226422659369,
+      "iteration": 10100,
+      "screen_score": 1.5486643728425848
+    },
+    {
+      "amp_raw_style_valid": 0.4513089135289192,
+      "reference_foot_quality": 0.7905727642774582,
+      "reset_fraction": 0.0009662882768316194,
+      "episode/gait_contact_match": 0.8047442557544651,
+      "episode/raw_torque_over_peak_fraction": 5.4571523596299206e-11,
+      "episode/rew_illegal_support": -0.0008021700164677358,
+      "iteration": 10200,
+      "screen_score": 1.547002605644627
+    },
+    {
+      "amp_raw_style_valid": 0.45089753687381745,
+      "reference_foot_quality": 0.7922634786367416,
+      "reset_fraction": 0.0010493978206068278,
+      "episode/gait_contact_match": 0.8040435288112375,
+      "episode/raw_torque_over_peak_fraction": 1.1605544560921998e-08,
+      "episode/rew_illegal_support": -0.0008154877913891804,
+      "iteration": 10300,
+      "screen_score": 1.543837000362192
+    },
+    {
+      "amp_raw_style_valid": 0.4387615713477135,
+      "reference_foot_quality": 0.7909550958871842,
+      "reset_fraction": 0.0009647623950149864,
+      "episode/gait_contact_match": 0.8058440014894831,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008235547997923977,
+      "iteration": 10400,
+      "screen_score": 1.548560977625918
+    },
+    {
+      "amp_raw_style_valid": 0.44533931970596313,
+      "reference_foot_quality": 0.7915887427330017,
+      "reset_fraction": 0.0010501098964596166,
+      "episode/gait_contact_match": 0.8047708677153688,
+      "episode/raw_torque_over_peak_fraction": 6.9305838223954194e-09,
+      "episode/rew_illegal_support": -0.0007765029738348702,
+      "iteration": 10500,
+      "screen_score": 1.5438540463195516
+    },
+    {
+      "amp_raw_style_valid": 0.4445243272185326,
+      "reference_foot_quality": 0.7924629813432693,
+      "reset_fraction": 0.0009606933873146773,
+      "episode/gait_contact_match": 0.8060373560098713,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007996263415218546,
+      "iteration": 10600,
+      "screen_score": 1.5504656679874067
+    },
+    {
+      "amp_raw_style_valid": 0.4324104869365692,
+      "reference_foot_quality": 0.7942419582605362,
+      "reset_fraction": 0.0009662882768316194,
+      "episode/gait_contact_match": 0.808383290594608,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007954247628885892,
+      "iteration": 10700,
+      "screen_score": 1.5543108350135633
+    },
+    {
+      "amp_raw_style_valid": 0.43122266948223115,
+      "reference_foot_quality": 0.788477623462677,
+      "reset_fraction": 0.0010493978206068278,
+      "episode/gait_contact_match": 0.8108581725248263,
+      "episode/raw_torque_over_peak_fraction": 1.834033176536472e-08,
+      "episode/rew_illegal_support": -0.0008021325247880864,
+      "iteration": 10800,
+      "screen_score": 1.5468657215538444
+    },
+    {
+      "amp_raw_style_valid": 0.43827173084020615,
+      "reference_foot_quality": 0.7866387403011322,
+      "reset_fraction": 0.0009673055267194286,
+      "episode/gait_contact_match": 0.8057335390823109,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007932392052549857,
+      "iteration": 10900,
+      "screen_score": 1.5440070030474717
+    },
+    {
+      "amp_raw_style_valid": 0.4409882354736328,
+      "reference_foot_quality": 0.7912447887659073,
+      "reset_fraction": 0.0010485840175533667,
+      "episode/gait_contact_match": 0.8049214151471648,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007676629453499262,
+      "iteration": 11000,
+      "screen_score": 1.5437370030354036
+    },
+    {
+      "amp_raw_style_valid": 0.433861095905304,
+      "reference_foot_quality": 0.7827176409959793,
+      "reset_fraction": 0.0009616089146584272,
+      "episode/gait_contact_match": 0.8022703944834757,
+      "episode/raw_torque_over_peak_fraction": 3.540624266610974e-08,
+      "episode/rew_illegal_support": -0.0008432118454845497,
+      "iteration": 11100,
+      "screen_score": 1.536907235684107
+    },
+    {
+      "amp_raw_style_valid": 0.4028767615556717,
+      "reference_foot_quality": 0.7779300254583359,
+      "reset_fraction": 0.0009665934526128695,
+      "episode/gait_contact_match": 0.8036477243302627,
+      "episode/raw_torque_over_peak_fraction": 4.406947225462595e-08,
+      "episode/rew_illegal_support": -0.0008605212327445839,
+      "iteration": 11200,
+      "screen_score": 1.5332476364632326
+    },
+    {
+      "amp_raw_style_valid": 0.4019745200872421,
+      "reference_foot_quality": 0.7803513646125794,
+      "reset_fraction": 0.0010471598646836354,
+      "episode/gait_contact_match": 0.8042281510222774,
+      "episode/raw_torque_over_peak_fraction": 1.8293372037523682e-08,
+      "episode/rew_illegal_support": -0.0008121586748806372,
+      "iteration": 11300,
+      "screen_score": 1.5322213394669546
+    },
+    {
+      "amp_raw_style_valid": 0.3952260196208954,
+      "reference_foot_quality": 0.787955681681633,
+      "reset_fraction": 0.0009674072521738707,
+      "episode/gait_contact_match": 0.8078554637814404,
+      "episode/raw_torque_over_peak_fraction": 2.7564821418006125e-08,
+      "episode/rew_illegal_support": -0.0007931187667704901,
+      "iteration": 11400,
+      "screen_score": 1.5474405072061657
+    },
+    {
+      "amp_raw_style_valid": 0.4206388372182846,
+      "reference_foot_quality": 0.7928654491901398,
+      "reset_fraction": 0.0010477702156640588,
+      "episode/gait_contact_match": 0.8049161371379618,
+      "episode/raw_torque_over_peak_fraction": 1.15509730373257e-08,
+      "episode/rew_illegal_support": -0.0008144523539009984,
+      "iteration": 11500,
+      "screen_score": 1.5453929600351681
+    },
+    {
+      "amp_raw_style_valid": 0.4250993117690086,
+      "reference_foot_quality": 0.794643172621727,
+      "reset_fraction": 0.0009643554966896772,
+      "episode/gait_contact_match": 0.8025717179441878,
+      "episode/raw_torque_over_peak_fraction": 3.045256486681562e-08,
+      "episode/rew_illegal_support": -0.0007381677246208755,
+      "iteration": 11600,
+      "screen_score": 1.5489968112057824
+    },
+    {
+      "amp_raw_style_valid": 0.43938610076904294,
+      "reference_foot_quality": 0.7973125457763672,
+      "reset_fraction": 0.0009661865513771773,
+      "episode/gait_contact_match": 0.8024085856489481,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000719853602872674,
+      "iteration": 11700,
+      "screen_score": 1.5514118038564564
+    },
+    {
+      "amp_raw_style_valid": 0.4575401777029037,
+      "reference_foot_quality": 0.7968641781806945,
+      "reset_fraction": 0.0010464477876666934,
+      "episode/gait_contact_match": 0.7983671929526275,
+      "episode/raw_torque_over_peak_fraction": 3.465291835406485e-08,
+      "episode/rew_illegal_support": -0.0007556907165267432,
+      "iteration": 11800,
+      "screen_score": 1.5429086352208037
+    },
+    {
+      "amp_raw_style_valid": 0.42947095572948457,
+      "reference_foot_quality": 0.7877142238616943,
+      "reset_fraction": 0.0009682210546452552,
+      "episode/gait_contact_match": 0.800688107727068,
+      "episode/raw_torque_over_peak_fraction": 1.15509730373257e-08,
+      "episode/rew_illegal_support": -0.0008475796418768667,
+      "iteration": 11900,
+      "screen_score": 1.539991163346769
+    },
+    {
+      "amp_raw_style_valid": 0.4453489416837692,
+      "reference_foot_quality": 0.7923706233501434,
+      "reset_fraction": 0.0010456339851953088,
+      "episode/gait_contact_match": 0.8013424714950992,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008206556959572691,
+      "iteration": 12000,
+      "screen_score": 1.541431395585477
+    },
+    {
+      "amp_raw_style_valid": 0.4451178950071335,
+      "reference_foot_quality": 0.7918434154987335,
+      "reset_fraction": 0.000965169298578985,
+      "episode/gait_contact_match": 0.7999078036601283,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007856228760696486,
+      "iteration": 12100,
+      "screen_score": 1.5434927542299124
+    },
+    {
+      "amp_raw_style_valid": 0.4282029664516449,
+      "reference_foot_quality": 0.7886535841226577,
+      "reset_fraction": 0.000966084825922735,
+      "episode/gait_contact_match": 0.8017054321645916,
+      "episode/raw_torque_over_peak_fraction": 5.77548651866285e-09,
+      "episode/rew_illegal_support": -0.0007631374435390048,
+      "iteration": 12200,
+      "screen_score": 1.5420547172362473
+    },
+    {
+      "amp_raw_style_valid": 0.4183048439025879,
+      "reference_foot_quality": 0.7916724985837936,
+      "reset_fraction": 0.0010485840181354434,
+      "episode/gait_contact_match": 0.8029123179203244,
+      "episode/raw_torque_over_peak_fraction": 2.60548276287409e-10,
+      "episode/rew_illegal_support": -0.0008344836809099933,
+      "iteration": 12300,
+      "screen_score": 1.542155612991863
+    },
+    {
+      "amp_raw_style_valid": 0.4244351842999458,
+      "reference_foot_quality": 0.7881419378519058,
+      "reset_fraction": 0.0009652710222871974,
+      "episode/gait_contact_match": 0.8010830661131543,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007945861734446466,
+      "iteration": 12400,
+      "screen_score": 1.5409614528507003
+    },
+    {
+      "amp_raw_style_valid": 0.4363515782356262,
+      "reference_foot_quality": 0.7983977150917053,
+      "reset_fraction": 0.001047261589556001,
+      "episode/gait_contact_match": 0.8037819142567979,
+      "episode/raw_torque_over_peak_fraction": 9.039891744538655e-09,
+      "episode/rew_illegal_support": -0.0007914068114597484,
+      "iteration": 12500,
+      "screen_score": 1.5498164594717856
+    },
+    {
+      "amp_raw_style_valid": 0.430905365049839,
+      "reference_foot_quality": 0.7999468976259232,
+      "reset_fraction": 0.0009634399687638507,
+      "episode/gait_contact_match": 0.8064285844311179,
+      "episode/raw_torque_over_peak_fraction": 4.950417178406497e-09,
+      "episode/rew_illegal_support": -0.0008074837209133377,
+      "iteration": 12600,
+      "screen_score": 1.5582034341146767
+    },
+    {
+      "amp_raw_style_valid": 0.4371059313416481,
+      "reference_foot_quality": 0.8057701343297958,
+      "reset_fraction": 0.0009656779252691194,
+      "episode/gait_contact_match": 0.8072860363696129,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000799104047040713,
+      "iteration": 12700,
+      "screen_score": 1.5647722744359527
+    },
+    {
+      "amp_raw_style_valid": 0.4393892797827721,
+      "reference_foot_quality": 0.8054309296607971,
+      "reset_fraction": 0.001049702995806001,
+      "episode/gait_contact_match": 0.8058277434877295,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007852678406385703,
+      "iteration": 12800,
+      "screen_score": 1.5587735233582265
+    },
+    {
+      "amp_raw_style_valid": 0.44618395417928697,
+      "reference_foot_quality": 0.8063972091674805,
+      "reset_fraction": 0.0009647623961791396,
+      "episode/gait_contact_match": 0.8079847402095868,
+      "episode/raw_torque_over_peak_fraction": 1.807978348907731e-08,
+      "episode/rew_illegal_support": -0.0007137074245158032,
+      "iteration": 12900,
+      "screen_score": 1.5661436487702753
+    },
+    {
+      "amp_raw_style_valid": 0.4344782891869545,
+      "reference_foot_quality": 0.8061108881235123,
+      "reset_fraction": 0.0009681193338474259,
+      "episode/gait_contact_match": 0.8119234800412226,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000751566052028847,
+      "iteration": 13000,
+      "screen_score": 1.5696284014723636
+    },
+    {
+      "amp_raw_style_valid": 0.42185925602912905,
+      "reference_foot_quality": 0.8071440625190734,
+      "reset_fraction": 0.0010463460587197915,
+      "episode/gait_contact_match": 0.8134344469813809,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000761364463621832,
+      "iteration": 13100,
+      "screen_score": 1.5682612065644648
+    },
+    {
+      "amp_raw_style_valid": 0.43790729224681857,
+      "reference_foot_quality": 0.8062664186954498,
+      "reset_fraction": 0.0009641520463628694,
+      "episode/gait_contact_match": 0.8095001237392537,
+      "episode/raw_torque_over_peak_fraction": 5.77548651866285e-09,
+      "episode/rew_illegal_support": -0.0007196628113637208,
+      "iteration": 13200,
+      "screen_score": 1.567558882361695
+    },
+    {
+      "amp_raw_style_valid": 0.4465540137887001,
+      "reference_foot_quality": 0.7991505825519561,
+      "reset_fraction": 0.0010499064467148855,
+      "episode/gait_contact_match": 0.8020268443193441,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007541732232728439,
+      "iteration": 13300,
+      "screen_score": 1.548682104535556
+    },
+    {
+      "amp_raw_style_valid": 0.43740501314401625,
+      "reference_foot_quality": 0.7983613586425782,
+      "reset_fraction": 0.0009632365172728896,
+      "episode/gait_contact_match": 0.8019389084838059,
+      "episode/raw_torque_over_peak_fraction": 6.02659462816993e-09,
+      "episode/rew_illegal_support": -0.0007703692644010218,
+      "iteration": 13400,
+      "screen_score": 1.5521383809967932
+    },
+    {
+      "amp_raw_style_valid": 0.43222958892583846,
+      "reference_foot_quality": 0.795393802523613,
+      "reset_fraction": 0.000965271025779657,
+      "episode/gait_contact_match": 0.7998868054202859,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008030269039553707,
+      "iteration": 13500,
+      "screen_score": 1.5470170566549162
+    },
+    {
+      "amp_raw_style_valid": 0.42065602242946626,
+      "reference_foot_quality": 0.7952885222434998,
+      "reset_fraction": 0.001048075388534926,
+      "episode/gait_contact_match": 0.801897210454929,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000830835289132459,
+      "iteration": 13600,
+      "screen_score": 1.5447819632716824
+    },
+    {
+      "amp_raw_style_valid": 0.4134913381934166,
+      "reference_foot_quality": 0.7939350414276123,
+      "reset_fraction": 0.0009648641233798116,
+      "episode/gait_contact_match": 0.8008593291506585,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007497289376863711,
+      "iteration": 13700,
+      "screen_score": 1.5465511644092802
+    },
+    {
+      "amp_raw_style_valid": 0.4186843425035477,
+      "reference_foot_quality": 0.7942108887434006,
+      "reset_fraction": 0.0010510254243854434,
+      "episode/gait_contact_match": 0.800054424210342,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007682293892692455,
+      "iteration": 13800,
+      "screen_score": 1.5417140417344704
+    },
+    {
+      "amp_raw_style_valid": 0.4323225775361061,
+      "reference_foot_quality": 0.7976739752292633,
+      "reset_fraction": 0.0009621175396023319,
+      "episode/gait_contact_match": 0.8022162071126183,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007467411483833372,
+      "iteration": 13900,
+      "screen_score": 1.551784305361765
+    },
+    {
+      "amp_raw_style_valid": 0.427977973818779,
+      "reference_foot_quality": 0.7966633623838425,
+      "reset_fraction": 0.0009648641245439648,
+      "episode/gait_contact_match": 0.8026975992021448,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007240420234155317,
+      "iteration": 14000,
+      "screen_score": 1.551117755358789
+    },
+    {
+      "amp_raw_style_valid": 0.42724221765995024,
+      "reference_foot_quality": 0.7974528932571411,
+      "reset_fraction": 0.0010494995425688104,
+      "episode/gait_contact_match": 0.802742011831467,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007542342710468457,
+      "iteration": 14100,
+      "screen_score": 1.5477199279601677
+    },
+    {
+      "amp_raw_style_valid": 0.40484496891498567,
+      "reference_foot_quality": 0.7958955109119416,
+      "reset_fraction": 0.0009649658482521772,
+      "episode/gait_contact_match": 0.8045155205859199,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007420882741187891,
+      "iteration": 14200,
+      "screen_score": 1.5521627390852526
+    },
+    {
+      "amp_raw_style_valid": 0.4275281193852425,
+      "reference_foot_quality": 0.7935827046632766,
+      "reset_fraction": 0.0010501098970416933,
+      "episode/gait_contact_match": 0.8013543157865523,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007849167143016607,
+      "iteration": 14300,
+      "screen_score": 1.542431525597744
+    },
+    {
+      "amp_raw_style_valid": 0.3971729090809822,
+      "reference_foot_quality": 0.7860735422372818,
+      "reset_fraction": 0.0009621175396023319,
+      "episode/gait_contact_match": 0.7998300624536566,
+      "episode/raw_torque_over_peak_fraction": 1.7326459177032424e-08,
+      "episode/rew_illegal_support": -0.0007739296652394929,
+      "iteration": 14400,
+      "screen_score": 1.53779755444623
+    },
+    {
+      "amp_raw_style_valid": 0.40689065635204313,
+      "reference_foot_quality": 0.7933732789754867,
+      "reset_fraction": 0.0009655762015609071,
+      "episode/gait_contact_match": 0.8024551655690498,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007363642679092482,
+      "iteration": 14500,
+      "screen_score": 1.5475496344664912
+    },
+    {
+      "amp_raw_style_valid": 0.40114944338798525,
+      "reference_foot_quality": 0.794290326833725,
+      "reset_fraction": 0.001050008168676868,
+      "episode/gait_contact_match": 0.8061358463177172,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007564436213469268,
+      "iteration": 14600,
+      "screen_score": 1.5479257647175988
+    },
+    {
+      "amp_raw_style_valid": 0.39169872134923933,
+      "reference_foot_quality": 0.7933196628093719,
+      "reset_fraction": 0.0009649658482521772,
+      "episode/gait_contact_match": 0.8070505024998701,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000760531101543176,
+      "iteration": 14700,
+      "screen_score": 1.5521218728966333
+    },
+    {
+      "amp_raw_style_valid": 0.3939351052045822,
+      "reference_foot_quality": 0.7948340773582458,
+      "reset_fraction": 0.0010505167982773856,
+      "episode/gait_contact_match": 0.8085278034790349,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000701038671034419,
+      "iteration": 14800,
+      "screen_score": 1.5508360409234114
+    },
+    {
+      "amp_raw_style_valid": 0.41539476335048675,
+      "reference_foot_quality": 0.7959936815500259,
+      "reset_fraction": 0.000960693386150524,
+      "episode/gait_contact_match": 0.8055410558757287,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007050566008542905,
+      "iteration": 14900,
+      "screen_score": 1.5535000681182285
+    },
+    {
+      "amp_raw_style_valid": 0.40034664183855057,
+      "reference_foot_quality": 0.7985139340162277,
+      "reset_fraction": 0.0009664917289046571,
+      "episode/gait_contact_match": 0.8040726403578898,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007427450108136552,
+      "iteration": 15000,
+      "screen_score": 1.5542619879288848
+    },
+    {
+      "amp_raw_style_valid": 0.40047443807125094,
+      "reference_foot_quality": 0.7966132390499115,
+      "reset_fraction": 0.001048990915878676,
+      "episode/gait_contact_match": 0.8034097939208443,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007688198284270017,
+      "iteration": 15100,
+      "screen_score": 1.547573487176822
+    },
+    {
+      "amp_raw_style_valid": 0.40937538832426074,
+      "reference_foot_quality": 0.8000336599349975,
+      "reset_fraction": 0.0009664917271584272,
+      "episode/gait_contact_match": 0.8041817014785994,
+      "episode/raw_torque_over_peak_fraction": 7.56063689715864e-09,
+      "episode/rew_illegal_support": -0.0007695272052612069,
+      "iteration": 15200,
+      "screen_score": 1.5558906994493065
+    },
+    {
+      "amp_raw_style_valid": 0.40918467730283736,
+      "reference_foot_quality": 0.7991999864578248,
+      "reset_fraction": 0.0010485840181354434,
+      "episode/gait_contact_match": 0.8035331714866936,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000696325047661222,
+      "iteration": 15300,
+      "screen_score": 1.5503039570377461
+    },
+    {
+      "amp_raw_style_valid": 0.4084974667429924,
+      "reference_foot_quality": 0.8021507030725479,
+      "reset_fraction": 0.000962524440838024,
+      "episode/gait_contact_match": 0.8033757700041596,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007380987792471123,
+      "iteration": 15400,
+      "screen_score": 1.5574002510348062
+    },
+    {
+      "amp_raw_style_valid": 0.4133356508612633,
+      "reference_foot_quality": 0.7997331285476684,
+      "reset_fraction": 0.0009661865531234071,
+      "episode/gait_contact_match": 0.8029212802800977,
+      "episode/raw_torque_over_peak_fraction": 1.8901591829489917e-08,
+      "episode/rew_illegal_support": -0.000791715674701829,
+      "iteration": 15500,
+      "screen_score": 1.5543448921556775
+    },
+    {
+      "amp_raw_style_valid": 0.40337048411369325,
+      "reference_foot_quality": 0.8008385443687439,
+      "reset_fraction": 0.0010463460587197915,
+      "episode/gait_contact_match": 0.803905541802387,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007552744627453204,
+      "iteration": 15600,
+      "screen_score": 1.5524267832351413
+    },
+    {
+      "amp_raw_style_valid": 0.4087426894903183,
+      "reference_foot_quality": 0.8067145651578903,
+      "reset_fraction": 0.0009685262327548117,
+      "episode/gait_contact_match": 0.8081669882922918,
+      "episode/raw_torque_over_peak_fraction": 5.165652707902432e-09,
+      "episode/rew_illegal_support": -0.0007076877934056025,
+      "iteration": 15700,
+      "screen_score": 1.5664551901559145
+    },
+    {
+      "amp_raw_style_valid": 0.3809306451678276,
+      "reference_foot_quality": 0.7966420567035675,
+      "reset_fraction": 0.0010475667659193277,
+      "episode/gait_contact_match": 0.8024362158795944,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007597340142479719,
+      "iteration": 15800,
+      "screen_score": 1.5466999342871954
+    },
+    {
+      "amp_raw_style_valid": 0.3841581237316132,
+      "reference_foot_quality": 0.7924068051576615,
+      "reset_fraction": 0.000963134792400524,
+      "episode/gait_contact_match": 0.8006112143246723,
+      "episode/raw_torque_over_peak_fraction": 9.039891744538655e-09,
+      "episode/rew_illegal_support": -0.0008067829943274611,
+      "iteration": 15900,
+      "screen_score": 1.5448611894633901
+    },
+    {
+      "amp_raw_style_valid": 0.39511179476976394,
+      "reference_foot_quality": 0.7999597108364105,
+      "reset_fraction": 0.0009670003550127148,
+      "episode/gait_contact_match": 0.8047670951301229,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007361863068154613,
+      "iteration": 16000,
+      "screen_score": 1.5563767882158976
+    },
+    {
+      "amp_raw_style_valid": 0.38878241300582883,
+      "reference_foot_quality": 0.7955747145414352,
+      "reset_fraction": 0.0010471598606090994,
+      "episode/gait_contact_match": 0.8058782287397481,
+      "episode/raw_torque_over_peak_fraction": 2.310194569569527e-08,
+      "episode/rew_illegal_support": -0.0008021608128005219,
+      "iteration": 16100,
+      "screen_score": 1.5490947192312716
+    },
+    {
+      "amp_raw_style_valid": 0.411045169532299,
+      "reference_foot_quality": 0.7964724898338318,
+      "reset_fraction": 0.0009674072550842538,
+      "episode/gait_contact_match": 0.8019238908831912,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008098405140110035,
+      "iteration": 16200,
+      "screen_score": 1.5500260179628103
+    },
+    {
+      "amp_raw_style_valid": 0.39974736630916596,
+      "reference_foot_quality": 0.7998504549264908,
+      "reset_fraction": 0.0010466512385755777,
+      "episode/gait_contact_match": 0.8055912457448732,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007588192247912212,
+      "iteration": 16300,
+      "screen_score": 1.553109138742585
+    },
+    {
+      "amp_raw_style_valid": 0.3748504757881165,
+      "reference_foot_quality": 0.8027437889575958,
+      "reset_fraction": 0.0009645589458523318,
+      "episode/gait_contact_match": 0.809869531281748,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007561733244324752,
+      "iteration": 16400,
+      "screen_score": 1.5643853729467272
+    },
+    {
+      "amp_raw_style_valid": 0.41898624002933504,
+      "reference_foot_quality": 0.8069095373153686,
+      "reset_fraction": 0.0009649658499984071,
+      "episode/gait_contact_match": 0.807893544502799,
+      "episode/raw_torque_over_peak_fraction": 1.807978348907731e-08,
+      "episode/rew_illegal_support": -0.0007869271658134559,
+      "iteration": 16500,
+      "screen_score": 1.5665546085204123
+    },
+    {
+      "amp_raw_style_valid": 0.39480941265821456,
+      "reference_foot_quality": 0.8035819667577744,
+      "reset_fraction": 0.0010492960910778492,
+      "episode/gait_contact_match": 0.807432957590608,
+      "episode/raw_torque_over_peak_fraction": 1.7326459177032424e-08,
+      "episode/rew_illegal_support": -0.0007175285157877741,
+      "iteration": 16600,
+      "screen_score": 1.558549946529898
+    },
+    {
+      "amp_raw_style_valid": 0.39552495211362837,
+      "reference_foot_quality": 0.8010608381032944,
+      "reset_fraction": 0.0009652710246155038,
+      "episode/gait_contact_match": 0.805245987534882,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007574869710710344,
+      "iteration": 16700,
+      "screen_score": 1.5580432744074013
+    },
+    {
+      "amp_raw_style_valid": 0.3993536576628685,
+      "reference_foot_quality": 0.8031159520149231,
+      "reset_fraction": 0.0009662882768316194,
+      "episode/gait_contact_match": 0.805993194076305,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0006959527388112598,
+      "iteration": 16800,
+      "screen_score": 1.5607947322496472
+    },
+    {
+      "amp_raw_style_valid": 0.40138313382864,
+      "reference_foot_quality": 0.8015865039825439,
+      "reset_fraction": 0.0010456339846132323,
+      "episode/gait_contact_match": 0.80436291975375,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007664889112688199,
+      "iteration": 16900,
+      "screen_score": 1.5536677245056323
+    },
+    {
+      "amp_raw_style_valid": 0.4048708054423332,
+      "reference_foot_quality": 0.7965510576963425,
+      "reset_fraction": 0.0009656779264332726,
+      "episode/gait_contact_match": 0.8030061742024902,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007122672016915592,
+      "iteration": 17000,
+      "screen_score": 1.551273335577169
+    },
+    {
+      "amp_raw_style_valid": 0.39569180995225905,
+      "reference_foot_quality": 0.8021726232767105,
+      "reset_fraction": 0.0010489909152965992,
+      "episode/gait_contact_match": 0.8043537914516391,
+      "episode/raw_torque_over_peak_fraction": 6.9305838223954194e-09,
+      "episode/rew_illegal_support": -0.000733987739340819,
+      "iteration": 17100,
+      "screen_score": 1.5540767996576814
+    },
+    {
+      "amp_raw_style_valid": 0.40289390802383424,
+      "reference_foot_quality": 0.8015476590394974,
+      "reset_fraction": 0.0009645589481806383,
+      "episode/gait_contact_match": 0.8032926568745411,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007832753521126818,
+      "iteration": 17200,
+      "screen_score": 1.5566123685050066
+    },
+    {
+      "amp_raw_style_valid": 0.3953340166807175,
+      "reference_foot_quality": 0.8018672943115235,
+      "reset_fraction": 0.0009667969029396773,
+      "episode/gait_contact_match": 0.8026136013200906,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007242220460905392,
+      "iteration": 17300,
+      "screen_score": 1.5561410504846303
+    },
+    {
+      "amp_raw_style_valid": 0.3718978989124298,
+      "reference_foot_quality": 0.8032681870460511,
+      "reset_fraction": 0.0010474650393007324,
+      "episode/gait_contact_match": 0.8023780726910523,
+      "episode/raw_torque_over_peak_fraction": 1.559381341091163e-08,
+      "episode/rew_illegal_support": -0.0007380768982233932,
+      "iteration": 17400,
+      "screen_score": 1.5532728518339327
+    },
+    {
+      "amp_raw_style_valid": 0.38294249415397646,
+      "reference_foot_quality": 0.8043438100814819,
+      "reset_fraction": 0.0009642537729814648,
+      "episode/gait_contact_match": 0.8064000415733287,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007871086951052427,
+      "iteration": 17500,
+      "screen_score": 1.5625311630057372
+    },
+    {
+      "amp_raw_style_valid": 0.38119028866291044,
+      "reference_foot_quality": 0.8040509730577469,
+      "reset_fraction": 0.0010497029917314648,
+      "episode/gait_contact_match": 0.8071368945900435,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0006922603472554804,
+      "iteration": 17600,
+      "screen_score": 1.558702718061217
+    },
+    {
+      "amp_raw_style_valid": 0.37868381559848785,
+      "reference_foot_quality": 0.8026579266786575,
+      "reset_fraction": 0.0009629313444020226,
+      "episode/gait_contact_match": 0.8054978917161472,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007545746918073043,
+      "iteration": 17700,
+      "screen_score": 1.5600092511747037
+    },
+    {
+      "amp_raw_style_valid": 0.36732962518930434,
+      "reference_foot_quality": 0.8055703431367874,
+      "reset_fraction": 0.0009659831004682929,
+      "episode/gait_contact_match": 0.8100089162542962,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007204138894857076,
+      "iteration": 17800,
+      "screen_score": 1.567280104367669
+    },
+    {
+      "amp_raw_style_valid": 0.37521459758281706,
+      "reference_foot_quality": 0.8028478735685348,
+      "reset_fraction": 0.0010475667647551745,
+      "episode/gait_contact_match": 0.8079097404642005,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000697088447053293,
+      "iteration": 17900,
+      "screen_score": 1.5583792757949766
+    },
+    {
+      "amp_raw_style_valid": 0.3869679340720177,
+      "reference_foot_quality": 0.8010411131381988,
+      "reset_fraction": 0.000965271025779657,
+      "episode/gait_contact_match": 0.8020017098195524,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007713887180748574,
+      "iteration": 18000,
+      "screen_score": 1.5547792716687683
+    },
+    {
+      "amp_raw_style_valid": 0.38365898191928866,
+      "reference_foot_quality": 0.8002446299791336,
+      "reset_fraction": 0.0010511271451832727,
+      "episode/gait_contact_match": 0.8065007245651543,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007339153192174096,
+      "iteration": 18100,
+      "screen_score": 1.5541889972851242
+    },
+    {
+      "amp_raw_style_valid": 0.36790596187114716,
+      "reference_foot_quality": 0.8004600459337234,
+      "reset_fraction": 0.0009618123667314649,
+      "episode/gait_contact_match": 0.8069178442520406,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007354176782219609,
+      "iteration": 18200,
+      "screen_score": 1.5592872718491908
+    },
+    {
+      "amp_raw_style_valid": 0.385397087931633,
+      "reference_foot_quality": 0.7953079164028167,
+      "reset_fraction": 0.0009651692979969084,
+      "episode/gait_contact_match": 0.8024178923535917,
+      "episode/raw_torque_over_peak_fraction": 8.416451118651109e-09,
+      "episode/rew_illegal_support": -0.0007259898523643667,
+      "iteration": 18300,
+      "screen_score": 1.549467259692052
+    },
+    {
+      "amp_raw_style_valid": 0.36873861849308015,
+      "reference_foot_quality": 0.7914331710338592,
+      "reset_fraction": 0.0010493978194426746,
+      "episode/gait_contact_match": 0.7997969411286749,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007221331380024415,
+      "iteration": 18400,
+      "screen_score": 1.5387602211904006
+    },
+    {
+      "amp_raw_style_valid": 0.3454964399337769,
+      "reference_foot_quality": 0.7909009581804276,
+      "reset_fraction": 0.0009651693009072915,
+      "episode/gait_contact_match": 0.798975745026417,
+      "episode/raw_torque_over_peak_fraction": 3.8063731935267244e-08,
+      "episode/rew_illegal_support": -0.000760876583068328,
+      "iteration": 18500,
+      "screen_score": 1.5416178575241606
+    },
+    {
+      "amp_raw_style_valid": 0.3501229003071785,
+      "reference_foot_quality": 0.7949095261096955,
+      "reset_fraction": 0.0010494995408225805,
+      "episode/gait_contact_match": 0.8004912716664657,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007836440621721907,
+      "iteration": 18600,
+      "screen_score": 1.5429258207350323
+    },
+    {
+      "amp_raw_style_valid": 0.34172450989484787,
+      "reference_foot_quality": 0.7930190527439117,
+      "reset_fraction": 0.0009627278940752148,
+      "episode/gait_contact_match": 0.8033308959400617,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007335391801094866,
+      "iteration": 18700,
+      "screen_score": 1.5482135539802127
+    },
+    {
+      "amp_raw_style_valid": 0.3700161698460579,
+      "reference_foot_quality": 0.7934234744310379,
+      "reset_fraction": 0.0009650675725424662,
+      "episode/gait_contact_match": 0.800450624983085,
+      "episode/raw_torque_over_peak_fraction": 7.231913553803916e-09,
+      "episode/rew_illegal_support": -0.0007247181233015116,
+      "iteration": 18800,
+      "screen_score": 1.5456206484678638
+    },
+    {
+      "amp_raw_style_valid": 0.3515132009983063,
+      "reference_foot_quality": 0.7975100427865982,
+      "reset_fraction": 0.0010500081710051745,
+      "episode/gait_contact_match": 0.8054825759900365,
+      "episode/raw_torque_over_peak_fraction": 1.15509730373257e-08,
+      "episode/rew_illegal_support": -0.0007303221938119318,
+      "iteration": 18900,
+      "screen_score": 1.5504920947166456
+    },
+    {
+      "amp_raw_style_valid": 0.34839781641960144,
+      "reference_foot_quality": 0.7988891035318375,
+      "reset_fraction": 0.0009652710263617337,
+      "episode/gait_contact_match": 0.803870635970897,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007727959794498177,
+      "iteration": 19000,
+      "screen_score": 1.5544961881846477
+    },
+    {
+      "amp_raw_style_valid": 0.3553634133934975,
+      "reference_foot_quality": 0.7987781178951263,
+      "reset_fraction": 0.0010505167936207727,
+      "episode/gait_contact_match": 0.8038666233910206,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007400102902309,
+      "iteration": 19100,
+      "screen_score": 1.5501189016051082
+    },
+    {
+      "amp_raw_style_valid": 0.3549470099806786,
+      "reference_foot_quality": 0.8012178176641465,
+      "reset_fraction": 0.0009612020151689649,
+      "episode/gait_contact_match": 0.8071675706820963,
+      "episode/raw_torque_over_peak_fraction": 7.231913553803916e-09,
+      "episode/rew_illegal_support": -0.0007319166553786874,
+      "iteration": 19200,
+      "screen_score": 1.560325215268659
+    },
+    {
+      "amp_raw_style_valid": 0.34034372299909593,
+      "reference_foot_quality": 0.7975703054666519,
+      "reset_fraction": 0.0009662882756674662,
+      "episode/gait_contact_match": 0.8045424546926663,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007429323012457814,
+      "iteration": 19300,
+      "screen_score": 1.5537983463759448
+    },
+    {
+      "amp_raw_style_valid": 0.3334815174341202,
+      "reference_foot_quality": 0.7973190438747406,
+      "reset_fraction": 0.00104736331384629,
+      "episode/gait_contact_match": 0.8018152426741354,
+      "episode/raw_torque_over_peak_fraction": 5.6944198535268735e-11,
+      "episode/rew_illegal_support": -0.0007329414200527294,
+      "iteration": 19400,
+      "screen_score": 1.5467661202871195
+    },
+    {
+      "amp_raw_style_valid": 0.35851862132549284,
+      "reference_foot_quality": 0.7963382238149643,
+      "reset_fraction": 0.0009680176083929837,
+      "episode/gait_contact_match": 0.8007315036421404,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000794414688806421,
+      "iteration": 19500,
+      "screen_score": 1.5486688470374554
+    },
+    {
+      "amp_raw_style_valid": 0.36223635405302046,
+      "reference_foot_quality": 0.795425066947937,
+      "reset_fraction": 0.0010476684867171571,
+      "episode/gait_contact_match": 0.7985468924286061,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007992502176156536,
+      "iteration": 19600,
+      "screen_score": 1.5415885350406853
+    },
+    {
+      "amp_raw_style_valid": 0.3565312394499779,
+      "reference_foot_quality": 0.796055696606636,
+      "reset_fraction": 0.0009634399705100805,
+      "episode/gait_contact_match": 0.79782980094481,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007498914191399117,
+      "iteration": 19700,
+      "screen_score": 1.545713499025942
+    },
+    {
+      "amp_raw_style_valid": 0.3460755693912506,
+      "reference_foot_quality": 0.7987135803699493,
+      "reset_fraction": 0.0009658813750138506,
+      "episode/gait_contact_match": 0.8024932203929731,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007505668203881732,
+      "iteration": 19800,
+      "screen_score": 1.55291273201223
+    },
+    {
+      "amp_raw_style_valid": 0.35488415211439134,
+      "reference_foot_quality": 0.8016990965604782,
+      "reset_fraction": 0.0010462443355936557,
+      "episode/gait_contact_match": 0.8021524771355524,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007647703450484124,
+      "iteration": 19900,
+      "screen_score": 1.5515393569163478
+    },
+    {
+      "amp_raw_style_valid": 0.3595775043964386,
+      "reference_foot_quality": 0.8010733616352081,
+      "reset_fraction": 0.0009683227841742337,
+      "episode/gait_contact_match": 0.8015581950017754,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007017962795158335,
+      "iteration": 20000,
+      "screen_score": 1.5542154174282719
+    },
+    {
+      "amp_raw_style_valid": 0.35816932290792464,
+      "reference_foot_quality": 0.8015203583240509,
+      "reset_fraction": 0.0010469564102822916,
+      "episode/gait_contact_match": 0.8035231319019794,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007480090208365675,
+      "iteration": 20100,
+      "screen_score": 1.5526956697119156
+    },
+    {
+      "amp_raw_style_valid": 0.34561690628528596,
+      "reference_foot_quality": 0.7957826572656631,
+      "reset_fraction": 0.0009634399705100805,
+      "episode/gait_contact_match": 0.8042684363324737,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007439976391842132,
+      "iteration": 20200,
+      "screen_score": 1.5518790950726329
+    },
+    {
+      "amp_raw_style_valid": 0.3311975672841072,
+      "reference_foot_quality": 0.7968505471944809,
+      "reset_fraction": 0.0009673055284656584,
+      "episode/gait_contact_match": 0.8047878812706004,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007505236511668897,
+      "iteration": 20300,
+      "screen_score": 1.5532731520417984
+    },
+    {
+      "amp_raw_style_valid": 0.3319523471593857,
+      "reference_foot_quality": 0.8000425893068314,
+      "reset_fraction": 0.001047871939954348,
+      "episode/gait_contact_match": 0.8045671776170569,
+      "episode/raw_torque_over_peak_fraction": 3.3707838914172797e-08,
+      "episode/rew_illegal_support": -0.0007310196834632851,
+      "iteration": 20400,
+      "screen_score": 1.5522158328477818
+    },
+    {
+      "amp_raw_style_valid": 0.33456542670726774,
+      "reference_foot_quality": 0.7963974142074585,
+      "reset_fraction": 0.0009670003555947914,
+      "episode/gait_contact_match": 0.8012994452717779,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007494185454614664,
+      "iteration": 20500,
+      "screen_score": 1.5493468416994967
+    },
+    {
+      "amp_raw_style_valid": 0.3288708364963531,
+      "reference_foot_quality": 0.796510449051857,
+      "reset_fraction": 0.0010465495090465993,
+      "episode/gait_contact_match": 0.8031807593281758,
+      "episode/raw_torque_over_peak_fraction": 1.813435501267361e-08,
+      "episode/rew_illegal_support": -0.0007880668977929137,
+      "iteration": 20600,
+      "screen_score": 1.5473635515841526
+    },
+    {
+      "amp_raw_style_valid": 0.32826996088027954,
+      "reference_foot_quality": 0.7940525645017624,
+      "reset_fraction": 0.0009642537729814648,
+      "episode/gait_contact_match": 0.8028926711247765,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007362348341229138,
+      "iteration": 20700,
+      "screen_score": 1.5487325469774658
+    },
+    {
+      "amp_raw_style_valid": 0.3397593155503273,
+      "reference_foot_quality": 0.7982990890741348,
+      "reset_fraction": 0.0009647623967612162,
+      "episode/gait_contact_match": 0.8058542127265285,
+      "episode/raw_torque_over_peak_fraction": 1.2601061495264399e-08,
+      "episode/rew_illegal_support": -0.0007180632045716611,
+      "iteration": 20800,
+      "screen_score": 1.5559150559519874
+    },
+    {
+      "amp_raw_style_valid": 0.3615660175681114,
+      "reference_foot_quality": 0.8022521477937699,
+      "reset_fraction": 0.001050313346204348,
+      "episode/gait_contact_match": 0.8039534025895501,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007579177739799291,
+      "iteration": 20900,
+      "screen_score": 1.5536898830731025
+    },
+    {
+      "amp_raw_style_valid": 0.335037088394165,
+      "reference_foot_quality": 0.8015776938199997,
+      "reset_fraction": 0.0009649658505804837,
+      "episode/gait_contact_match": 0.8043484439170061,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007317289017276463,
+      "iteration": 21000,
+      "screen_score": 1.5576778452079816
+    },
+    {
+      "amp_raw_style_valid": 0.33109396070241925,
+      "reference_foot_quality": 0.7992116957902908,
+      "reset_fraction": 0.000966491725994274,
+      "episode/gait_contact_match": 0.8055251876957841,
+      "episode/raw_torque_over_peak_fraction": 7.231913553803916e-09,
+      "episode/rew_illegal_support": -0.0007347942020319307,
+      "iteration": 21100,
+      "screen_score": 1.5564122248672256
+    },
+    {
+      "amp_raw_style_valid": 0.33397496938705445,
+      "reference_foot_quality": 0.800846490263939,
+      "reset_fraction": 0.0010459391598124058,
+      "episode/gait_contact_match": 0.8050734451344019,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007525210674947894,
+      "iteration": 21200,
+      "screen_score": 1.5536229774077206
+    },
+    {
+      "amp_raw_style_valid": 0.33353513836860654,
+      "reference_foot_quality": 0.7971280658245087,
+      "reset_fraction": 0.0009653727483237162,
+      "episode/gait_contact_match": 0.8026408110987957,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007503643108322124,
+      "iteration": 21300,
+      "screen_score": 1.5515002395071185
+    },
+    {
+      "amp_raw_style_valid": 0.317967848777771,
+      "reference_foot_quality": 0.8000204342603684,
+      "reset_fraction": 0.00104827884119004,
+      "episode/gait_contact_match": 0.8059227039895248,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007424365602996297,
+      "iteration": 21400,
+      "screen_score": 1.5535291961903912
+    },
+    {
+      "amp_raw_style_valid": 0.3418161207437515,
+      "reference_foot_quality": 0.799615347981453,
+      "reset_fraction": 0.0009647624002536759,
+      "episode/gait_contact_match": 0.8047440188244175,
+      "episode/raw_torque_over_peak_fraction": 9.039891744538655e-09,
+      "episode/rew_illegal_support": -0.000700986791834896,
+      "iteration": 21500,
+      "screen_score": 1.5561211563942692
+    },
+    {
+      "amp_raw_style_valid": 0.3199541500210762,
+      "reference_foot_quality": 0.7929858952760697,
+      "reset_fraction": 0.0009665934508666396,
+      "episode/gait_contact_match": 0.8011641245612161,
+      "episode/raw_torque_over_peak_fraction": 9.450795914744958e-09,
+      "episode/rew_illegal_support": -0.0007783160988981954,
+      "iteration": 21600,
+      "screen_score": 1.5458202527859946
+    },
+    {
+      "amp_raw_style_valid": 0.3160985472798348,
+      "reference_foot_quality": 0.7885081458091736,
+      "reset_fraction": 0.0010477702144999056,
+      "episode/gait_contact_match": 0.7999418034152096,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007219510514016369,
+      "iteration": 21700,
+      "screen_score": 1.536061438499388
+    },
+    {
+      "amp_raw_style_valid": 0.31407093912363054,
+      "reference_foot_quality": 0.7881446731090546,
+      "reset_fraction": 0.0009637451445451006,
+      "episode/gait_contact_match": 0.7975717333184947,
+      "episode/raw_torque_over_peak_fraction": 3.908394658323062e-08,
+      "episode/rew_illegal_support": -0.0007759796775410262,
+      "iteration": 21800,
+      "screen_score": 1.5375287583608284
+    },
+    {
+      "amp_raw_style_valid": 0.3157064390182495,
+      "reference_foot_quality": 0.7942765009403229,
+      "reset_fraction": 0.00105041507165879,
+      "episode/gait_contact_match": 0.8016517110720744,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000685508971498034,
+      "iteration": 21900,
+      "screen_score": 1.5434074584294577
+    },
+    {
+      "amp_raw_style_valid": 0.3237438240647316,
+      "reference_foot_quality": 0.792097801566124,
+      "reset_fraction": 0.0009628296201117337,
+      "episode/gait_contact_match": 0.8018996190856642,
+      "episode/raw_torque_over_peak_fraction": 1.4440346848254835e-08,
+      "episode/rew_illegal_support": -0.0007908896194747015,
+      "iteration": 22000,
+      "screen_score": 1.545855795242733
+    },
+    {
+      "amp_raw_style_valid": 0.31845755815505983,
+      "reference_foot_quality": 0.7907829511165619,
+      "reset_fraction": 0.0009664917254121974,
+      "episode/gait_contact_match": 0.8010780163534348,
+      "episode/raw_torque_over_peak_fraction": 1.813672768761258e-08,
+      "episode/rew_illegal_support": -0.0007668590792425973,
+      "iteration": 22100,
+      "screen_score": 1.5435361998321098
+    },
+    {
+      "amp_raw_style_valid": 0.3237675526738167,
+      "reference_foot_quality": 0.7903300958871842,
+      "reset_fraction": 0.0010474650387186557,
+      "episode/gait_contact_match": 0.8002401390686318,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007410599051524403,
+      "iteration": 22200,
+      "screen_score": 1.5381969830198832
+    },
+    {
+      "amp_raw_style_valid": 0.32680619925260546,
+      "reference_foot_quality": 0.7929538828134537,
+      "reset_fraction": 0.000965169298578985,
+      "episode/gait_contact_match": 0.8001293570124233,
+      "episode/raw_torque_over_peak_fraction": 2.7119675233615968e-08,
+      "episode/rew_illegal_support": -0.000744206429466867,
+      "iteration": 22300,
+      "screen_score": 1.5448245037001753
+    },
+    {
+      "amp_raw_style_valid": 0.3194713017344475,
+      "reference_foot_quality": 0.7910985124111175,
+      "reset_fraction": 0.001050313346204348,
+      "episode/gait_contact_match": 0.801020975634147,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007019665074076139,
+      "iteration": 22400,
+      "screen_score": 1.539603820735047
+    },
+    {
+      "amp_raw_style_valid": 0.3114804843068123,
+      "reference_foot_quality": 0.7893203997611999,
+      "reset_fraction": 0.0009622192685492337,
+      "episode/gait_contact_match": 0.8006426596158859,
+      "episode/raw_torque_over_peak_fraction": 8.663229588516212e-09,
+      "episode/rew_illegal_support": -0.0007222375792090523,
+      "iteration": 22500,
+      "screen_score": 1.5418520093173285
+    },
+    {
+      "amp_raw_style_valid": 0.2889238157868385,
+      "reference_foot_quality": 0.7862273091077805,
+      "reset_fraction": 0.0009658813738496974,
+      "episode/gait_contact_match": 0.8011209093704721,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007857714377213413,
+      "iteration": 22600,
+      "screen_score": 1.5390541497857677
+    },
+    {
+      "amp_raw_style_valid": 0.2942043262720108,
+      "reference_foot_quality": 0.7888620817661285,
+      "reset_fraction": 0.0010491943679517134,
+      "episode/gait_contact_match": 0.7992527300354574,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007700115779682887,
+      "iteration": 22700,
+      "screen_score": 1.5356550934040003
+    },
+    {
+      "amp_raw_style_valid": 0.2904941987991333,
+      "reference_foot_quality": 0.7861279600858688,
+      "reset_fraction": 0.0009649658482521772,
+      "episode/gait_contact_match": 0.8004447747435184,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007523258962675889,
+      "iteration": 22800,
+      "screen_score": 1.5383244424167783
+    },
+    {
+      "amp_raw_style_valid": 0.30606270968914034,
+      "reference_foot_quality": 0.791004883646965,
+      "reset_fraction": 0.001050313346204348,
+      "episode/gait_contact_match": 0.8003375700540226,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007623548346070847,
+      "iteration": 22900,
+      "screen_score": 1.53882678639077
+    },
+    {
+      "amp_raw_style_valid": 0.3157602941989899,
+      "reference_foot_quality": 0.7919852405786514,
+      "reset_fraction": 0.0009607951150974259,
+      "episode/gait_contact_match": 0.8005142396337179,
+      "episode/raw_torque_over_peak_fraction": 1.205318925633986e-08,
+      "episode/rew_illegal_support": -0.0007402987529440343,
+      "iteration": 23000,
+      "screen_score": 1.5444596039256056
+    },
+    {
+      "amp_raw_style_valid": 0.31970894038677217,
+      "reference_foot_quality": 0.7911097079515457,
+      "reset_fraction": 0.0009658813738496974,
+      "episode/gait_contact_match": 0.8020816364199199,
+      "episode/raw_torque_over_peak_fraction": 1.205318925633986e-08,
+      "episode/rew_illegal_support": -0.0007050528272664307,
+      "iteration": 23100,
+      "screen_score": 1.5448971551470883
+    },
+    {
+      "amp_raw_style_valid": 0.30926509022712706,
+      "reference_foot_quality": 0.7889211589097976,
+      "reset_fraction": 0.0010503133456222712,
+      "episode/gait_contact_match": 0.8016043944653346,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007566569762852891,
+      "iteration": 23200,
+      "screen_score": 1.5380098860940188
+    },
+    {
+      "amp_raw_style_valid": 0.3280853110551834,
+      "reference_foot_quality": 0.7939064711332321,
+      "reset_fraction": 0.0009655761998146773,
+      "episode/gait_contact_match": 0.8019549018657999,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007479983286621795,
+      "iteration": 23300,
+      "screen_score": 1.547582563008298
+    },
+    {
+      "amp_raw_style_valid": 0.28917325258255006,
+      "reference_foot_quality": 0.7869770181179047,
+      "reset_fraction": 0.001050008170423098,
+      "episode/gait_contact_match": 0.8033035766876186,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007989549173193125,
+      "iteration": 23400,
+      "screen_score": 1.5377801862843685
+    },
+    {
+      "amp_raw_style_valid": 0.274981661438942,
+      "reference_foot_quality": 0.7857957392930984,
+      "reset_fraction": 0.0009611002908786759,
+      "episode/gait_contact_match": 0.8015807915876084,
+      "episode/raw_torque_over_peak_fraction": 7.231913553803916e-09,
+      "episode/rew_illegal_support": -0.0007825055616964521,
+      "iteration": 23500,
+      "screen_score": 1.5393214440176375
+    },
+    {
+      "amp_raw_style_valid": 0.28801589250564574,
+      "reference_foot_quality": 0.7960528135299683,
+      "reset_fraction": 0.0009665934508666396,
+      "episode/gait_contact_match": 0.8044969271137152,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007746864115258784,
+      "iteration": 23600,
+      "screen_score": 1.5522200681003515
+    },
+    {
+      "amp_raw_style_valid": 0.2912641462683678,
+      "reference_foot_quality": 0.7996525752544403,
+      "reset_fraction": 0.0010466512362472713,
+      "episode/gait_contact_match": 0.8037706433602747,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007387935399980122,
+      "iteration": 23700,
+      "screen_score": 1.5510906568023515
+    },
+    {
+      "amp_raw_style_valid": 0.2985456120967865,
+      "reference_foot_quality": 0.8004519021511078,
+      "reset_fraction": 0.0009674072545021772,
+      "episode/gait_contact_match": 0.8062397540684628,
+      "episode/raw_torque_over_peak_fraction": 3.615956697815462e-08,
+      "episode/rew_illegal_support": -0.000749300981594756,
+      "iteration": 23800,
+      "screen_score": 1.558320931898792
+    },
+    {
+      "amp_raw_style_valid": 0.2866091549396515,
+      "reference_foot_quality": 0.796405513882637,
+      "reset_fraction": 0.0010486857418436557,
+      "episode/gait_contact_match": 0.8035981307268765,
+      "episode/raw_torque_over_peak_fraction": 6.987528020930689e-09,
+      "episode/rew_illegal_support": -0.0007873997840699181,
+      "iteration": 23900,
+      "screen_score": 1.5475692876420504
+    },
+    {
+      "amp_raw_style_valid": 0.30452261209487913,
+      "reference_foot_quality": 0.7955250257253647,
+      "reset_fraction": 0.0009638468729099258,
+      "episode/gait_contact_match": 0.8025936777361331,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007889315222261761,
+      "iteration": 24000,
+      "screen_score": 1.5499263598160016
+    },
+    {
+      "amp_raw_style_valid": 0.2919710448384285,
+      "reference_foot_quality": 0.7915129518508911,
+      "reset_fraction": 0.0009658813738496974,
+      "episode/gait_contact_match": 0.8026895831085273,
+      "episode/raw_torque_over_peak_fraction": 1.559381341091163e-08,
+      "episode/rew_illegal_support": -0.000768192694728983,
+      "iteration": 24100,
+      "screen_score": 1.5459083103287994
+    },
+    {
+      "amp_raw_style_valid": 0.2790392899513245,
+      "reference_foot_quality": 0.7976917994022369,
+      "reset_fraction": 0.0010462443355936557,
+      "episode/gait_contact_match": 0.8063946776421183,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007705275609321302,
+      "iteration": 24200,
+      "screen_score": 1.5517742602646725
+    },
+    {
+      "amp_raw_style_valid": 0.271458191126585,
+      "reference_foot_quality": 0.7995953524112701,
+      "reset_fraction": 0.0009681193309370429,
+      "episode/gait_contact_match": 0.8077180796357086,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007618574994753081,
+      "iteration": 24300,
+      "screen_score": 1.5589074655001265
+    },
+    {
+      "amp_raw_style_valid": 0.2756170144677162,
+      "reference_foot_quality": 0.7945776379108429,
+      "reset_fraction": 0.0010463460610480979,
+      "episode/gait_contact_match": 0.8063194562107852,
+      "episode/raw_torque_over_peak_fraction": 7.492461830091325e-09,
+      "episode/rew_illegal_support": -0.0007347078872132485,
+      "iteration": 24400,
+      "screen_score": 1.5485797161446049
+    },
+    {
+      "amp_raw_style_valid": 0.2856485676765442,
+      "reference_foot_quality": 0.7948370599746704,
+      "reset_fraction": 0.0009647624002536759,
+      "episode/gait_contact_match": 0.8041245382209322,
+      "episode/raw_torque_over_peak_fraction": 4.118172956372871e-08,
+      "episode/rew_illegal_support": -0.0007943383891130593,
+      "iteration": 24500,
+      "screen_score": 1.550723066365623
+    },
+    {
+      "amp_raw_style_valid": 0.29162933856248857,
+      "reference_foot_quality": 0.795659105181694,
+      "reset_fraction": 0.0009667969011934474,
+      "episode/gait_contact_match": 0.8036304661451668,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007785221240344064,
+      "iteration": 24600,
+      "screen_score": 1.5509497262671883
+    },
+    {
+      "amp_raw_style_valid": 0.2962798467278481,
+      "reference_foot_quality": 0.7953667825460434,
+      "reset_fraction": 0.0010476684890454635,
+      "episode/gait_contact_match": 0.801305927847856,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007842343712231944,
+      "iteration": 24700,
+      "screen_score": 1.5442892859416264
+    },
+    {
+      "amp_raw_style_valid": 0.291139957010746,
+      "reference_foot_quality": 0.7928346329927445,
+      "reset_fraction": 0.0009658813755959272,
+      "episode/gait_contact_match": 0.8015386603581217,
+      "episode/raw_torque_over_peak_fraction": 5.4571523596299206e-11,
+      "episode/rew_illegal_support": -0.0007281301653390465,
+      "iteration": 24800,
+      "screen_score": 1.5460792240253547
+    },
+    {
+      "amp_raw_style_valid": 0.2989510089159012,
+      "reference_foot_quality": 0.7975901329517364,
+      "reset_fraction": 0.0010474650387186557,
+      "episode/gait_contact_match": 0.797879209666238,
+      "episode/raw_torque_over_peak_fraction": 7.231913553803916e-09,
+      "episode/rew_illegal_support": -0.000734941001919329,
+      "iteration": 24900,
+      "screen_score": 1.543096018362906
+    },
+    {
+      "amp_raw_style_valid": 0.2879483577609062,
+      "reference_foot_quality": 0.7995068424940109,
+      "reset_fraction": 0.0009635416971286759,
+      "episode/gait_contact_match": 0.8018394687811623,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007364816207953207,
+      "iteration": 25000,
+      "screen_score": 1.5531692264187393
+    },
+    {
+      "amp_raw_style_valid": 0.28900588482618333,
+      "reference_foot_quality": 0.7966879469156265,
+      "reset_fraction": 0.0009652710217051208,
+      "episode/gait_contact_match": 0.8004180202786974,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007829485363192887,
+      "iteration": 25100,
+      "screen_score": 1.5488424161090677
+    },
+    {
+      "amp_raw_style_valid": 0.3001848348975182,
+      "reference_foot_quality": 0.7925834560394287,
+      "reset_fraction": 0.00105041507165879,
+      "episode/gait_contact_match": 0.8014407224778722,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007519505822836676,
+      "iteration": 25200,
+      "screen_score": 1.5415034249343615
+    },
+    {
+      "amp_raw_style_valid": 0.2915041908621788,
+      "reference_foot_quality": 0.7930412077903748,
+      "reset_fraction": 0.0009653727494878695,
+      "episode/gait_contact_match": 0.8021973901877135,
+      "episode/raw_torque_over_peak_fraction": 1.7326459177032424e-08,
+      "episode/rew_illegal_support": -0.0007288258298037371,
+      "iteration": 25300,
+      "screen_score": 1.546969787239103
+    },
+    {
+      "amp_raw_style_valid": 0.2821263861656189,
+      "reference_foot_quality": 0.7942144566774368,
+      "reset_fraction": 0.0009667969041038304,
+      "episode/gait_contact_match": 0.8038048646064487,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007313572612950649,
+      "iteration": 25400,
+      "screen_score": 1.549679476078694
+    },
+    {
+      "amp_raw_style_valid": 0.29672430992126464,
+      "reference_foot_quality": 0.7900104922056198,
+      "reset_fraction": 0.0010460408864310011,
+      "episode/gait_contact_match": 0.8013757689923198,
+      "episode/raw_torque_over_peak_fraction": 2.8932003737954425e-08,
+      "episode/rew_illegal_support": -0.0007663801980429814,
+      "iteration": 25500,
+      "screen_score": 1.5390839275563521
+    },
+    {
+      "amp_raw_style_valid": 0.27243724942207337,
+      "reference_foot_quality": 0.7922803825139999,
+      "reset_fraction": 0.0009648641204694286,
+      "episode/gait_contact_match": 0.7984706491069806,
+      "episode/raw_torque_over_peak_fraction": 7.191132098682829e-09,
+      "episode/rew_illegal_support": -0.0007876156382787497,
+      "iteration": 25600,
+      "screen_score": 1.5425077536861882
+    },
+    {
+      "amp_raw_style_valid": 0.27934653222560885,
+      "reference_foot_quality": 0.7893597656488418,
+      "reset_fraction": 0.0010488891927525402,
+      "episode/gait_contact_match": 0.7996001374985586,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007817990476001491,
+      "iteration": 25700,
+      "screen_score": 1.5365154435097734
+    },
+    {
+      "amp_raw_style_valid": 0.28247992366552355,
+      "reference_foot_quality": 0.7912905007600785,
+      "reset_fraction": 0.0009645589475985616,
+      "episode/gait_contact_match": 0.8026640332287006,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007821308409228703,
+      "iteration": 25800,
+      "screen_score": 1.545726586608851
+    },
+    {
+      "amp_raw_style_valid": 0.27981714338064195,
+      "reference_foot_quality": 0.7948881596326828,
+      "reset_fraction": 0.0009657796507235617,
+      "episode/gait_contact_match": 0.8021758616282212,
+      "episode/raw_torque_over_peak_fraction": 1.732645955598855e-08,
+      "episode/rew_illegal_support": -0.0008018018250814291,
+      "iteration": 25900,
+      "screen_score": 1.5487748654601303
+    },
+    {
+      "amp_raw_style_valid": 0.2803873708844185,
+      "reference_foot_quality": 0.7963665401935578,
+      "reset_fraction": 0.0010478719417005777,
+      "episode/gait_contact_match": 0.8016865571791055,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007478066639710103,
+      "iteration": 26000,
+      "screen_score": 1.5456595002876345
+    },
+    {
+      "amp_raw_style_valid": 0.28399678617715834,
+      "reference_foot_quality": 0.7939184260368347,
+      "reset_fraction": 0.0009638468676712364,
+      "episode/gait_contact_match": 0.8018174902123512,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007733063725244012,
+      "iteration": 26100,
+      "screen_score": 1.547543572865624
+    },
+    {
+      "amp_raw_style_valid": 0.27462323278188705,
+      "reference_foot_quality": 0.7946520823240281,
+      "reset_fraction": 0.0010506185225676746,
+      "episode/gait_contact_match": 0.801330715098804,
+      "episode/raw_torque_over_peak_fraction": 1.2601061495264399e-08,
+      "episode/rew_illegal_support": -0.0007568065486749431,
+      "iteration": 26200,
+      "screen_score": 1.5434517452838332
+    },
+    {
+      "amp_raw_style_valid": 0.2829804441332817,
+      "reference_foot_quality": 0.7919173860549926,
+      "reset_fraction": 0.0009626261674566195,
+      "episode/gait_contact_match": 0.8011885262157017,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007909272974942197,
+      "iteration": 26300,
+      "screen_score": 1.5449746038978633
+    },
+    {
+      "amp_raw_style_valid": 0.2694548039138317,
+      "reference_foot_quality": 0.7920912700891495,
+      "reset_fraction": 0.0009654744749423116,
+      "episode/gait_contact_match": 0.801877553472644,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000743884943112769,
+      "iteration": 26400,
+      "screen_score": 1.545695099814678
+    },
+    {
+      "amp_raw_style_valid": 0.26894445896148683,
+      "reference_foot_quality": 0.7918061351776123,
+      "reset_fraction": 0.0010486857435898856,
+      "episode/gait_contact_match": 0.8024668192299025,
+      "episode/raw_torque_over_peak_fraction": 9.450795914744958e-09,
+      "episode/rew_illegal_support": -0.0007152081041110086,
+      "iteration": 26500,
+      "screen_score": 1.5418385727200614
+    },
+    {
+      "amp_raw_style_valid": 0.27264476239681246,
+      "reference_foot_quality": 0.7876367008686066,
+      "reset_fraction": 0.0009649658459238708,
+      "episode/gait_contact_match": 0.8000132273025242,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007583140492904332,
+      "iteration": 26600,
+      "screen_score": 1.5394016358749374
+    },
+    {
+      "amp_raw_style_valid": 0.25747639685869217,
+      "reference_foot_quality": 0.790723739862442,
+      "reset_fraction": 0.0010503133467864244,
+      "episode/gait_contact_match": 0.7996070948329665,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007199248234670236,
+      "iteration": 26700,
+      "screen_score": 1.5378151673560874
+    },
+    {
+      "amp_raw_style_valid": 0.2612975633144379,
+      "reference_foot_quality": 0.7887215250730515,
+      "reset_fraction": 0.0009620158158941194,
+      "episode/gait_contact_match": 0.800374037154775,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0007619343880548356,
+      "iteration": 26800,
+      "screen_score": 1.5409947714331205
+    },
+    {
+      "amp_raw_style_valid": 0.27552959144115446,
+      "reference_foot_quality": 0.78951924264431,
+      "reset_fraction": 0.0009662882768316194,
+      "episode/gait_contact_match": 0.7972934889624694,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008216703241960674,
+      "iteration": 26900,
+      "screen_score": 1.5384983177651983
+    },
+    {
+      "amp_raw_style_valid": 0.26736713856458666,
+      "reference_foot_quality": 0.7900662213563919,
+      "reset_fraction": 0.0010493978206068278,
+      "episode/gait_contact_match": 0.7968775427865513,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000766047007354527,
+      "iteration": 27000,
+      "screen_score": 1.534473873112602
+    },
+    {
+      "amp_raw_style_valid": 0.27114162266254427,
+      "reference_foot_quality": 0.7922003930807113,
+      "reset_fraction": 0.0009647623950149864,
+      "episode/gait_contact_match": 0.800033344234349,
+      "episode/raw_torque_over_peak_fraction": 5.77548651866285e-09,
+      "episode/rew_illegal_support": -0.0008746211693847235,
+      "iteration": 27100,
+      "screen_score": 1.543995559809446
+    },
+    {
+      "amp_raw_style_valid": 0.26924267172813415,
+      "reference_foot_quality": 0.7886143571138382,
+      "reset_fraction": 0.0010501098964596166,
+      "episode/gait_contact_match": 0.7974856833074749,
+      "episode/raw_torque_over_peak_fraction": 8.663229588516212e-09,
+      "episode/rew_illegal_support": -0.0008810968183519992,
+      "iteration": 27200,
+      "screen_score": 1.5335944589660364
+    },
+    {
+      "amp_raw_style_valid": 0.2699506588280201,
+      "reference_foot_quality": 0.7904020684957505,
+      "reset_fraction": 0.0009606933873146773,
+      "episode/gait_contact_match": 0.7934032406694251,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000806783853697835,
+      "iteration": 27300,
+      "screen_score": 1.5357706397994417
+    },
+    {
+      "amp_raw_style_valid": 0.2693787296116352,
+      "reference_foot_quality": 0.7899876916408539,
+      "reset_fraction": 0.0009662882768316194,
+      "episode/gait_contact_match": 0.7976269784756673,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008216009835295686,
+      "iteration": 27400,
+      "screen_score": 1.5393002562749403
+    },
+    {
+      "amp_raw_style_valid": 0.2815613093972206,
+      "reference_foot_quality": 0.7863040405511856,
+      "reset_fraction": 0.0010493978206068278,
+      "episode/gait_contact_match": 0.7959287983733855,
+      "episode/raw_torque_over_peak_fraction": 1.205318925633986e-08,
+      "episode/rew_illegal_support": -0.000835131843510907,
+      "iteration": 27500,
+      "screen_score": 1.5297628273623372
+    },
+    {
+      "amp_raw_style_valid": 0.2797007447481155,
+      "reference_foot_quality": 0.7893687433004379,
+      "reset_fraction": 0.0009673055267194286,
+      "episode/gait_contact_match": 0.8003579163639675,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008550848369153301,
+      "iteration": 27600,
+      "screen_score": 1.541361383328434
+    },
+    {
+      "amp_raw_style_valid": 0.27416408628225325,
+      "reference_foot_quality": 0.7830013877153397,
+      "reset_fraction": 0.0010485840175533667,
+      "episode/gait_contact_match": 0.7987226305115999,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008365113199712607,
+      "iteration": 27700,
+      "screen_score": 1.529294817349271
+    },
+    {
+      "amp_raw_style_valid": 0.26533841162919997,
+      "reference_foot_quality": 0.7817222005128861,
+      "reset_fraction": 0.0009616089146584272,
+      "episode/gait_contact_match": 0.8010546179224733,
+      "episode/raw_torque_over_peak_fraction": 5.095211742911718e-08,
+      "episode/rew_illegal_support": -0.0008387954809521569,
+      "iteration": 27800,
+      "screen_score": 1.5346958631812637
+    },
+    {
+      "amp_raw_style_valid": 0.2562958966195583,
+      "reference_foot_quality": 0.7812676668167114,
+      "reset_fraction": 0.0009665934526128695,
+      "episode/gait_contact_match": 0.7996541976348991,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008162375758304914,
+      "iteration": 27900,
+      "screen_score": 1.532592191820967
+    },
+    {
+      "amp_raw_style_valid": 0.2652083672583103,
+      "reference_foot_quality": 0.7782336831092834,
+      "reset_fraction": 0.0010471598646836354,
+      "episode/gait_contact_match": 0.7986550943953951,
+      "episode/raw_torque_over_peak_fraction": 7.56063689715864e-09,
+      "episode/rew_illegal_support": -0.000751004281441026,
+      "iteration": 28000,
+      "screen_score": 1.5245307086641278
+    },
+    {
+      "amp_raw_style_valid": 0.2621162921190262,
+      "reference_foot_quality": 0.7762483149766922,
+      "reset_fraction": 0.0009674072521738707,
+      "episode/gait_contact_match": 0.7998969498167889,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008192683000131226,
+      "iteration": 28100,
+      "screen_score": 1.5277749021847877
+    },
+    {
+      "amp_raw_style_valid": 0.2539878463745117,
+      "reference_foot_quality": 0.7734560692310333,
+      "reset_fraction": 0.0010477702156640588,
+      "episode/gait_contact_match": 0.7985634803285225,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0009282703041073294,
+      "iteration": 28200,
+      "screen_score": 1.5196310387763527
+    },
+    {
+      "amp_raw_style_valid": 0.25822749808430673,
+      "reference_foot_quality": 0.7795406484603882,
+      "reset_fraction": 0.0009643554966896772,
+      "episode/gait_contact_match": 0.8015818378906477,
+      "episode/raw_torque_over_peak_fraction": 5.2732701843142155e-08,
+      "episode/rew_illegal_support": -0.0008659841605369583,
+      "iteration": 28300,
+      "screen_score": 1.5329041841895337
+    },
+    {
+      "amp_raw_style_valid": 0.2492586490511894,
+      "reference_foot_quality": 0.7799001544713974,
+      "reset_fraction": 0.0009661865513771773,
+      "episode/gait_contact_match": 0.7998650936036599,
+      "episode/raw_torque_over_peak_fraction": 2.410637851267972e-08,
+      "episode/rew_illegal_support": -0.0008664654461271468,
+      "iteration": 28400,
+      "screen_score": 1.5314556794424132
+    },
+    {
+      "amp_raw_style_valid": 0.2543280445039272,
+      "reference_foot_quality": 0.7782342511415482,
+      "reset_fraction": 0.0010464477876666934,
+      "episode/gait_contact_match": 0.7955790331990156,
+      "episode/raw_torque_over_peak_fraction": 7.094298393184318e-09,
+      "episode/rew_illegal_support": -0.0008521782291581473,
+      "iteration": 28500,
+      "screen_score": 1.5214908240142453
+    },
+    {
+      "amp_raw_style_valid": 0.24149326786398886,
+      "reference_foot_quality": 0.781273490190506,
+      "reset_fraction": 0.0009682210546452552,
+      "episode/gait_contact_match": 0.7944713248965118,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008645881279540105,
+      "iteration": 28600,
+      "screen_score": 1.527333762354755
+    },
+    {
+      "amp_raw_style_valid": 0.23882171258330345,
+      "reference_foot_quality": 0.7849660992622376,
+      "reset_fraction": 0.0010456339851953088,
+      "episode/gait_contact_match": 0.7966182814510288,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000897534551483811,
+      "iteration": 28700,
+      "screen_score": 1.529302681453501
+    },
+    {
+      "amp_raw_style_valid": 0.24535190999507905,
+      "reference_foot_quality": 0.7847922140359879,
+      "reset_fraction": 0.000965169298578985,
+      "episode/gait_contact_match": 0.7977325027676517,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.000883646672069812,
+      "iteration": 28800,
+      "screen_score": 1.5342662518746903
+    },
+    {
+      "amp_raw_style_valid": 0.25441615656018257,
+      "reference_foot_quality": 0.7858885687589645,
+      "reset_fraction": 0.000966084825922735,
+      "episode/gait_contact_match": 0.7985559015236854,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008463526650041638,
+      "iteration": 28900,
+      "screen_score": 1.5361402289865131
+    },
+    {
+      "amp_raw_style_valid": 0.24787890955805778,
+      "reference_foot_quality": 0.7842594915628434,
+      "reset_fraction": 0.0010485840181354434,
+      "episode/gait_contact_match": 0.7928789429301805,
+      "episode/raw_torque_over_peak_fraction": 5.255007795222978e-08,
+      "episode/rew_illegal_support": -0.0008778863254404785,
+      "iteration": 29000,
+      "screen_score": 1.5247087080854722
+    },
+    {
+      "amp_raw_style_valid": 0.23450494408607483,
+      "reference_foot_quality": 0.7865447288751602,
+      "reset_fraction": 0.0009652710222871974,
+      "episode/gait_contact_match": 0.794083441524741,
+      "episode/raw_torque_over_peak_fraction": 7.115284582280014e-08,
+      "episode/rew_illegal_support": -0.000883239111057312,
+      "iteration": 29100,
+      "screen_score": 1.5323639077570832
+    },
+    {
+      "amp_raw_style_valid": 0.23311317801475526,
+      "reference_foot_quality": 0.7858722442388535,
+      "reset_fraction": 0.001047261589556001,
+      "episode/gait_contact_match": 0.7965657493867976,
+      "episode/raw_torque_over_peak_fraction": 4.950417178406497e-09,
+      "episode/rew_illegal_support": -0.0008946822963694899,
+      "iteration": 29200,
+      "screen_score": 1.5300748646436793
+    },
+    {
+      "amp_raw_style_valid": 0.2311316089332104,
+      "reference_foot_quality": 0.7816798090934753,
+      "reset_fraction": 0.0009634399687638507,
+      "episode/gait_contact_match": 0.7973747553224819,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008624599388899223,
+      "iteration": 29300,
+      "screen_score": 1.5308825659777647
+    },
+    {
+      "amp_raw_style_valid": 0.23748254016041756,
+      "reference_foot_quality": 0.7777147680521012,
+      "reset_fraction": 0.0009656779252691194,
+      "episode/gait_contact_match": 0.7982029470134965,
+      "episode/raw_torque_over_peak_fraction": 4.725397957372479e-09,
+      "episode/rew_illegal_support": -0.0008723421120007695,
+      "iteration": 29400,
+      "screen_score": 1.527633771548162
+    },
+    {
+      "amp_raw_style_valid": 0.23311435148119927,
+      "reference_foot_quality": 0.7772946286201478,
+      "reset_fraction": 0.001049702995806001,
+      "episode/gait_contact_match": 0.7990631194502036,
+      "episode/raw_torque_over_peak_fraction": 1.8956163353086214e-08,
+      "episode/rew_illegal_support": -0.0008301140252588226,
+      "iteration": 29500,
+      "screen_score": 1.5238724087184177
+    },
+    {
+      "amp_raw_style_valid": 0.23123542711138725,
+      "reference_foot_quality": 0.7757881861925126,
+      "reset_fraction": 0.0009647623961791396,
+      "episode/gait_contact_match": 0.7970167014432477,
+      "episode/raw_torque_over_peak_fraction": 1.205318925633986e-08,
+      "episode/rew_illegal_support": -0.0008228920990869149,
+      "iteration": 29600,
+      "screen_score": 1.5245666472949106
+    },
+    {
+      "amp_raw_style_valid": 0.22892187848687173,
+      "reference_foot_quality": 0.7765937548875809,
+      "reset_fraction": 0.0009681193338474259,
+      "episode/gait_contact_match": 0.7940130993450274,
+      "episode/raw_torque_over_peak_fraction": 0.0,
+      "episode/rew_illegal_support": -0.0008222644473885038,
+      "iteration": 29700,
+      "screen_score": 1.522200887540237
+    },
+    {
+      "amp_raw_style_valid": 0.2423655843734741,
+      "reference_foot_quality": 0.7767367112636566,
+      "reset_fraction": 0.0010463460587197915,
+      "episode/gait_contact_match": 0.7958338786604687,
+      "episode/raw_torque_over_peak_fraction": 2.390984153133646e-08,
+      "episode/rew_illegal_support": -0.0008605060890041457,
+      "iteration": 29800,
+      "screen_score": 1.5202530478897205
+    },
+    {
+      "amp_raw_style_valid": 0.2431913547217846,
+      "reference_foot_quality": 0.778540650010109,
+      "reset_fraction": 0.0009641520463628694,
+      "episode/gait_contact_match": 0.7986038566404159,
+      "episode/raw_torque_over_peak_fraction": 3.917286422633417e-08,
+      "episode/rew_illegal_support": -0.0008028141675349098,
+      "iteration": 29900,
+      "screen_score": 1.528936512603739
+    },
+    {
+      "amp_raw_style_valid": 0.2548647114634514,
+      "reference_foot_quality": 0.7876088267564774,
+      "reset_fraction": 0.0010499064467148855,
+      "episode/gait_contact_match": 0.8029475933122933,
+      "episode/raw_torque_over_peak_fraction": 2.9232897245294777e-08,
+      "episode/rew_illegal_support": -0.0007828330817187484,
+      "iteration": 30000,
+      "screen_score": 1.538060805404054
+    }
+  ]
+}

@@ -1,0 +1,284 @@
+{
+  "schema": "v3_rsi_pair_amp",
+  "public_size": 1020,
+  "amp_window_frames": 2,
+  "amp_window_stride": 1,
+  "reference_bank_sha256": "dc778a7a0abaff7fcb87275ffa113581eb8bedd7de139f620e68d5f9b8abd06b",
+  "teacher_size": 99,
+  "frame_size": 51,
+  "reference_sha256": "241c7f8222bedae509b817cc0d33581215c4e62437c51539e54fbdeed59b2daa",
+  "dt": 0.019999999552965164,
+  "joint_order": [
+    "FL_hip_joint",
+    "FL_thigh_joint",
+    "FL_calf_joint",
+    "FR_hip_joint",
+    "FR_thigh_joint",
+    "FR_calf_joint",
+    "RL_hip_joint",
+    "RL_thigh_joint",
+    "RL_calf_joint",
+    "RR_hip_joint",
+    "RR_thigh_joint",
+    "RR_calf_joint"
+  ],
+  "foot_order": [
+    "FL",
+    "FR",
+    "RL",
+    "RR"
+  ],
+  "input": "public history only, newest frame first",
+  "input_shape": [
+    null,
+    1020
+  ],
+  "output_shape": [
+    null,
+    12
+  ],
+  "public_frame": [
+    "gyro*.25:3",
+    "gravity:3",
+    "command*[2,2,.25]:3",
+    "q-default:12",
+    "dq*.05:12",
+    "previous_clipped_action:12",
+    "clock_sin_cos:2",
+    "stride_mean_yaw_error*4:1",
+    "heading_sin_cos_minus1:2",
+    "gait_enable:1"
+  ],
+  "control": {
+    "action_scale": 0.25,
+    "action_scale_by_joint": {
+      "hip": 0.15,
+      "thigh": 0.25,
+      "calf": 0.25
+    },
+    "control_type": "P",
+    "damping": {
+      "hip": 1.0,
+      "thigh": 1.0,
+      "calf": 1.0
+    },
+    "decimation": 8,
+    "stiffness": {
+      "hip": 40.0,
+      "thigh": 40.0,
+      "calf": 40.0
+    }
+  },
+  "actuator": {
+    "closed_loop_delay_s": 0.04,
+    "continuous_torque_nm": 6.0,
+    "control_dt_s": 0.02,
+    "coulomb_friction_nm": 0.156,
+    "friction_smoothing_rad_s": 0.05,
+    "peak_torque_limit_nm": 14.0,
+    "response_gain": 0.928,
+    "response_update_dt_s": 0.005,
+    "runtime_dof_order": [
+      "FL_hip_joint",
+      "FL_thigh_joint",
+      "FL_calf_joint",
+      "FR_hip_joint",
+      "FR_thigh_joint",
+      "FR_calf_joint",
+      "RL_hip_joint",
+      "RL_thigh_joint",
+      "RL_calf_joint",
+      "RR_hip_joint",
+      "RR_thigh_joint",
+      "RR_calf_joint"
+    ],
+    "target_acceleration_limit_rad_s2": {
+      "hip": 60.0,
+      "thigh": 78.0,
+      "calf": 96.0
+    },
+    "target_rate_limit_rad_s": {
+      "hip": 2.0,
+      "thigh": 2.6,
+      "calf": 3.2
+    },
+    "time_constant_s": 0.0319
+  },
+  "normalization": {
+    "clip_actions": 2.0,
+    "clip_observations": 100.0,
+    "obs_scales": {
+      "ang_vel": 0.25,
+      "dof_pos": 1.0,
+      "dof_vel": 0.05,
+      "height_measurements": 5.0,
+      "lin_vel": 2.0,
+      "yaw_rate_error_mean": 4.0
+    }
+  },
+  "gait": {
+    "expert_command_scale": [
+      0.28,
+      0.1,
+      0.4
+    ],
+    "fast_stance_ratio": 0.54,
+    "foot_radius_m": 0.02,
+    "period_s": 0.5,
+    "randomize_phase_on_reset": false,
+    "stance_ratio": 0.68,
+    "swing_clearance_m": 0.035
+  },
+  "history_reset": "repeat first frame for all 20 slots",
+  "heading_target": "reset to IMU yaw; integrate commanded wz at 50 Hz; wrap target-yaw to [-pi,pi]",
+  "default_joint_angles": {
+    "FR_hip_joint": 0.0,
+    "FR_thigh_joint": 0.41428,
+    "FR_calf_joint": -1.28031,
+    "FL_hip_joint": 0.0,
+    "FL_thigh_joint": -0.41428,
+    "FL_calf_joint": 1.28031,
+    "RR_hip_joint": 0.0,
+    "RR_thigh_joint": 0.41428,
+    "RR_calf_joint": -1.28031,
+    "RL_hip_joint": 0.0,
+    "RL_thigh_joint": -0.41428,
+    "RL_calf_joint": 1.28031
+  },
+  "checkpoint": "/home/nszb/gym/unitree_rl_gym/logs/urdf4_amp_cts_gait_first/Nov13_21-24-21_gait_first_30000/model_17800.pt",
+  "checkpoint_sha256": "42845cb95de28a0eb94ad41ff8538673d67f6071e3c7edfb231deb877479d355",
+  "torchscript_sha256": "a51c32ee06b1b0704e3210d6ad4b65836e64b226b5699f4fba919ae6490ba64a",
+  "numpy_weights_sha256": "126fe6a6c3a442817c9a57686c759ea42264924f0bbe362267779d7e51bdddd0",
+  "numpy_export_max_error": 4.5299530029296875e-06,
+  "urdf": "/home/nszb/gym/unitree_rl_gym/resources/robots/urdf4/urdf/urdf4_rs01.urdf",
+  "urdf_sha256": "528c088ff240916b04dfc98611ae9437b92a31cfafc9a297399632e8d0774b91",
+  "initial_root": [
+    0,
+    0,
+    0.3,
+    1,
+    0,
+    0,
+    0
+  ],
+  "physics_dt_s": 0.0025,
+  "motions": [
+    {
+      "name": "march",
+      "command": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gait_enabled": true
+    },
+    {
+      "name": "forward_slow",
+      "command": [
+        0.18,
+        0.0,
+        0.0
+      ],
+      "gait_enabled": true
+    },
+    {
+      "name": "forward",
+      "command": [
+        0.28,
+        0.0,
+        0.0
+      ],
+      "gait_enabled": true
+    },
+    {
+      "name": "backward",
+      "command": [
+        -0.18,
+        0.0,
+        0.0
+      ],
+      "gait_enabled": true
+    },
+    {
+      "name": "left",
+      "command": [
+        0.0,
+        0.1,
+        0.0
+      ],
+      "gait_enabled": true
+    },
+    {
+      "name": "right",
+      "command": [
+        0.0,
+        -0.1,
+        0.0
+      ],
+      "gait_enabled": true
+    },
+    {
+      "name": "turn_left",
+      "command": [
+        0.0,
+        0.0,
+        0.4
+      ],
+      "gait_enabled": true
+    },
+    {
+      "name": "turn_right",
+      "command": [
+        0.0,
+        0.0,
+        -0.4
+      ],
+      "gait_enabled": true
+    },
+    {
+      "name": "forward_left",
+      "command": [
+        0.2,
+        0.08,
+        0.0
+      ],
+      "gait_enabled": true
+    },
+    {
+      "name": "forward_right",
+      "command": [
+        0.2,
+        -0.08,
+        0.0
+      ],
+      "gait_enabled": true
+    },
+    {
+      "name": "arc_left",
+      "command": [
+        0.22,
+        0.0,
+        0.3
+      ],
+      "gait_enabled": true
+    },
+    {
+      "name": "arc_right",
+      "command": [
+        0.22,
+        0.0,
+        -0.3
+      ],
+      "gait_enabled": true
+    },
+    {
+      "name": "stand",
+      "command": [
+        0,
+        0,
+        0
+      ],
+      "gait_enabled": false
+    }
+  ]
+}
