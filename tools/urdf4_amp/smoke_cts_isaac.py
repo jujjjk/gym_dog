@@ -28,7 +28,7 @@ env,cfg=task_registry.make_env(args.task,args=args)
 _,train=task_registry.get_cfgs(args.task)
 train=class_to_dict(train)
 train['runner']['save_interval']=100
-# Use the real four-epoch PPO and discriminator configuration.
+# Use the configured PPO and discriminator update counts.
 own.output.mkdir(parents=True,exist_ok=True)
 runner=Urdf4AMPCTSRunner(env,train,str(own.output/'run'),device=args.rl_device)
 with tempfile.TemporaryDirectory() as temp:
@@ -72,9 +72,9 @@ assert torch.cdist(samples,env.reference_commands).min(1).values.max()<1e-6
 assert torch.cdist(env.reference_commands,samples).min(1).values.max()<1e-6
 assert samples[:,0].max()<=.280001 and samples[:,0].min()>=-.180001
 assert samples[:,1].abs().max()<=.100001 and samples[:,2].abs().max()<=.400001
-assert set(env.reward_scales)=={'command_tracking','phase_reference','illegal_support','raw_torque_over_peak','collision','action_rate','termination'}
+assert set(env.reward_scales)=={'command_tracking','illegal_support','raw_torque_over_peak','collision','action_rate','termination'}
 zero=samples.abs().sum(1)<1e-6
-assert bool((zero&~modes).any()) and bool((zero&modes).any())
+assert bool((zero&modes).any()) and bool(modes.all())
 # All original expert commands keep their per-clip duty, while fast commands
 # get swing return time without changing the RS01 target rate/torque limits.
 for i,command in enumerate(env.reference_commands):
@@ -83,6 +83,7 @@ for i,command in enumerate(env.reference_commands):
 env.set_command_override(torch.tensor([.6,0.,0.],device=env.device).repeat(env.num_envs,1))
 assert bool((env._stance_ratio()<.56).all()) and bool((env._stance_ratio()>.5).all())
 # Positive and negative commanded heading targets, wrap and reset semantics.
+env.reference_reset_probability=0.  # A reference reset intentionally restores reference heading error.
 ids=torch.arange(env.num_envs,device=env.device)
 env.set_command_override(torch.tensor([0.,0.,.8],device=env.device).repeat(env.num_envs,1))
 env.heading_target[:]=0
@@ -121,27 +122,28 @@ env.velocity_drift[:,2]=-expected_yaw
 correct=env._reward_command_tracking().clone()
 env.velocity_drift[:,2]=expected_yaw
 assert bool((correct>env._reward_command_tracking()).all())
-# Temporal discriminator: complete-cycle history, with every intermediate
-# transition checked; a reset/command boundary invalidates the next .5 s.
-style=runner.style;style.clear_history()
-fake={'next':torch.zeros(env.num_envs,46,device=env.device),
-      'contact':torch.zeros(env.num_envs,4,device=env.device),
-      'valid':torch.ones(env.num_envs,device=env.device,dtype=torch.bool),
-      'command':torch.zeros(env.num_envs,3,device=env.device)}
-for i in range(style.span+1):
-    fake['next'][:]=i
-    _,inputs,valid=style.rollout_reward(fake)
-    assert bool(valid.all())==(i==style.span)
-expected=torch.cat([torch.cat((torch.full((env.num_envs,46),float(i),device=env.device),fake['contact']),1)
-                    for i in range(0,style.span+1,style.stride)],1)
-assert inputs.shape[1]==303 and torch.equal(inputs,style.inputs(expected,fake['command']))
-fake['valid'][:]=False
-assert not bool(style.rollout_reward(fake)[2].any())
-fake['valid'][:]=True
-for i in range(style.span):
-    _,_,valid=style.rollout_reward(fake)
-    assert bool(valid.all())==(i==style.span-1)
-style.clear_history();env.command_override=None;env.reset()
+# The production AMP baseline uses an exact adjacent pair (95 values),
+# with reset/command boundaries masked by the environment.
+style=runner.style
+pair=torch.randn(env.num_envs,92,device=env.device)
+command=env.reference_commands[torch.arange(env.num_envs,device=env.device)%12]
+score,inputs=style.reward(pair[:,:46],pair[:,46:],command)
+assert inputs.shape[1]==95 and torch.isfinite(score).all()
+# Complete actuator snapshots survive reset without a hidden zero-action step.
+env.reference_reset_probability=1.;env.command_override=None
+obs,_=env.reset()
+assert env.reference_bank is not None
+assert bool((env.episode_length_buf==0).all())
+bank=env.reference_bank['snapshots'];selected=env.last_reference_bank_ids
+mean=env.measured_yaw_error
+ix=(mean.head-torch.arange(mean.window.shape[1],device=env.device))%mean.window.shape[1]
+assert torch.equal(mean.window[:,ix],bank['yaw_window'][selected])
+assert bool((selected>=0).all())
+for field in ('dof_pos','dof_vel','position_target','target_rate','response_target','obs_history'):
+    assert torch.equal(getattr(env,field),bank[field][selected]),'Reference reset lost '+field
+assert torch.equal(env.delay_buffer.transpose(0,1),bank['delay_buffer'][selected])
+assert torch.isfinite(env.delay_buffer).all() and torch.isfinite(env.obs_history).all()
+assert 'phase_reference' not in env.reward_scales
 
 ratios=[];ppo_deltas=[]
 original=runner.alg.update
@@ -165,7 +167,10 @@ def checked_update():
     return result
 runner.alg.update=checked_update
 before_encoder={n:p.detach().clone() for n,p in model.student_encoder.named_parameters()}
+seed_state={n:p.detach().clone() for n,p in runner.alg.reference_actor.state_dict().items()}
+assert all(not p.requires_grad for p in runner.alg.reference_actor.parameters())
 runner.learn(own.updates,init_at_random_ep_len=True)
+assert all(torch.equal(p,seed_state[n]) for n,p in runner.alg.reference_actor.state_dict().items())
 assert any(not torch.equal(p,before_encoder[n]) for n,p in model.student_encoder.named_parameters())
 checkpoint=own.output/'run'/('model_%d.pt'%own.updates)
 public=env.get_observations()[:,:1020].clone()
@@ -178,6 +183,7 @@ with torch.no_grad():
 with torch.no_grad():
     for p in model.parameters():p.add_(.1)
 runner.load(str(checkpoint))
+assert all(torch.equal(p,seed_state[n]) for n,p in runner.alg.reference_actor.state_dict().items())
 with torch.no_grad():reload_error=(model.act_inference(public)-expected).abs().max().item()
 assert reload_error==0 and runner.current_learning_iteration==own.updates
 # A bounded recorder pass using only the student policy, fixed command and seed.
@@ -205,11 +211,12 @@ result=dict(task=args.task,num_envs=env.num_envs,updates=own.updates,steps_per_u
             student_encoder_updated_by_supervision=True,PPO_logprob_max_errors=ratios,
             PPO_parameter_changes=ppo_deltas,student_export_max_error=export_error,
             checkpoint_reload_max_error=reload_error,
+            frozen_seed_preserved_through_PPO_and_reload=True,
             command_min=samples.min(0).values.tolist(),command_max=samples.max(0).values.tolist(),
             stand_march_separated=True,command_change_and_reset_transition_guards=True,
-            heading_target_integrates_and_resets=True,complete_cycle_and_contact_AMP=True,
+            heading_target_integrates_and_resets=True,adjacent_state_AMP=True,
             mismatched_validation_receipt_rejected=True,
-            phase_reference_reward_has_no_height_conflict=True,unified_heading_and_yaw_target=True,
+            reference_geometry_is_diagnostic_only=True,unified_heading_and_yaw_target=True,
             original_expert_duty_preserved_and_fast_swing_time_enabled=True,
             final_raw_peak_Nm=float(env.raw_pd_torques.abs().max()),
             final_motor_peak_Nm=float(env.motor_torques.abs().max()),

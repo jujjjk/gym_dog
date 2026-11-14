@@ -1,0 +1,24 @@
+{
+  "dynamic_action_count": 12,
+  "stand_excluded": true,
+  "torque": {
+    "raw_pd": {
+      "mean_abs_Nm": 1.7922601103782654,
+      "rms_Nm": 2.7313814423779514,
+      "peak_abs_Nm": 10.617823600769043,
+      "fraction_abs_over_6": 0.06081050665428241
+    },
+    "motor": {
+      "mean_abs_Nm": 1.7922601103782654,
+      "rms_Nm": 2.7313814423779514,
+      "peak_abs_Nm": 10.617823600769043,
+      "fraction_abs_over_6": 0.06081050665428241
+    },
+    "applied": {
+      "mean_abs_Nm": 1.7961052159468334,
+      "rms_Nm": 2.7205242785361667,
+      "peak_abs_Nm": 10.744962692260742,
+      "fraction_abs_over_6": 0.059764499155183635
+    }
+  }
+}

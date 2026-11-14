@@ -1,0 +1,4 @@
+*.npz
+*.xwd
+*.png
+viewer_pid.txt

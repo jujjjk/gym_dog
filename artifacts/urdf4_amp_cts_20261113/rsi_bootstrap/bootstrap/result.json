@@ -1,0 +1,17 @@
+{
+  "seed": 1,
+  "teacher_steps": 500,
+  "teacher_seconds": 10.0,
+  "teacher_resets": 0,
+  "teacher_raw_peak_Nm": 10.42317008972168,
+  "teacher_illegal_support_fraction": 0.0,
+  "samples": 10080,
+  "snapshots": 600,
+  "bc_steps": 1500,
+  "student_holdout_mse_before": 0.4953077435493469,
+  "student_holdout_mse_after": 0.0007573787006549537,
+  "reference_bank": "/home/nszb/gym/artifacts/urdf4_amp_cts_20261113/rsi_bootstrap/reference_bank.pt",
+  "reference_bank_sha256": "dc778a7a0abaff7fcb87275ffa113581eb8bedd7de139f620e68d5f9b8abd06b",
+  "checkpoint": "/home/nszb/gym/artifacts/urdf4_amp_cts_20261113/rsi_bootstrap/bootstrap/run/model_0.pt",
+  "behavior_accepted": false
+}

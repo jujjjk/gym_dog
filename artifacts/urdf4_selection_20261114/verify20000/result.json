@@ -1,0 +1,836 @@
+{
+  "checkpoint": "/home/nszb/gym/unitree_rl_gym/logs/urdf4_amp_cts_gait_first/Nov13_21-24-21_gait_first_30000/model_20000.pt",
+  "checkpoint_sha256": "045dc0e393eb2a2000ea3ee86cf310bb12f0353d59ae32d441421ce673d09e5c",
+  "contract": {
+    "schema": "v3_rsi_pair_amp",
+    "public_size": 1020,
+    "amp_window_frames": 2,
+    "amp_window_stride": 1,
+    "reference_bank_sha256": "dc778a7a0abaff7fcb87275ffa113581eb8bedd7de139f620e68d5f9b8abd06b",
+    "teacher_size": 99,
+    "frame_size": 51,
+    "reference_sha256": "241c7f8222bedae509b817cc0d33581215c4e62437c51539e54fbdeed59b2daa",
+    "dt": 0.019999999552965164,
+    "joint_order": [
+      "FL_hip_joint",
+      "FL_thigh_joint",
+      "FL_calf_joint",
+      "FR_hip_joint",
+      "FR_thigh_joint",
+      "FR_calf_joint",
+      "RL_hip_joint",
+      "RL_thigh_joint",
+      "RL_calf_joint",
+      "RR_hip_joint",
+      "RR_thigh_joint",
+      "RR_calf_joint"
+    ],
+    "foot_order": [
+      "FL",
+      "FR",
+      "RL",
+      "RR"
+    ]
+  },
+  "reports": [
+    {
+      "seed": 1,
+      "mode": "cold",
+      "seconds": 30.0,
+      "warmup_s": 2.9999999329447746,
+      "results": [
+        {
+          "clip": "march",
+          "command": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_velocity": [
+            0.002887018956243992,
+            0.0025826669298112392,
+            -0.08398034423589706
+          ],
+          "cycle_linear_error": 0.011596849579432255,
+          "cycle_yaw_error": 0.0839831609858839,
+          "clearance_p95_mm": [
+            31.58898167312145,
+            32.876381278038025,
+            26.369282230734825,
+            26.937676966190338
+          ],
+          "clearance_error_mm": 2.9860649602925804,
+          "AMP_style": 0.268127977848053,
+          "phase_quality": 0.917464554309845,
+          "resets": 0,
+          "flight_fraction": 0.0,
+          "illegal_support_fraction": 0.0,
+          "lifts_per_foot": [
+            [
+              55,
+              54,
+              54,
+              54
+            ],
+            [
+              55,
+              54,
+              54,
+              54
+            ],
+            [
+              55,
+              54,
+              54,
+              54
+            ],
+            [
+              55,
+              54,
+              54,
+              54
+            ]
+          ],
+          "diagonal_alternations": [
+            108,
+            108,
+            108,
+            108
+          ],
+          "diagonal_touchdown_p95_s": 0.03999999910593033,
+          "raw_peak_Nm": 10.036714553833008,
+          "saturation_fraction": 0.0,
+          "rejection_reasons": [],
+          "passed": true
+        },
+        {
+          "clip": "forward_slow",
+          "command": [
+            0.18,
+            0.0,
+            0.0
+          ],
+          "mean_velocity": [
+            0.2468806952238083,
+            -0.002278815722092986,
+            -0.01175703015178442
+          ],
+          "cycle_linear_error": 0.06694241906639213,
+          "cycle_yaw_error": 0.012109424224483483,
+          "clearance_p95_mm": [
+            35.514168441295624,
+            36.60699464380741,
+            34.82761047780514,
+            31.277690455317497
+          ],
+          "clearance_error_mm": 5.001041209477371,
+          "AMP_style": 0.41493314504623413,
+          "phase_quality": 0.6331110596656799,
+          "resets": 0,
+          "flight_fraction": 0.0,
+          "illegal_support_fraction": 0.0,
+          "lifts_per_foot": [
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ]
+          ],
+          "diagonal_alternations": [
+            108,
+            108,
+            108,
+            108
+          ],
+          "diagonal_touchdown_p95_s": 0.019999999552965164,
+          "raw_peak_Nm": 11.162097930908203,
+          "saturation_fraction": 0.0,
+          "rejection_reasons": [
+            "linear_tracking"
+          ],
+          "passed": false
+        },
+        {
+          "clip": "forward",
+          "command": [
+            0.28,
+            0.0,
+            0.0
+          ],
+          "mean_velocity": [
+            0.2988702356815338,
+            0.005200850777328014,
+            -0.04472271353006363
+          ],
+          "cycle_linear_error": 0.02072025080863176,
+          "cycle_yaw_error": 0.04479132191334915,
+          "clearance_p95_mm": [
+            32.004499435424805,
+            33.50064270198345,
+            34.13620851933956,
+            36.2017136067152
+          ],
+          "clearance_error_mm": 5.434375207443168,
+          "AMP_style": 0.3947661817073822,
+          "phase_quality": 0.7987993955612183,
+          "resets": 0,
+          "flight_fraction": 0.0,
+          "illegal_support_fraction": 0.0,
+          "lifts_per_foot": [
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ]
+          ],
+          "diagonal_alternations": [
+            108,
+            108,
+            108,
+            108
+          ],
+          "diagonal_touchdown_p95_s": 0.019999999552965164,
+          "raw_peak_Nm": 10.295116424560547,
+          "saturation_fraction": 0.0,
+          "rejection_reasons": [],
+          "passed": true
+        },
+        {
+          "clip": "backward",
+          "command": [
+            -0.18,
+            0.0,
+            0.0
+          ],
+          "mean_velocity": [
+            -0.2154909074306488,
+            0.006993107497692108,
+            -0.06433171778917313
+          ],
+          "cycle_linear_error": 0.03618599301290427,
+          "cycle_yaw_error": 0.06434368660302689,
+          "clearance_p95_mm": [
+            27.269593998789787,
+            22.611893713474274,
+            26.424776017665867,
+            29.81397584080696
+          ],
+          "clearance_error_mm": 6.928391885552827,
+          "AMP_style": 0.5708688497543335,
+          "phase_quality": 0.8958037495613098,
+          "resets": 0,
+          "flight_fraction": 0.0,
+          "illegal_support_fraction": 0.0,
+          "lifts_per_foot": [
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ]
+          ],
+          "diagonal_alternations": [
+            108,
+            108,
+            108,
+            108
+          ],
+          "diagonal_touchdown_p95_s": 0.0,
+          "raw_peak_Nm": 9.602903366088867,
+          "saturation_fraction": 0.0,
+          "rejection_reasons": [
+            "linear_tracking"
+          ],
+          "passed": false
+        },
+        {
+          "clip": "left",
+          "command": [
+            0.0,
+            0.1,
+            0.0
+          ],
+          "mean_velocity": [
+            0.02698599360883236,
+            0.10996795445680618,
+            -0.02694774977862835
+          ],
+          "cycle_linear_error": 0.028776665117100312,
+          "cycle_yaw_error": 0.027000054120773172,
+          "clearance_p95_mm": [
+            36.418333277106285,
+            32.11609572172165,
+            27.412358298897743,
+            34.64927673339844
+          ],
+          "clearance_error_mm": 7.6222796514462345,
+          "AMP_style": 0.441571980714798,
+          "phase_quality": 0.9022276401519775,
+          "resets": 0,
+          "flight_fraction": 0.0,
+          "illegal_support_fraction": 0.0,
+          "lifts_per_foot": [
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ]
+          ],
+          "diagonal_alternations": [
+            108,
+            108,
+            108,
+            108
+          ],
+          "diagonal_touchdown_p95_s": 0.0,
+          "raw_peak_Nm": 10.645892143249512,
+          "saturation_fraction": 0.0,
+          "rejection_reasons": [],
+          "passed": true
+        },
+        {
+          "clip": "right",
+          "command": [
+            0.0,
+            -0.1,
+            0.0
+          ],
+          "mean_velocity": [
+            0.0030370585154742002,
+            -0.11103872954845428,
+            -0.023366861045360565
+          ],
+          "cycle_linear_error": 0.01152249771447259,
+          "cycle_yaw_error": 0.02334134639540817,
+          "clearance_p95_mm": [
+            29.30286601185799,
+            33.767255023121834,
+            27.861662954092026,
+            39.575830847024925
+          ],
+          "clearance_error_mm": 3.0371079872403612,
+          "AMP_style": 0.6036728024482727,
+          "phase_quality": 0.737840473651886,
+          "resets": 0,
+          "flight_fraction": 0.0,
+          "illegal_support_fraction": 0.0,
+          "lifts_per_foot": [
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ]
+          ],
+          "diagonal_alternations": [
+            108,
+            108,
+            108,
+            108
+          ],
+          "diagonal_touchdown_p95_s": 0.0,
+          "raw_peak_Nm": 10.167966842651367,
+          "saturation_fraction": 0.0,
+          "rejection_reasons": [],
+          "passed": true
+        },
+        {
+          "clip": "turn_left",
+          "command": [
+            0.0,
+            0.0,
+            0.4
+          ],
+          "mean_velocity": [
+            -0.009409641847014427,
+            0.008426793850958347,
+            0.37771761417388916
+          ],
+          "cycle_linear_error": 0.012659674970898451,
+          "cycle_yaw_error": 0.02228439198801989,
+          "clearance_p95_mm": [
+            35.51309071481228,
+            29.07683625817299,
+            30.06163239479065,
+            33.44314880669117
+          ],
+          "clearance_error_mm": 6.655850490355313,
+          "AMP_style": 0.5408232808113098,
+          "phase_quality": 0.8785054683685303,
+          "resets": 0,
+          "flight_fraction": 0.0,
+          "illegal_support_fraction": 0.0,
+          "lifts_per_foot": [
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ]
+          ],
+          "diagonal_alternations": [
+            108,
+            108,
+            108,
+            108
+          ],
+          "diagonal_touchdown_p95_s": 0.019999999552965164,
+          "raw_peak_Nm": 9.77196216583252,
+          "saturation_fraction": 0.0,
+          "rejection_reasons": [],
+          "passed": true
+        },
+        {
+          "clip": "turn_right",
+          "command": [
+            0.0,
+            0.0,
+            -0.4
+          ],
+          "mean_velocity": [
+            0.032147035002708435,
+            0.00815039686858654,
+            -0.47300419211387634
+          ],
+          "cycle_linear_error": 0.03316904817742813,
+          "cycle_yaw_error": 0.07298840969930181,
+          "clearance_p95_mm": [
+            29.928693175315857,
+            34.90860350430012,
+            36.20196357369423,
+            30.35934716463089
+          ],
+          "clearance_error_mm": 1.5974774360577229,
+          "AMP_style": 0.4956219792366028,
+          "phase_quality": 0.8873276710510254,
+          "resets": 0,
+          "flight_fraction": 0.0,
+          "illegal_support_fraction": 0.0,
+          "lifts_per_foot": [
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ]
+          ],
+          "diagonal_alternations": [
+            108,
+            108,
+            108,
+            108
+          ],
+          "diagonal_touchdown_p95_s": 0.0,
+          "raw_peak_Nm": 9.506278038024902,
+          "saturation_fraction": 0.0,
+          "rejection_reasons": [
+            "linear_tracking"
+          ],
+          "passed": false
+        },
+        {
+          "clip": "forward_left",
+          "command": [
+            0.2,
+            0.08,
+            0.0
+          ],
+          "mean_velocity": [
+            0.22225847840309143,
+            0.09827908128499985,
+            -0.02421930618584156
+          ],
+          "cycle_linear_error": 0.028830774238493884,
+          "cycle_yaw_error": 0.02421712733983578,
+          "clearance_p95_mm": [
+            35.425468161702156,
+            35.650516673922546,
+            37.18274086713791,
+            40.67240692675114
+          ],
+          "clearance_error_mm": 3.605572288618017,
+          "AMP_style": 0.392883837223053,
+          "phase_quality": 0.8392698168754578,
+          "resets": 0,
+          "flight_fraction": 0.0,
+          "illegal_support_fraction": 0.0,
+          "lifts_per_foot": [
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ]
+          ],
+          "diagonal_alternations": [
+            108,
+            108,
+            108,
+            108
+          ],
+          "diagonal_touchdown_p95_s": 0.019999999552965164,
+          "raw_peak_Nm": 10.251870155334473,
+          "saturation_fraction": 0.0,
+          "rejection_reasons": [],
+          "passed": true
+        },
+        {
+          "clip": "forward_right",
+          "command": [
+            0.2,
+            -0.08,
+            0.0
+          ],
+          "mean_velocity": [
+            0.21432088315486908,
+            -0.08327912539243698,
+            -0.016262371093034744
+          ],
+          "cycle_linear_error": 0.014708804404210619,
+          "cycle_yaw_error": 0.016226627734523824,
+          "clearance_p95_mm": [
+            25.771035626530647,
+            37.915804982185364,
+            29.508891329169273,
+            30.873025208711628
+          ],
+          "clearance_error_mm": 4.245254976890077,
+          "AMP_style": 0.5564865469932556,
+          "phase_quality": 0.8436468243598938,
+          "resets": 0,
+          "flight_fraction": 0.0,
+          "illegal_support_fraction": 0.0,
+          "lifts_per_foot": [
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ]
+          ],
+          "diagonal_alternations": [
+            108,
+            108,
+            108,
+            108
+          ],
+          "diagonal_touchdown_p95_s": 0.019999999552965164,
+          "raw_peak_Nm": 10.055880546569824,
+          "saturation_fraction": 0.0,
+          "rejection_reasons": [],
+          "passed": true
+        },
+        {
+          "clip": "arc_left",
+          "command": [
+            0.22,
+            0.0,
+            0.3
+          ],
+          "mean_velocity": [
+            0.18790118396282196,
+            0.015413038432598114,
+            0.2567773759365082
+          ],
+          "cycle_linear_error": 0.03890428598499032,
+          "cycle_yaw_error": 0.04302271360707827,
+          "clearance_p95_mm": [
+            32.50113241374493,
+            28.991354256868366,
+            32.97050856053829,
+            35.11529006063938
+          ],
+          "clearance_error_mm": 3.2519954332821186,
+          "AMP_style": 0.4593554735183716,
+          "phase_quality": 0.8340863585472107,
+          "resets": 0,
+          "flight_fraction": 0.0,
+          "illegal_support_fraction": 0.0,
+          "lifts_per_foot": [
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ]
+          ],
+          "diagonal_alternations": [
+            108,
+            108,
+            108,
+            108
+          ],
+          "diagonal_touchdown_p95_s": 0.03999999910593033,
+          "raw_peak_Nm": 9.798205375671387,
+          "saturation_fraction": 0.0,
+          "rejection_reasons": [
+            "linear_tracking"
+          ],
+          "passed": false
+        },
+        {
+          "clip": "arc_right",
+          "command": [
+            0.22,
+            0.0,
+            -0.3
+          ],
+          "mean_velocity": [
+            0.25112080574035645,
+            0.0016652407357469201,
+            -0.3650602102279663
+          ],
+          "cycle_linear_error": 0.03116988346694404,
+          "cycle_yaw_error": 0.065075259326422,
+          "clearance_p95_mm": [
+            25.97266361117363,
+            27.365200221538544,
+            32.53496028482914,
+            35.28008423745632
+          ],
+          "clearance_error_mm": 7.46641036555895,
+          "AMP_style": 0.45553746819496155,
+          "phase_quality": 0.8621519804000854,
+          "resets": 0,
+          "flight_fraction": 0.0,
+          "illegal_support_fraction": 0.0,
+          "lifts_per_foot": [
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ],
+            [
+              55,
+              54,
+              54,
+              55
+            ]
+          ],
+          "diagonal_alternations": [
+            108,
+            108,
+            108,
+            108
+          ],
+          "diagonal_touchdown_p95_s": 0.019999999552965164,
+          "raw_peak_Nm": 10.594030380249023,
+          "saturation_fraction": 0.0,
+          "rejection_reasons": [
+            "linear_tracking"
+          ],
+          "passed": false
+        }
+      ]
+    }
+  ],
+  "passed": false,
+  "approved": false,
+  "source_sha256": {
+    "/home/nszb/gym/unitree_rl_gym/legged_gym/envs/urdf4/amp_cts_env.py": "b259e43c25b583faae9409a6a0a87d18a84f573388638bdbcee9fe4161d32619",
+    "/home/nszb/gym/unitree_rl_gym/legged_gym/envs/urdf4/urdf4_omni_env.py": "9238e0ba39d786db9ff8423acd3c6df1b1426d79d2401712b3dedeba39dada27",
+    "/home/nszb/gym/unitree_rl_gym/legged_gym/envs/base/legged_robot.py": "e7ef743ce29fd58ddb9fdafaaf65c18808a9d7d646f0d9215759512da4660036",
+    "/home/nszb/gym/unitree_rl_gym/legged_gym/envs/base/base_task.py": "bbfbb77ae8f90b0383af6003b554c47de75bea75b9f77e29a548cff123306330",
+    "/home/nszb/gym/unitree_rl_gym/legged_gym/envs/urdf4/amp_cts_config.py": "c3d40aebd2d74b679978ab021e7ce6c42d14ddf17644d78a77ba1afea992d133",
+    "/home/nszb/gym/unitree_rl_gym/legged_gym/algorithms/urdf4_amp_cts.py": "18ce28a7bbfe82a570ad47569081e6e61a59e02679f0b875d3a4017a56857b1d",
+    "/home/nszb/gym/unitree_rl_gym/legged_gym/algorithms/conservative_ppo.py": "b0cb63c6656e06e40a8b258bba3a215cabf77de627575c38fde741c5228269c4",
+    "/home/nszb/gym/rsl_rl/rsl_rl/algorithms/ppo.py": "33d531858767e49bbffce8030ac2879a30a00a64caeef0f87502285fa15301cd",
+    "/home/nszb/gym/unitree_rl_gym/legged_gym/envs/urdf4/amp_reference.py": "a8956f7e8daf292d32ed502213d77166dc5c0d8fa955ec3fc0aad9f1e0acf133"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "reference_action_mse": 8.867551183369577e-05,
+  "steps": 2500,
+  "LBFGS_max_steps": 300,
+  "checkpoint": "/home/nszb/gym/artifacts/urdf4_amp_cts_20261113/rsi_bootstrap/phase_seed/run/model_0.pt",
+  "actor_inactive_inputs_initially_zero": true,
+  "behavior_accepted": false
+}

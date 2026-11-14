@@ -1,0 +1,10 @@
+{
+  "checkpoint": "unitree_rl_gym/logs/urdf4_amp_cts_gait_first/Nov13_21-23-13_gait_first_smoke3/model_103.pt",
+  "start_iteration": 100,
+  "target_iteration": 103,
+  "updates": 3,
+  "command_tracking_reward": 0,
+  "training_objective": "gait_first",
+  "finite": true,
+  "long_training_started": false
+}

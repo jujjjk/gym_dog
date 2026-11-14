@@ -1,0 +1,163 @@
+{
+  "source": "artifacts/urdf4_amp_isaac_validation_20261113/replay60/live_rollout.npz",
+  "warmup_s": 5,
+  "cycle_samples": 25,
+  "results": [
+    {
+      "clip": "march",
+      "command": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cycle_linear_error_m_s": 0.016905608736283086,
+      "mean_velocity_m_s": [
+        0.016739649698138237,
+        -0.0020826926920562983
+      ]
+    },
+    {
+      "clip": "forward_slow",
+      "command": [
+        0.18,
+        0.0,
+        0.0
+      ],
+      "cycle_linear_error_m_s": 0.03227094120808028,
+      "mean_velocity_m_s": [
+        0.21225911378860474,
+        0.00038458246854133904
+      ]
+    },
+    {
+      "clip": "forward",
+      "command": [
+        0.28,
+        0.0,
+        0.0
+      ],
+      "cycle_linear_error_m_s": 0.01296092394241255,
+      "mean_velocity_m_s": [
+        0.29067298769950867,
+        0.006591614801436663
+      ]
+    },
+    {
+      "clip": "backward",
+      "command": [
+        -0.18,
+        0.0,
+        0.0
+      ],
+      "cycle_linear_error_m_s": 0.01829338778089061,
+      "mean_velocity_m_s": [
+        -0.19482313096523285,
+        0.0006911066011525691
+      ]
+    },
+    {
+      "clip": "left",
+      "command": [
+        0.0,
+        0.1,
+        0.0
+      ],
+      "cycle_linear_error_m_s": 0.03181144244260595,
+      "mean_velocity_m_s": [
+        0.029336227104067802,
+        0.11212163418531418
+      ]
+    },
+    {
+      "clip": "right",
+      "command": [
+        0.0,
+        -0.1,
+        0.0
+      ],
+      "cycle_linear_error_m_s": 0.02506986299648877,
+      "mean_velocity_m_s": [
+        0.021073011681437492,
+        -0.11330904066562653
+      ]
+    },
+    {
+      "clip": "turn_left",
+      "command": [
+        0.0,
+        0.0,
+        0.4
+      ],
+      "cycle_linear_error_m_s": 0.014833832161378211,
+      "mean_velocity_m_s": [
+        0.012889261357486248,
+        0.004776762332767248
+      ]
+    },
+    {
+      "clip": "turn_right",
+      "command": [
+        0.0,
+        0.0,
+        -0.4
+      ],
+      "cycle_linear_error_m_s": 0.04141280649410024,
+      "mean_velocity_m_s": [
+        0.04086451604962349,
+        0.005423614289611578
+      ]
+    },
+    {
+      "clip": "forward_left",
+      "command": [
+        0.2,
+        0.08,
+        0.0
+      ],
+      "cycle_linear_error_m_s": 0.021036277125676985,
+      "mean_velocity_m_s": [
+        0.2015952169895172,
+        0.09754671156406403
+      ]
+    },
+    {
+      "clip": "forward_right",
+      "command": [
+        0.2,
+        -0.08,
+        0.0
+      ],
+      "cycle_linear_error_m_s": 0.03312025285982807,
+      "mean_velocity_m_s": [
+        0.23255465924739838,
+        -0.085820272564888
+      ]
+    },
+    {
+      "clip": "arc_left",
+      "command": [
+        0.22,
+        0.0,
+        0.3
+      ],
+      "cycle_linear_error_m_s": 0.008704047679326891,
+      "mean_velocity_m_s": [
+        0.22040124237537384,
+        0.008555678650736809
+      ]
+    },
+    {
+      "clip": "arc_right",
+      "command": [
+        0.22,
+        0.0,
+        -0.3
+      ],
+      "cycle_linear_error_m_s": 0.02431939870224663,
+      "mean_velocity_m_s": [
+        0.24427151679992676,
+        -0.0005020504468120635
+      ]
+    }
+  ]
+}

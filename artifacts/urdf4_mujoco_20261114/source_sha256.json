@@ -1,0 +1,7 @@
+{
+  "mujoko/urdf4_amp/export_student.py": "b482a597166cb06a2e3d43d3095af68d304b4ab3e6a0519beae62b01d8d72c5f",
+  "mujoko/urdf4_amp/check_parity.py": "991e0d5b49e030771f98f1ea87879787b7de079f5409fd2907c6f4313ba21f78",
+  "mujoko/urdf4_amp/validate.py": "da6763969b962bfadee57d6b8a9259e4cdb69b97730e670ff3375de05779251a",
+  "mujoko/urdf4_amp/sim2sim.py": "077cadf9f7e6a3d24c0ae1e3227478bdc9d82dff950233a0996d76fda406ef9c",
+  "mujoko/urdf4_amp/play_selected.sh": "baa8bb723ed92d9021402b587c55356b1dd85b3d2ef50531467726b5b2c69cc7"
+}

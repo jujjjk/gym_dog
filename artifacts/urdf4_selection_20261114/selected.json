@@ -1,0 +1,25 @@
+{
+  "checkpoint": "/home/nszb/gym/unitree_rl_gym/logs/urdf4_amp_cts_gait_first/Nov13_21-24-21_gait_first_30000/model_17800.pt",
+  "checkpoint_sha256": "42845cb95de28a0eb94ad41ff8538673d67f6071e3c7edfb231deb877479d355",
+  "iteration": 17800,
+  "priority": "gait-first: tracking metrics excluded from selection",
+  "screened_training_checkpoints": 299,
+  "compared_candidates": 10,
+  "verification": {
+    "seconds": 30,
+    "seed": 1,
+    "mode": "cold",
+    "envs": 48,
+    "gait_passes": 12,
+    "resets": 0,
+    "max_flight_fraction": 0.0,
+    "max_illegal_support_fraction": 0.0,
+    "raw_peak_Nm": 10.757346153259277,
+    "mean_clearance_error_mm": 4.564396240580266,
+    "max_clearance_error_mm": 7.769807480258834,
+    "max_diagonal_touchdown_p95_s": 0.03999999910593033
+  },
+  "verification_source": "verify17800/result.json",
+  "play_script": "/home/nszb/gym/artifacts/urdf4_selection_20261114/play_best.sh",
+  "all_command_tracking_passed": false
+}
