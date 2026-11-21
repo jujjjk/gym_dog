@@ -126,6 +126,10 @@ class PairStyle(OmniStyle):
 
 
 class Urdf4AMPCTSRunner:
+    style_class=PairStyle
+    actor_class=CTSActorCritic
+    student_policy_class=StudentPolicy
+
     def __init__(self,env,train_cfg,log_dir=None,device='cpu'):
         if env.cfg.env.test:log_dir=None  # Playback must not create a newer empty training run.
         self.env=env;self.device=torch.device(device);self.train_cfg=train_cfg;self.cfg=train_cfg['runner']
@@ -134,12 +138,13 @@ class Urdf4AMPCTSRunner:
         self.num_steps_per_env=self.cfg['num_steps_per_env']
         self.writer=SummaryWriter(log_dir) if log_dir else None
         dims=env.cfg.env
-        model=CTSActorCritic(dims.public_obs_size,dims.teacher_state_size,dims.frame_size,
+        model=self.actor_class(dims.public_obs_size,dims.teacher_state_size,dims.frame_size,
                              env.num_actions,**train_cfg['policy']).to(self.device)
         self.alg=ConservativePPO(model,device=self.device,reference_policy_coef=0.,
                                 reference_action_deadband=self.cfg['seed_action_deadband'],
                                 reference_action_hinge_coef=self.cfg['seed_trust_coef'],
                                 reference_action_transform='clip',reference_action_clip=2.,
+                                reference_weight_index=self.cfg.get('seed_weight_index'),
                                 **train_cfg['algorithm'])
         # Keep the student encoder out of the PPO optimizer altogether.
         params=[p for name,p in model.named_parameters() if not name.startswith('student_encoder.')]
@@ -147,7 +152,7 @@ class Urdf4AMPCTSRunner:
         self._freeze_seed_policy()
         self.encoder_optimizer=torch.optim.Adam(model.student_encoder.parameters(),lr=self.cfg['encoder_learning_rate'])
         self.alg.init_storage(env.num_envs,self.num_steps_per_env,[env.num_obs],[env.num_privileged_obs],[env.num_actions])
-        self.style=PairStyle(env.cfg.amp_cts.reference,env,settings=self.cfg,
+        self.style=self.style_class(env.cfg.amp_cts.reference,env,settings=self.cfg,
                              validation_receipt=env.cfg.amp_cts.receipt)
         plant=self.style.reference_settings
         actual={'policy_dt_s':env.dt,'physics_dt_s':env.sim_params.dt,
@@ -179,7 +184,7 @@ class Urdf4AMPCTSRunner:
         env.reset()
 
     def _freeze_seed_policy(self,state=None):
-        self.alg.reference_actor=StudentPolicy(self.alg.actor_critic).to(self.device).eval()
+        self.alg.reference_actor=self.student_policy_class(self.alg.actor_critic).to(self.device).eval()
         if state is not None:self.alg.reference_actor.load_state_dict(state)
         self.alg.reference_actor.requires_grad_(False)
 
@@ -228,7 +233,7 @@ class Urdf4AMPCTSRunner:
         return {k:torch.cat(((values*(mask&valid)[:,None]).sum(0),(mask&valid).sum().reshape(1)))
                 for k,mask in groups.items()}
 
-    def learn(self,num_learning_iterations,init_at_random_ep_len=False):
+    def _validate_training_request(self,num_learning_iterations):
         gait_first=self.cfg.get('training_objective')=='gait_first'
         if gait_first:
             if (self.env.cfg.rewards.scales.command_tracking!=0.
@@ -244,6 +249,15 @@ class Urdf4AMPCTSRunner:
                     or receipt.get('checkpoint_sha256')!=self.loaded_checkpoint_sha256
                     or receipt.get('source_sha256')!=self.experiment['source_sha256']):
                 raise RuntimeError('Long training blocked: behavior receipt, checkpoint or current code does not match')
+
+    def _amp_weights(self,a,style,valid):
+        return torch.ones_like(style),valid
+
+    def _after_update(self,metrics):
+        return {}
+
+    def learn(self,num_learning_iterations,init_at_random_ep_len=False):
+        self._validate_training_request(num_learning_iterations)
         if init_at_random_ep_len:
             phase=self.env._clock_phase().clone()
             self.env.episode_length_buf[:]=torch.randint_like(self.env.episode_length_buf,high=int(self.env.max_episode_length))
@@ -265,10 +279,10 @@ class Urdf4AMPCTSRunner:
                     command=a['command'].to(self.device)
                     style,inputs,valid=self.style.rollout_reward(a)
                     if not torch.isfinite(inputs).all():raise RuntimeError('Nonfinite AMP rollout')
-                    coverage=torch.ones_like(style)  # This stage samples only validated V2 commands.
+                    coverage,replay_valid=self._amp_weights(a,style,valid)
                     warm=min(1.,(self.current_learning_iteration+1)/self.cfg['amp_warmup_iterations'])
                     bonus=self.cfg['amp_style_weight']*self.env.dt*warm*style*coverage*valid.float()
-                    self.style.add(inputs[valid]);total=rewards+bonus
+                    self.style.add(inputs[replay_valid]);total=rewards+bonus
                     self.alg.process_env_step(total,dones.to(self.device),infos)
                     stats.append(torch.stack((rewards.mean(),bonus.mean(),valid.float().mean(),coverage.mean(),dones.float().mean(),
                                               a['reference_quality'].mean(),a['command_quality'].mean(),
@@ -295,6 +309,7 @@ class Urdf4AMPCTSRunner:
                         metrics['tracking/'+group+'/'+name]=value/count
             if episodes:
                 for k in episodes[0]:metrics['episode/'+k]=sum(x.get(k,0.) for x in episodes)/len(episodes)
+            metrics.update(self._after_update(metrics))
             if not all(torch.isfinite(torch.tensor(v)).item() for v in metrics.values()):
                 raise RuntimeError('Nonfinite CTS/PPO metrics')
             self.last_metrics=metrics
@@ -333,7 +348,7 @@ class Urdf4AMPCTSRunner:
         return loaded.get('infos')
 
     def export_student(self,path):
-        policy=StudentPolicy(self.alg.actor_critic).cpu().eval()
+        policy=self.student_policy_class(self.alg.actor_critic).cpu().eval()
         torch.jit.script(policy).save(path)
         metadata=dict(self.contract,input='public history only, newest frame first',
                       input_shape=[None,self.contract['public_size']],output_shape=[None,self.env.num_actions],

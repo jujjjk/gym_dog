@@ -1,7 +1,7 @@
 {
   "source_urdf": "/home/nszb/gym/URDF4.0.SLDASM/urdf/URDF4.0.SLDASM.urdf",
   "source_urdf_sha256": "05a9372b56aac56bdc61a1088e15aa265291c051e3ade638223c983f07001f8d",
-  "training_urdf_sha256": "528c088ff240916b04dfc98611ae9437b92a31cfafc9a297399632e8d0774b91",
+  "training_urdf_sha256": "6e66765a5f2f633480ff5902fff5891a586147867436c6a41433659b12f7ee7f",
   "meshes": [
     "FL_calf_joint.STL",
     "FL_hip_joint.STL",
@@ -21,6 +21,18 @@
   "changes": [
     "mesh paths made relative",
     "foot visual spheres added",
-    "robot renamed to urdf4_rs01"
-  ]
+    "robot renamed to urdf4_rs01",
+    "2026-11-16: add missing 0.800 kg battery to trunk; provisional point mass at existing trunk CoM, unchanged trunk inertia"
+  ],
+  "battery_mass_correction": {
+    "added_mass_kg": 0.8,
+    "previous_urdf": "unitree_rl_gym/resources/robots/urdf4/urdf/urdf4_rs01_no_battery_legacy.urdf",
+    "previous_urdf_sha256": "528c088ff240916b04dfc98611ae9437b92a31cfafc9a297399632e8d0774b91",
+    "trunk_mass_before_kg": 5.1784426438803,
+    "trunk_mass_after_kg": 5.9784426438803,
+    "total_mass_before_kg": 11.569864831733414,
+    "total_mass_after_kg": 12.369864831733413,
+    "assumption": "Point mass at original trunk CoM; battery position/size unknown; finite battery inertia not yet modeled",
+    "requires_new_motion_validation": true
+  }
 }

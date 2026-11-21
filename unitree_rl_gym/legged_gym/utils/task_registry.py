@@ -133,7 +133,31 @@ class TaskRegistry:
                 + train_cfg.runner.run_name,
             )
         train_cfg_dict = class_to_dict(train_cfg)
-        if train_cfg_dict["runner"].get("cts_amp_enabled", False):
+        if train_cfg_dict["runner"].get("cts_stairs_enabled", False):
+            from legged_gym.algorithms.urdf4_amp_stairs import Urdf4AMPStairsRunner
+            runner_class = Urdf4AMPStairsRunner
+        elif train_cfg_dict["runner"].get("cts_transition_training_enabled", False):
+            from legged_gym.algorithms.urdf4_amp_transition_training import Urdf4AMPTransitionTrainingRunner
+            runner_class = Urdf4AMPTransitionTrainingRunner
+        elif train_cfg_dict["runner"].get("cts_rough_enabled", False):
+            from legged_gym.algorithms.urdf4_amp_rough import Urdf4AMPRoughRunner
+            runner_class = Urdf4AMPRoughRunner
+        elif train_cfg_dict["runner"].get("cts_v5_enabled", False):
+            from legged_gym.algorithms.urdf4_amp_v5 import Urdf4AMPV5Runner
+            runner_class = Urdf4AMPV5Runner
+        elif train_cfg_dict["runner"].get("cts_v4_enabled", False):
+            from legged_gym.algorithms.urdf4_amp_v4 import Urdf4AMPV4Runner
+            runner_class = Urdf4AMPV4Runner
+        elif train_cfg_dict["runner"].get("cts_v3_enabled", False):
+            from legged_gym.algorithms.urdf4_amp_v3 import Urdf4AMPV3Runner
+            runner_class = Urdf4AMPV3Runner
+        elif train_cfg_dict["runner"].get("cts_direction_enabled", False):
+            from legged_gym.algorithms.urdf4_amp_direction import Urdf4AMPDirectionRunner
+            runner_class = Urdf4AMPDirectionRunner
+        elif train_cfg_dict["runner"].get("cts_expand_enabled", False):
+            from legged_gym.algorithms.urdf4_amp_expand import Urdf4AMPExpandRunner
+            runner_class = Urdf4AMPExpandRunner
+        elif train_cfg_dict["runner"].get("cts_amp_enabled", False):
             from legged_gym.algorithms.urdf4_amp_cts import Urdf4AMPCTSRunner
             runner_class = Urdf4AMPCTSRunner
         elif train_cfg_dict["runner"].get("amp_enabled", False):
@@ -208,7 +232,7 @@ class TaskRegistry:
             )
             if checkpoint_match is not None:
                 filename_iteration = int(checkpoint_match.group(1))
-                if filename_iteration > runner.current_learning_iteration:
+                if filename_iteration > runner.current_learning_iteration and not getattr(runner,'fresh_stage_warmstart',False):
                     print(
                         f"Correcting checkpoint iteration metadata: {runner.current_learning_iteration} -> {filename_iteration}"
                     )
