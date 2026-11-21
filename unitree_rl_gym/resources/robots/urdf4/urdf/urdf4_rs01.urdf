@@ -9,8 +9,11 @@
       <origin
         xyz="0.000795906074610442 -7.42066321344007E-07 -0.0055722552973241"
         rpy="0 0 0" />
+      <!-- Battery correction: +0.800 kg, concentrated at the existing trunk CoM.
+           Battery placement/size are not measured; trunk CoM and inertia are
+           retained as a provisional mass-only approximation. -->
       <mass
-        value="5.1784426438803" />
+        value="5.9784426438803" />
       <inertia
         ixx="0.00886874957330083"
         ixy="-6.86456654485552E-08"

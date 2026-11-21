@@ -330,6 +330,32 @@ task_registry.register('urdf4_omni_v1', Urdf4OmniRobot, Urdf4OmniCfg(), Urdf4Omn
 from legged_gym.envs.urdf4.amp_cts_config import Urdf4AMPCTSCfg, Urdf4AMPCTSPPO
 from legged_gym.envs.urdf4.amp_cts_env import Urdf4AMPCTSRobot
 task_registry.register('urdf4_amp_cts_v1', Urdf4AMPCTSRobot, Urdf4AMPCTSCfg(), Urdf4AMPCTSPPO())
+from legged_gym.envs.urdf4.amp_expand_config import Urdf4AMPExpandCfg,Urdf4AMPExpandPPO,Urdf4AMPExpandXCfg,Urdf4AMPExpandXPPO
+from legged_gym.envs.urdf4.amp_expand_env import Urdf4AMPExpandRobot
+task_registry.register('urdf4_amp_cts_expand_v1',Urdf4AMPExpandRobot,Urdf4AMPExpandCfg(),Urdf4AMPExpandPPO())
+task_registry.register('urdf4_amp_cts_expand_x_v1',Urdf4AMPExpandRobot,Urdf4AMPExpandXCfg(),Urdf4AMPExpandXPPO())
+from legged_gym.envs.urdf4.amp_direction_config import Urdf4AMPDirectionCfg,Urdf4AMPDirectionPPO
+from legged_gym.envs.urdf4.amp_direction_env import Urdf4AMPDirectionRobot
+task_registry.register('urdf4_amp_cts_direction_v1',Urdf4AMPDirectionRobot,Urdf4AMPDirectionCfg(),Urdf4AMPDirectionPPO())
+from legged_gym.envs.urdf4.amp_v3_config import Urdf4AMPV3Cfg,Urdf4AMPV3PPO
+from legged_gym.envs.urdf4.amp_v3_env import Urdf4AMPV3Robot
+task_registry.register('urdf4_amp_cts_v3',Urdf4AMPV3Robot,Urdf4AMPV3Cfg(),Urdf4AMPV3PPO())
+from legged_gym.envs.urdf4.amp_v4_config import Urdf4AMPV4Cfg,Urdf4AMPV4PPO
+from legged_gym.envs.urdf4.amp_v4_env import Urdf4AMPV4Robot
+task_registry.register('urdf4_amp_cts_v4',Urdf4AMPV4Robot,Urdf4AMPV4Cfg(),Urdf4AMPV4PPO())
+from legged_gym.envs.urdf4.amp_rough_config import Urdf4AMPRoughCfg, Urdf4AMPRoughPPO
+from legged_gym.envs.urdf4.amp_rough_env import Urdf4AMPRoughRobot
+task_registry.register('urdf4_amp_cts_rough', Urdf4AMPRoughRobot, Urdf4AMPRoughCfg(), Urdf4AMPRoughPPO())
+from legged_gym.envs.urdf4.amp_transition_env import Urdf4AMPTransitionRobot
+task_registry.register('urdf4_amp_cts_transition', Urdf4AMPTransitionRobot, Urdf4AMPRoughCfg(), Urdf4AMPRoughPPO())
+from legged_gym.envs.urdf4.amp_transition_training import (
+    Urdf4AMPTransitionTrainingCfg, Urdf4AMPTransitionTrainingPPO, Urdf4AMPTransitionTrainingRobot,
+)
+task_registry.register('urdf4_amp_cts_transition_training', Urdf4AMPTransitionTrainingRobot,
+                       Urdf4AMPTransitionTrainingCfg(), Urdf4AMPTransitionTrainingPPO())
+from legged_gym.envs.urdf4.amp_v5_config import Urdf4AMPV5Cfg,Urdf4AMPV5PPO
+from legged_gym.envs.urdf4.amp_v5_env import Urdf4AMPV5Robot
+task_registry.register('urdf4_amp_cts_v5',Urdf4AMPV5Robot,Urdf4AMPV5Cfg(),Urdf4AMPV5PPO())
 
 task_registry.register("go2", LeggedRobot, GO2RoughCfg(), GO2RoughCfgPPO())
 task_registry.register(
@@ -847,3 +873,6 @@ task_registry.register(
     FanfanOmniCalibratedSymmetryCfg(),
     FanfanOmniCalibratedSymmetryCfgPPO(),
 )
+
+from legged_gym.envs.urdf4.amp_stairs import Urdf4AMPStairsCfg, Urdf4AMPStairsPPO, Urdf4AMPStairsRobot
+task_registry.register('urdf4_amp_cts_stairs', Urdf4AMPStairsRobot, Urdf4AMPStairsCfg(), Urdf4AMPStairsPPO())

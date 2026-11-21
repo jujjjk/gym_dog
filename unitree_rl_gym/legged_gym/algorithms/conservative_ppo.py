@@ -40,6 +40,7 @@ class ConservativePPO(PPO):
         reference_action_hinge_coef=2.0,
         reference_action_transform="tanh",
         reference_action_clip=1.0,
+        reference_weight_index=None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -48,7 +49,9 @@ class ConservativePPO(PPO):
         self.reference_action_hinge_coef = float(reference_action_hinge_coef)
         self.reference_action_transform = str(reference_action_transform)
         self.reference_action_clip = float(reference_action_clip)
+        self.reference_weight_index = reference_weight_index
         self.reference_actor = None
+        self.auxiliary_actor_loss = None
 
     def set_reference_policy(self):
         """Freeze the currently loaded actor as the continuation anchor."""
@@ -142,6 +145,11 @@ class ConservativePPO(PPO):
                     - self.reference_action_deadband
                 ).clip(min=0.0)
             ))
+            if self.reference_weight_index is not None:
+                weight = obs_batch[:, self.reference_weight_index].clamp(0., 1.)
+                reference_loss = (reference_delta.square().mean(-1) * weight).mean()
+                hinge = (reference_delta.abs() - self.reference_action_deadband).clamp(min=0.)
+                reference_hinge_loss = (hinge.square().mean(-1) * weight).mean()
             loss = (
                 surrogate_loss
                 + self.value_loss_coef * value_loss
@@ -149,6 +157,8 @@ class ConservativePPO(PPO):
                 + self.reference_policy_coef * reference_loss
                 + self.reference_action_hinge_coef * reference_hinge_loss
             )
+            if self.auxiliary_actor_loss is not None:
+                loss = loss + self.auxiliary_actor_loss()
 
             self.optimizer.zero_grad()
             loss.backward()

@@ -41,7 +41,7 @@ class Urdf4AMPCTSRobot(Urdf4OmniRobot):
                 templates.append(np.stack([feet[bins==i].mean(0) if np.any(bins==i) else feet[np.argmin(np.abs((phase-i/self.reference_bins+.5)%1-.5))]
                                            for i in range(self.reference_bins)]))
         self.reference_feet=torch.tensor(np.stack(templates),device=device)
-        if not bool(torch.isclose(self.reference_frequencies,torch.full_like(self.reference_frequencies,1/self.cfg.gait.period_s)).all()):
+        if not getattr(self.cfg.amp_cts,'variable_cadence',False) and not bool(torch.isclose(self.reference_frequencies,torch.full_like(self.reference_frequencies,1/self.cfg.gait.period_s)).all()):
             raise ValueError('CTS phase clock and V2 cadence differ')
         packed=self.cfg.env.num_observations
         self.cfg.env.num_observations=self.cfg.env.public_obs_size
@@ -101,7 +101,7 @@ class Urdf4AMPCTSRobot(Urdf4OmniRobot):
         indices=(mean.head-torch.arange(mean.window.shape[1],device=values.device))%mean.window.shape[1]
         mean.window[ids[:,None],indices[None,:]]=values
 
-    def restore_reference_states(self,ids,bank_ids):
+    def restore_reference_states(self,ids,bank_ids,write_sim=True):
         """Write simulator and actuator state only at reset boundaries."""
         bank=self.reference_bank['snapshots']
         self.last_reference_bank_ids[ids]=bank_ids
@@ -123,9 +123,10 @@ class Urdf4AMPCTSRobot(Urdf4OmniRobot):
         self._restore_cycle_mean(self.measured_yaw_error,ids,bank['yaw_window'][bank_ids])
         self.obs_history[ids]=bank['obs_history'][bank_ids]
         self._history_stale[ids]=False;self._rsi_hold_history[ids]=True
-        ids32=ids.to(torch.int32)
-        self.gym.set_actor_root_state_tensor_indexed(self.sim,gymtorch.unwrap_tensor(self.root_states),gymtorch.unwrap_tensor(ids32),len(ids32))
-        self.gym.set_dof_state_tensor_indexed(self.sim,gymtorch.unwrap_tensor(self.dof_state),gymtorch.unwrap_tensor(ids32),len(ids32))
+        if write_sim:
+            ids32=ids.to(torch.int32)
+            self.gym.set_actor_root_state_tensor_indexed(self.sim,gymtorch.unwrap_tensor(self.root_states),gymtorch.unwrap_tensor(ids32),len(ids32))
+            self.gym.set_dof_state_tensor_indexed(self.sim,gymtorch.unwrap_tensor(self.dof_state),gymtorch.unwrap_tensor(ids32),len(ids32))
 
     def reset_idx(self,ids):
         self.last_reference_bank_ids[ids]=-1

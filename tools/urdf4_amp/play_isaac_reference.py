@@ -19,6 +19,8 @@ p.add_argument('--commands-dir',type=Path,default=ROOT/'artifacts/urdf4_amp_isaa
 p.add_argument('--clip',default='forward');p.add_argument('--sweep',action='store_true')
 p.add_argument('--seconds',type=float,default=8);p.add_argument('--follow',action='store_true')
 p.add_argument('--cycles',type=int,default=0,help='0 repeats until the window is closed')
+p.add_argument('--closed-loop-teacher',action='store_true',help='V3 teacher feedback on the actual Gym state')
+p.add_argument('--direct-joint-targets',action='store_true',help='V3 teacher target coordinates; keep RS01 limits unchanged')
 own,rest=p.parse_known_args();sys.argv=sys.argv[:1]+rest;args=get_args();args.task=play.TASK;args.num_envs=1
 if own.seconds<=0:p.error('--seconds must be positive')
 m=json.loads((own.dataset/'manifest.json').read_text());clips={c['clip']:c for c in m['clips']}
@@ -26,6 +28,14 @@ if own.clip not in clips:p.error('Unknown motion: '+own.clip)
 names=list(clips) if own.sweep else [own.clip];pivot=names.index(own.clip);names=names[pivot:]+names[:pivot]
 data={name:dict(np.load(own.commands_dir/name/'physical.npz',allow_pickle=False)) for name in names}
 cfg,_=task_registry.get_cfgs(name=play.TASK);cfg.env.num_envs=1;cfg.env.test=True;cfg.env.episode_length_s=own.seconds+10;cfg.noise.add_noise=False;cfg.push.enabled=False;cfg.domain_rand.push_robots=False;cfg.commands.fixed_command=[0,0,0]
+if own.direct_joint_targets:
+ if m.get('dataset_version')!='V3':raise ValueError('Direct joint targets require the explicit V3 contract')
+ cfg.normalization.clip_actions=64.
+if own.closed_loop_teacher:
+ import hashlib
+ from teacher_v3 import Teacher,rot
+ source=ROOT/'unitree_rl_gym/resources/robots/urdf4/urdf/urdf4_rs01.urdf'
+ assert hashlib.sha256(source.read_bytes()).hexdigest()==m['urdf_sha256']
 for flag in ['randomize_friction','randomize_restitution','randomize_base_mass','randomize_base_com','randomize_link_mass','randomize_armature']:setattr(cfg.domain_rand,flag,False)
 env,_=task_registry.make_env(name=play.TASK,args=args,env_cfg=cfg);assert list(env.dof_names)==m['joint_order'];device=env.device;original_reset=env.reset_idx
 state={'quit':False,'paused':False,'delta':0,'restart':False,'follow':own.follow,'failed':False};window_id=None
@@ -39,7 +49,7 @@ if env.viewer:
   if found:window_id=found[-1]
 def title(name,k=0):
  if not window_id:return
- text='Isaac Gym | URDF4 AMP V2 | '+name+' | N/B next/prev, Space pause, F follow'
+ text='Isaac Gym | URDF4 AMP '+str(m.get('dataset_version','V2'))+' teacher | '+name+' | N/B next/prev, Space pause, F follow'
  for prop,fmt in [('_NET_WM_NAME','8u'),('WM_NAME','8s')]:subprocess.run(['xprop','-id',window_id,'-f',prop,fmt,'-set',prop,text],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 def fail(ids):
  if len(ids) and not state['failed']:
@@ -49,6 +59,7 @@ def initialize(name):
  env.dof_pos[:]=q0;env.dof_vel[:]=0;env.root_states[:,:3]=env.env_origins+root[:,:3];env.root_states[:,3:7]=root[:,[4,5,6,3]];env.root_states[:,7:]=0;correction=(q0-env.default_dof_pos)*(1/.928-1);target=q0+correction;env.position_target[:]=target;env.response_target[:]=q0;env.target_rate[:]=0;env.delay_buffer[:]=target;env.response_tick=0;env.raw_pd_torques[:]=0;env.motor_torques[:]=0;env.episode_length_buf[:]=0;env.common_step_counter=0;env.episode_steps[:]=0;env.actions[:]=0;env.last_actions[:]=0;env.foot_contact_mask[:]=False
  env.gym.set_actor_root_state_tensor(env.sim,gymtorch.unwrap_tensor(env.root_states));env.gym.set_dof_state_tensor(env.sim,gymtorch.unwrap_tensor(env.dof_state));env.gym.refresh_actor_root_state_tensor(env.sim);env.gym.refresh_dof_state_tensor(env.sim);env.gym.refresh_rigid_body_state_tensor(env.sim);env._refresh_feet();env._reset_sensors(torch.arange(1,device=device));env.compute_observations();state['failed']=False;title(name)
  print('[physics motion]',name,'command',clips[name]['command'],'| 2s settle, then',own.seconds,'s | no pose writes during motion',flush=True)
+ state['teacher']=Teacher(ROOT/'artifacts/urdf4_amp_design_20261116_v3/plant',clips[name]) if own.closed_loop_teacher else None
  return torch.tensor(z['command_targets'],device=device,dtype=torch.float),correction
 
 def events():
@@ -86,7 +97,11 @@ with torch.no_grad():
     if own.cycles and completed>=own.cycles*len(names):break
    new_index=(index+(state['delta'] if state['delta'] else (0 if state['restart'] else 1)))%len(names);old_xy=env.root_states[0,:2].cpu().numpy().copy();index=new_index;targets,correction=initialize(names[index]);k=0;state['delta']=0;state['restart']=False;state['paused']=False;new_xy=env.root_states[0,:2].cpu().numpy().copy();draw(new_xy-old_xy);previous_xy=new_xy
   if not state['paused']:
-   desired=targets[k][None]+correction;actions=(desired-env.default_dof_pos)/env.action_scale;env.step(actions);k+=1
+   teacher=state['teacher']
+   if teacher:
+    root=env.root_states[0].cpu().numpy().copy();root[:3]-=env.env_origins[0].cpu().numpy();qpos=np.zeros(teacher.m.nq);qvel=np.zeros(teacher.m.nv);qpos[:3]=root[:3];qpos[3:7]=root[[6,3,4,5]];qpos[teacher.qa]=env.dof_pos[0].cpu().numpy();qvel[:3]=root[7:10];qvel[3:6]=rot(qpos[3:7]).T@root[10:13];qvel[teacher.va]=env.dof_vel[0].cpu().numpy();desired=torch.tensor(teacher.command(k*env.dt-2.,qpos,qvel),device=device,dtype=torch.float)[None]+correction
+   else:desired=targets[k][None]+correction
+   actions=(desired-env.default_dof_pos)/env.action_scale;env.step(actions);k+=1
   new_xy=env.root_states[0,:2].cpu().numpy().copy();draw(new_xy-previous_xy);previous_xy=new_xy
 print('[done]',completed,'motions',flush=True)
 if env.viewer:env.gym.destroy_viewer(env.viewer)

@@ -16,15 +16,24 @@ class NumpyStudent:
         return x
     def __call__(self,history):
         x=np.asarray(history,dtype=np.float32).reshape(-1,1020)
-        return self._mlp(np.concatenate((x[:,:51]*self.w['frame_gain'],self._mlp(x,'encoder')),1),'actor')
+        direct=x[:,:51].copy()
+        if 'command_min' in self.w:
+            direct[:,6:9]=np.clip(direct[:,6:9],self.w['command_min'],self.w['command_max'])
+        return self._mlp(np.concatenate((direct*self.w['frame_gain'],self._mlp(x,'encoder')),1),'actor')
+
+def checked_urdf_contract(contract):
+    src=Path(contract['urdf'])
+    if hashlib.sha256(src.read_bytes()).hexdigest()!=contract['urdf_sha256']:
+        raise ValueError('URDF changed since this bundle was exported; regenerate and revalidate the bundle. Use an explicitly archived URDF for legacy replay.')
+    mass=sum(float(n.get('value')) for n in ET.parse(src).getroot().findall('./link/inertial/mass'))
+    return src,mass
 
 def prepare_scene(bundle):
     import mujoco as mj
-    c=json.loads((bundle/'contract.json').read_text());src=Path(c['urdf'])
-    assert hashlib.sha256(src.read_bytes()).hexdigest()==c['urdf_sha256']
+    c=json.loads((bundle/'contract.json').read_text());src,expected_mass=checked_urdf_contract(c)
     tree=ET.parse(src);r=tree.getroot()
     for mesh in r.iter('mesh'):mesh.set('filename',str((src.parent/mesh.get('filename')).resolve()))
-    ext=ET.SubElement(r,'mujoco');ET.SubElement(ext,'compiler',discardvisual='false',fusestatic='false',balanceinertia='false')
+    ext=ET.SubElement(r,'mujoco');ET.SubElement(ext,'compiler',discardvisual='false',fusestatic='false',balanceinertia='false',strippath='false')
     tree.write(bundle/'resolved.urdf');m=mj.MjModel.from_xml_path(str(bundle/'resolved.urdf'))
     mj.mj_saveLastXML(str(bundle/'imported.xml'),m)
     tree=ET.parse(bundle/'imported.xml');r=tree.getroot();world=r.find('worldbody')
@@ -58,25 +67,34 @@ def prepare_scene(bundle):
     opt=r.find('option')
     if opt is None:opt=ET.SubElement(r,'option')
     opt.attrib.update(timestep=str(c['physics_dt_s']),gravity='0 0 -9.81',integrator='implicitfast',iterations='100',tolerance='1e-10')
-    ET.SubElement(r,'visual');ET.indent(tree);tree.write(bundle/'scene.xml')
+    ET.SubElement(r,'visual')
+    if hasattr(ET, 'indent'):
+        ET.indent(tree)
+    tree.write(bundle/'scene.xml')
     model=mj.MjModel.from_xml_path(str(bundle/'scene.xml'))
-    assert abs(model.body_mass.sum()-11.569864831733414)<1.e-7
+    assert abs(model.body_mass.sum()-expected_mass)<1.e-7
     return model
 
 def wrap(x):return np.arctan2(np.sin(x),np.cos(x))
 
 class StudentSim:
-    def __init__(self,bundle):
+    def __init__(self,bundle,*,policy=None):
         import mujoco as mj
         self.mj=mj;self.bundle=Path(bundle);self.c=json.loads((self.bundle/'contract.json').read_text())
-        assert hashlib.sha256((self.bundle/'student.npz').read_bytes()).hexdigest()==self.c['numpy_weights_sha256']
-        self.policy=NumpyStudent(self.bundle/'student.npz')
+        _,expected_mass=checked_urdf_contract(self.c)
+        if policy is None:
+            assert hashlib.sha256((self.bundle/'student.npz').read_bytes()).hexdigest()==self.c['numpy_weights_sha256']
+            policy=NumpyStudent(self.bundle/'student.npz')
+        self.policy=policy
         self.m=mj.MjModel.from_xml_path(str(self.bundle/'scene.xml'));self.d=mj.MjData(self.m)
+        if abs(self.m.body_mass.sum()-expected_mass)>1.e-7:
+            raise ValueError('Cached MuJoCo scene mass differs from the URDF; regenerate scene.xml')
         self.names=self.c['joint_order'];j=np.array([mj.mj_name2id(self.m,mj.mjtObj.mjOBJ_JOINT,n) for n in self.names]);assert min(j)>=0
         self.qa=self.m.jnt_qposadr[j];self.va=self.m.jnt_dofadr[j]
         self.trunk=mj.mj_name2id(self.m,mj.mjtObj.mjOBJ_BODY,'trunk')
         self.feet=np.array([mj.mj_name2id(self.m,mj.mjtObj.mjOBJ_BODY,l+'_foot') for l in self.c['foot_order']])
         self.ground=mj.mj_name2id(self.m,mj.mjtObj.mjOBJ_GEOM,'ground')
+        self.support_geoms=(self.ground,)
         self.default=np.array([self.c['default_joint_angles'][n] for n in self.names],np.float32)
         by_joint=lambda values:np.array([next(v for key,v in values.items() if key in n) for n in self.names],np.float32)
         self.scale=by_joint(self.c['control']['action_scale_by_joint']);self.kp=by_joint(self.c['control']['stiffness']);self.kd=by_joint(self.c['control']['damping'])
@@ -129,7 +147,7 @@ class StudentSim:
         self.command=np.array(command,np.float32);self.enabled=enabled
         self.policy_tick=0;self.heading_target=self.yaw();self.observe()
 
-    def step(self,action=None):
+    def step(self,action=None,torque_limit=None):
         if action is None:action=self.policy(self.history.reshape(1,-1))[0]
         self.action=np.clip(action,-self.c['normalization']['clip_actions'],self.c['normalization']['clip_actions']).astype(np.float32)
         desired=self.default+self.scale*self.action;want=np.clip((desired-self.target)/self.policy_dt,-self.rate_limit,self.rate_limit)
@@ -137,6 +155,7 @@ class StudentSim:
         nxt=self.target+self.rate*self.policy_dt;crossed=(desired-self.target)*(desired-nxt)<=0
         self.target=np.where(crossed,desired,nxt);self.rate=np.where(crossed,0,self.rate).astype(np.float32)
         samples=[];act=self.c['actuator']
+        limit=act['peak_torque_limit_nm'] if torque_limit is None else torque_limit
         for _ in range(self.decimation):
             if self.response_tick%self.response_every==0:
                 self.delay=np.roll(self.delay,1,axis=0);self.delay[0]=self.target
@@ -144,7 +163,7 @@ class StudentSim:
                 self.response+=self.alpha*(equilibrium-self.response)
             self.response_tick+=1
             self.raw=self.kp*(self.response-self.d.qpos[self.qa].astype(np.float32))-self.kd*self.d.qvel[self.va].astype(np.float32)
-            self.motor=np.clip(self.raw,-act['peak_torque_limit_nm'],act['peak_torque_limit_nm'])
+            self.motor=np.clip(self.raw,-limit,limit)
             self.applied=self.motor-act['coulomb_friction_nm']*np.tanh(self.d.qvel[self.va]/act['friction_smoothing_rad_s'])
             self.d.qfrc_applied[:]=0;self.d.qfrc_applied[self.va]=self.applied
             samples.append(np.stack((self.raw,self.motor,self.applied)))
@@ -158,8 +177,10 @@ class StudentSim:
         self.trunk_contact=False
         for ci,c in enumerate(self.d.contact):
             g1,g2=c.geom1,c.geom2
-            if self.ground not in (g1,g2):continue
-            other=g2 if g1==self.ground else g1;body=self.m.geom_bodyid[other]
+            if g1 in self.support_geoms:other=g2
+            elif g2 in self.support_geoms:other=g1
+            else:continue
+            body=self.m.geom_bodyid[other]
             if body==self.trunk:self.trunk_contact=True
             for j,foot in enumerate(self.feet):
                 if body==foot:
